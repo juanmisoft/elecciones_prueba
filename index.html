@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escrutinio en Tiempo Real - Elecciones Generales</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Portal oficial para el escrutinio en tiempo real de las Elecciones Generales en Rivas-Vaciamadrid, con visualización georeferenciada.">
+    <meta name="author" content="Oficina de Información Territorial de Rivas (OITR)">
+    
+    <!-- Google Fonts & FontAwesome Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- ArcGIS API for JavaScript CSS -->
+    <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css">
+    
+    <!-- Estilos del Proyecto -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- CONTENEDOR PRINCIPAL DE LA APP -->
+    <div id="app-container">
+        
+        <!-- CABECERA GLOBAL DE LA APLICACIÓN -->
+        <header class="main-header">
+            <div class="header-brand">
+                <img src="Imagenes/Logo_OITR.png" alt="Logo Ayuntamiento Rivas-Vaciamadrid" class="brand-logo">
+                <div class="brand-title">
+                    <span>RIVAS <span style="color: var(--primary-color);">ELECCIONES</span></span>
+                    <span class="brand-subtitle">Escrutinio Generales en Tiempo Real</span>
+                </div>
+            </div>
+            
+            <div class="header-status">
+                <!-- Porcentaje de escrutinio general -->
+                <div class="scrutiny-pill">
+                    <span class="scrutiny-dot"></span>
+                    <span>Escrutado: <span id="header-scrutiny-percent">0.00%</span></span>
+                </div>
+                
+                <!-- Usuario logueado (si aplica) -->
+                <div id="logged-user-area" class="hidden">
+                    <span class="user-badge">
+                        <i class="fa-solid fa-user-shield" id="user-role-icon"></i>
+                        <span id="logged-username">Usuario</span>
+                    </span>
+                </div>
+                
+                <!-- Botón de Acción Portal/Logout -->
+                <button id="btn-portal-action" class="btn-header btn-primary">
+                    <i class="fa-solid fa-lock"></i>
+                    <span>Acceso Portal</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- ==========================================================================
+           VISTA 1: DASHBOARD PÚBLICO (MAPA Y ESTADÍSTICAS EN TIEMPO REAL)
+           ========================================================================== -->
+        <section id="public-dashboard-view" class="view-section">
+            
+            <!-- Barra Lateral con Estadísticas y Colegios -->
+            <aside class="dashboard-sidebar">
+                
+                <!-- Pestañas de la barra lateral -->
+                <div class="sidebar-tabs">
+                    <button class="tab-btn active" data-tab="general-stats-pane">
+                        <i class="fa-solid fa-chart-line"></i>
+                        <span>Global</span>
+                    </button>
+                    <button class="tab-btn" data-tab="colegios-list-pane">
+                        <i class="fa-solid fa-school"></i>
+                        <span>Colegios</span>
+                    </button>
+                </div>
+                
+                <!-- PESTAÑA A: Estadísticas Globales del Municipio -->
+                <div class="tab-content">
+                    <div id="general-stats-pane" class="tab-pane active">
+                        <div class="card-title">Métricas Generales</div>
+                        
+                        <div class="stats-grid">
+                            <!-- Escrutinio -->
+                            <div class="stat-card full-width">
+                                <span class="stat-label">Progreso del Escrutinio</span>
+                                <div class="stat-value" id="global-scrutiny-val">0.00%</div>
+                                <div class="stat-progress-bar">
+                                    <div class="stat-progress-fill" id="global-scrutiny-bar" style="width: 0%;"></div>
+                                </div>
+                                <span class="stat-label" style="margin-top: 8px; font-size: 0.65rem;" id="global-mesas-ratio">0 de 0 mesas cerradas</span>
+                            </div>
+                            
+                            <!-- Participación -->
+                            <div class="stat-card">
+                                <span class="stat-label">Participación</span>
+                                <div class="stat-value" id="global-participation-val">0.00%</div>
+                                <div class="stat-progress-bar">
+                                    <div class="stat-progress-fill" id="global-participation-bar" style="width: 0%; background-color: #f59e0b;"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Censo -->
+                            <div class="stat-card">
+                                <span class="stat-label">Censo Total</span>
+                                <div class="stat-value" id="global-census-val">0</div>
+                            </div>
+                            
+                            <!-- Votos Nulos -->
+                            <div class="stat-card">
+                                <span class="stat-label">Votos Nulos</span>
+                                <div class="stat-value" style="font-size: 1.15rem;" id="global-nulos-val">0 <span style="font-size: 0.75rem; font-weight: 400; color: var(--text-muted);">(0.00%)</span></div>
+                            </div>
+                            
+                            <!-- Votos en Blanco -->
+                            <div class="stat-card">
+                                <span class="stat-label">Votos en Blanco</span>
+                                <div class="stat-value" style="font-size: 1.15rem;" id="global-blancos-val">0 <span style="font-size: 0.75rem; font-weight: 400; color: var(--text-muted);">(0.00%)</span></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Lista de Partidos Ordenados por Votos -->
+                        <div class="card-title" style="margin-top: 24px;">Resultados Electorales</div>
+                        <div id="global-parties-container" class="party-results-list">
+                            <!-- Se rellena dinámicamente -->
+                            <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 20px 0;">Esperando datos de escrutinio...</div>
+                        </div>
+                    </div>
+
+                    <!-- PESTAÑA B: Listado de Colegios Electorales -->
+                    <div id="colegios-list-pane" class="tab-pane">
+                        <div class="card-title">Centros de Votación</div>
+                        
+                        <!-- Buscador de Colegios -->
+                        <div class="search-box">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="text" id="colegio-search" placeholder="Buscar colegio o dirección...">
+                        </div>
+                        
+                        <!-- Listado -->
+                        <div id="colegios-list-container" class="colegios-list">
+                            <!-- Se rellena dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Contenedor del Visor Cartográfico de ArcGIS -->
+            <div class="dashboard-map-container">
+                <div class="map-overlay-title">
+                    <h3 id="map-current-title">Mapa Electoral de Rivas-Vaciamadrid</h3>
+                </div>
+                
+                <!-- Mapa Div -->
+                <div id="mapViewDiv"></div>
+                
+                <!-- Leyenda de colores del mapa -->
+                <div id="mapLegend" class="map-legend">
+                    <div class="legend-title">Top 3 Municipio</div>
+                    <div id="legend-items-container">
+                        <!-- Rellenado dinámicamente con partidos configurados -->
+                    </div>
+                    <div class="legend-item" style="margin-top: 8px; border-top: 1px dashed rgba(0,0,0,0.1); padding-top: 6px;">
+                        <div class="legend-color" style="background-color: #b4b4b4;"></div>
+                        <span>Sin datos / Empate</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================================================
+           VISTA 2: FORMULARIO DE LOGIN (SIMULADO DE ARCGIS ENTERPRISE PORTAL)
+           ========================================================================== -->
+        <section id="login-view" class="view-section login-view hidden">
+            <div class="login-card">
+                <img src="Imagenes/Logo_OITR.png" alt="ArcGIS Portal Logo" class="login-logo">
+                <div class="login-title">Portal ArcGIS Enterprise</div>
+                <div class="login-subtitle">Introduce tus credenciales para acceder a la aplicación electoral</div>
+                
+                <!-- Mensaje de error -->
+                <div id="login-error-msg" class="login-error">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <span>Error al autenticar.</span>
+                </div>
+                
+                <div style="width: 100%; display: flex; flex-direction: column; gap: 14px;">
+                    <!-- Botón de Login Oficial de ArcGIS Portal -->
+                    <button id="btn-login-arcgis" class="btn-header btn-primary btn-login" style="justify-content: center; padding: 14px; font-size: 1rem;">
+                        <i class="fa-solid fa-shield-halved"></i> Conectar con ArcGIS Portal
+                    </button>
+                    
+
+                    
+                    <button type="button" id="btn-login-cancel" class="btn-header btn-secondary" style="width:100%; justify-content: center; background: transparent; border: none; color: rgba(255,255,255,0.6); margin-top: 10px;">
+                        Volver al Visor Público
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================================================
+           VISTA 3: PORTAL DE COLEGIO ELECTORAL (ESCRUTINIO DE MESAS)
+           ========================================================================== -->
+        <section id="colegio-portal-view" class="view-section colegio-portal-view hidden">
+            <div class="portal-container">
+                
+                <!-- Bienvenida de Colegio -->
+                <div class="portal-welcome">
+                    <div class="welcome-info">
+                        <h2 id="portal-colegio-name">C.E.I.P. JARAMA</h2>
+                        <p id="portal-colegio-address">Avenida de Covibar, 1, Rivas-Vaciamadrid</p>
+                    </div>
+                    <button id="btn-portal-logout" class="btn-header btn-danger">
+                        <i class="fa-solid fa-power-off"></i> Salir
+                    </button>
+                </div>
+
+                <!-- PASO 1: SELECCIONAR MESA ELECTORAL -->
+                <div id="portal-step-select-mesa" class="portal-card">
+                    <div class="step-title">
+                        <div class="step-num">1</div>
+                        <span>Selecciona una Mesa Electoral para el recuento</span>
+                    </div>
+                    <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 16px;">
+                        Selecciona tu mesa para comenzar el recuento. Nota: las mesas que ya hayan sido escrutadas o asignadas desaparecerán de la lista para evitar confusiones o doble cómputo.
+                    </p>
+                    
+                    <div id="portal-mesas-selection-grid" class="mesa-selector-grid">
+                        <!-- Rellenado dinámicamente con mesas del colegio -->
+                    </div>
+                </div>
+
+                <!-- FORMULARIO PRINCIPAL DE ESCRUTINIO (Oculto hasta elegir mesa) -->
+                <div id="portal-escrutinio-container" class="hidden">
+                    
+                    <!-- Ficha de la Mesa Seleccionada -->
+                    <div class="portal-card" style="background-color: rgba(227, 6, 19, 0.03); border-color: rgba(227, 6, 19, 0.2);">
+                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                            <div>
+                                <span style="font-weight: 700; text-transform: uppercase; font-size: 0.75rem; color: var(--primary-color); display: block; letter-spacing: 0.5px;">Mesa Activa</span>
+                                <h3 style="font-size: 1.5rem; font-family: var(--font-heading); color: var(--text-primary);" id="portal-active-mesa-title">Mesa 006A</h3>
+                            </div>
+                            <div style="text-align: right;">
+                                <span class="badge badge-warning" id="portal-active-mesa-census">Censo: 800 electores</span>
+                            </div>
+                            <button id="btn-change-mesa" class="btn-header btn-secondary" style="font-size: 0.8rem; padding: 6px 12px;">
+                                <i class="fa-solid fa-rotate-left"></i> Cambiar de Mesa
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- PASO 2: MIEMBROS DE LA MESA -->
+                    <div class="portal-card">
+                        <div class="step-title">
+                            <div class="step-num">2</div>
+                            <span>Miembros de la Mesa Electoral</span>
+                        </div>
+                        <div class="form-grid-2col">
+                            <div class="form-group" style="grid-column: span 2;">
+                                <label for="input-member-president" style="color: var(--text-primary); font-weight: 700;">Presidente/a de la Mesa</label>
+                                <input type="text" id="input-member-president" class="portal-input" placeholder="Nombre completo del Presidente/a" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="input-member-vocal1" style="color: var(--text-primary); font-weight: 700;">Primer Vocal</label>
+                                <input type="text" id="input-member-vocal1" class="portal-input" placeholder="Nombre completo del Primer Vocal" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="input-member-vocal2" style="color: var(--text-primary); font-weight: 700;">Segundo Vocal</label>
+                                <input type="text" id="input-member-vocal2" class="portal-input" placeholder="Nombre completo del Segundo Vocal" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PASO 3: INTRODUCIR VOTOS -->
+                    <div class="portal-card">
+                        <div class="step-title">
+                            <div class="step-num">3</div>
+                            <span>Introducción de Votos del Escrutinio</span>
+                        </div>
+                        
+                        <div id="portal-votes-fields-container" class="votos-entry-grid">
+                            <!-- Los inputs de los partidos se generan dinámicamente desde JS -->
+                        </div>
+                        
+                        <!-- Resumen y validación en vivo -->
+                        <div class="vote-summary-card">
+                            <div class="vote-summary-total">
+                                Total Votos Contabilizados: <span id="portal-votes-sum">0</span>
+                            </div>
+                            <div id="portal-votes-validation" class="vote-validation-badge badge-success">
+                                <i class="fa-solid fa-circle-check"></i>
+                                <span>Votos válidos</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PASO 4: FIRMA DIGITAL EN PANTALLA -->
+                    <div class="portal-card">
+                        <div class="step-title">
+                            <div class="step-num">4</div>
+                            <span>Firma del Acta por los Miembros de la Mesa</span>
+                        </div>
+                        <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 20px;">
+                            Utiliza el ratón o la pantalla táctil de tu dispositivo para realizar la firma digital dentro de los recuadros correspondientes.
+                        </p>
+                        
+                        <div class="signatures-grid">
+                            <!-- Firma Presidente -->
+                            <div class="signature-container">
+                                <span class="signature-label">Presidente/a</span>
+                                <canvas id="canvas-signature-president" class="signature-canvas" width="220" height="120"></canvas>
+                                <div class="signature-actions">
+                                    <button type="button" class="btn-clear-canvas" data-canvas="canvas-signature-president">Borrar</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Firma Vocal 1 -->
+                            <div class="signature-container">
+                                <span class="signature-label">Primer Vocal</span>
+                                <canvas id="canvas-signature-vocal1" class="signature-canvas" width="220" height="120"></canvas>
+                                <div class="signature-actions">
+                                    <button type="button" class="btn-clear-canvas" data-canvas="canvas-signature-vocal1">Borrar</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Firma Vocal 2 -->
+                            <div class="signature-container">
+                                <span class="signature-label">Segundo Vocal</span>
+                                <canvas id="canvas-signature-vocal2" class="signature-canvas" width="220" height="120"></canvas>
+                                <div class="signature-actions">
+                                    <button type="button" class="btn-clear-canvas" data-canvas="canvas-signature-vocal2">Borrar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PASO 5: FINALIZAR Y ENVIAR -->
+                    <div class="portal-actions">
+                        <button type="button" id="btn-submit-mesa" class="btn-header btn-primary">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> Cerrar Mesa y Transmitir Acta
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================================================
+           VISTA 4: PORTAL DE ADMINISTRACIÓN GENERAL
+           ========================================================================== -->
+        <section id="admin-portal-view" class="view-section admin-portal-view hidden">
+            <div class="portal-container" style="max-width: 1200px;">
+                
+                <!-- Cabecera del Panel de Control de Administración -->
+                <div class="portal-welcome">
+                    <div class="welcome-info">
+                        <h2>Administración General de Elecciones</h2>
+                        <p>Control del estado del escrutinio, actas firmadas y mantenimiento de mesas.</p>
+                    </div>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button id="btn-export-csv" class="btn-header btn-secondary" title="Exportar datos a CSV">
+                            <i class="fa-solid fa-file-csv" style="color: #10b981;"></i> Exportar CSV
+                        </button>
+                        <button id="btn-export-pdf" class="btn-header btn-secondary" title="Imprimir Informe a PDF">
+                            <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> Imprimir PDF
+                        </button>
+                        <button id="btn-admin-add-mesa" class="btn-header btn-primary">
+                            <i class="fa-solid fa-plus"></i> Añadir Mesa
+                        </button>
+                        <button id="btn-admin-logout" class="btn-header btn-danger">
+                            <i class="fa-solid fa-power-off"></i> Salir
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Grid de Administración -->
+                <div class="admin-dashboard-grid">
+                    
+                    <!-- LADO IZQUIERDO: Control por Colegios y Mesas -->
+                    <div>
+                        <!-- Resumen y Mapeo de Colegios -->
+                        <div class="card-title">Resumen de Escrutinio por Colegio</div>
+                        <div id="admin-colegios-summary-container">
+                            <!-- Se rellena dinámicamente con tarjetas de colegios -->
+                        </div>
+                        
+                        <!-- Listado Completo de Mesas -->
+                        <div class="portal-card" style="margin-top: 24px;">
+                            <div class="card-title" style="border: none; margin-bottom: 10px;">Listado General de Mesas</div>
+                            <div style="overflow-x: auto;">
+                                <table class="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Código</th>
+                                            <th>Colegio Electoral</th>
+                                            <th>Sección</th>
+                                            <th>Mesa</th>
+                                            <th>Censo</th>
+                                            <th>Estado</th>
+                                            <th style="text-align: right;">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="admin-mesas-table-body">
+                                        <!-- Rellenado dinámicamente -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- LADO DERECHO: Métricas Rápidas y Herramientas -->
+                    <div>
+                        <div class="portal-card">
+                            <div class="card-title">Estado de la Elección</div>
+                            <div class="stats-grid" style="grid-template-columns: 1fr; gap: 16px;">
+                                <div class="stat-card">
+                                    <span class="stat-label">Mesas Escrutadas</span>
+                                    <div class="stat-value" id="admin-metric-mesas-percent">0.00%</div>
+                                    <span class="stat-label" style="margin-top: 4px; font-size: 0.65rem;" id="admin-metric-mesas-ratio">0 de 0 mesas</span>
+                                </div>
+                                <div class="stat-card">
+                                    <span class="stat-label">Votos Totales Válidos</span>
+                                    <div class="stat-value" id="admin-metric-votos-total">0</div>
+                                </div>
+                                <div class="stat-card">
+                                    <span class="stat-label">Participación Total</span>
+                                    <div class="stat-value" id="admin-metric-participation">0.00%</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Herramientas de Base de Datos de Prueba -->
+                        <div class="portal-card" style="border-color: rgba(245, 158, 11, 0.3); background-color: rgba(245, 158, 11, 0.02);">
+                            <div class="card-title" style="color: #d97706; display: flex; align-items: center; gap: 6px; border-bottom: none; padding-bottom: 0; margin-bottom: 6px;">
+                                <i class="fa-solid fa-flask"></i> Entorno de Pruebas
+                            </div>
+                            <p class="text-secondary" style="font-size: 0.75rem; margin-bottom: 14px;">
+                                Acciones rápidas para simular datos y reiniciar el escrutinio.
+                            </p>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <button id="btn-admin-demo-fill" class="btn-header btn-secondary" style="justify-content: center; background-color: #d97706; color: #fff; border: none; padding: 10px;">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i> Simular Todo el Municipio (198 mesas)
+                                </button>
+                                <button id="btn-admin-reset-db" class="btn-header btn-secondary" style="justify-content: center; color: var(--text-muted); padding: 8px;">
+                                    <i class="fa-solid fa-trash-can"></i> Reiniciar Escrutinio a Cero
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
+
+    </div> <!-- FIN DEL APP-CONTAINER -->
+
+
+    <!-- ==========================================================================
+       VENTANAS MODALES (POPUP WINDOWS)
+       ========================================================================== -->
+    
+    <!-- MODAL A: FICHA DE COLEGIO ELECTORAL (DASHBOARD PÚBLICO) -->
+    <div id="modal-colegio-detail" class="modal-container hidden">
+        <div class="modal-card large">
+            <div class="modal-header">
+                <h3 id="modal-colegio-name-title">C.E.I.P. JARAMA</h3>
+                <button class="modal-close" id="btn-close-colegio-modal">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 0;">
+                <div style="display: grid; grid-template-columns: 3fr 4fr; min-height: 400px;">
+                    <!-- Imagen del colegio -->
+                    <div id="modal-colegio-img-div" style="background-size: cover; background-position: center; min-height: 250px;"></div>
+                    
+                    <!-- Detalles y votos del colegio -->
+                    <div style="padding: 24px; overflow-y: auto;">
+                        <!-- Dirección y Ruta -->
+                        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 16px;">
+                            <div>
+                                <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; display: block;">Dirección</span>
+                                <span id="modal-colegio-address-text" style="font-size: 0.85rem; font-weight: 500;">Calle de Rivas s/n</span>
+                            </div>
+                            <a href="#" id="modal-colegio-route-btn" target="_blank" class="btn-header btn-secondary" style="font-size: 0.75rem; padding: 6px 12px; flex-shrink:0;">
+                                <i class="fa-solid fa-route" style="color: var(--primary-color);"></i> Cómo llegar
+                            </a>
+                        </div>
+                        
+                        <!-- Secciones Censales -->
+                        <div style="margin-bottom: 16px;">
+                            <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; display: block;">Secciones Censales</span>
+                            <span id="modal-colegio-sections-list" style="font-size: 0.85rem; font-weight: 700;">006, 018</span>
+                        </div>
+                        
+                        <!-- Progreso y censo -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+                            <div class="stat-card" style="padding: 8px 12px;">
+                                <span class="stat-label">Censo</span>
+                                <span class="stat-value" style="font-size: 1.15rem;" id="modal-colegio-census-val">0</span>
+                            </div>
+                            <div class="stat-card" style="padding: 8px 12px;">
+                                <span class="stat-label">Participación</span>
+                                <span class="stat-value" style="font-size: 1.15rem; color: #f59e0b;" id="modal-colegio-participation-val">0.00%</span>
+                            </div>
+                            <div class="stat-card" style="padding: 8px 12px; grid-column: span 2;">
+                                <span class="stat-label">Mesas Escrutadas</span>
+                                <span class="stat-value" style="font-size: 1.15rem; color: var(--primary-color);" id="modal-colegio-mesas-val">0 de 0</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Lista de votos en el colegio -->
+                        <div class="card-title" style="font-size: 0.9rem; margin-bottom: 8px;">Resultados en el Centro</div>
+                        <div id="modal-colegio-parties-container" class="party-results-list">
+                            <!-- Rellenado dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-header btn-secondary" id="btn-close-colegio-modal-footer">Cerrar Ficha</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL B: AÑADIR NUEVA MESA (ADMINISTRACIÓN) -->
+    <div id="modal-admin-add-mesa" class="modal-container hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Añadir Nueva Mesa Electoral</h3>
+                <button class="modal-close" id="btn-close-add-mesa-modal">&times;</button>
+            </div>
+            <form id="form-admin-add-mesa">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="add-mesa-colegio" style="color: var(--text-primary);">Colegio Electoral</label>
+                        <select id="add-mesa-colegio" class="portal-input" required>
+                            <!-- Rellenado dinámicamente con colegios disponibles -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="add-mesa-seccion" style="color: var(--text-primary);">Sección Censal</label>
+                        <select id="add-mesa-seccion" class="portal-input" required>
+                            <!-- Rellenado dinámicamente según el colegio -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="add-mesa-letra" style="color: var(--text-primary);">Letra de la Mesa</label>
+                        <input type="text" id="add-mesa-letra" class="portal-input" placeholder="Ej: A, B o U" required maxLength="1" pattern="[a-zA-Z]">
+                    </div>
+                    <div class="form-group">
+                        <label for="add-mesa-census" style="color: var(--text-primary);">Censo Electoral (Votantes)</label>
+                        <input type="number" id="add-mesa-census" class="portal-input" placeholder="Número de electores en la mesa" required min="1">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-header btn-secondary" id="btn-cancel-add-mesa">Cancelar</button>
+                    <button type="submit" class="btn-header btn-primary">Registrar Mesa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL B2: EDITAR MESA EXISTENTE (ADMINISTRACIÓN) -->
+    <div id="modal-admin-edit-mesa" class="modal-container hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Editar Mesa Electoral <span id="edit-mesa-code-title" style="color: var(--primary-color);"></span></h3>
+                <button class="modal-close" id="btn-close-edit-mesa-modal">&times;</button>
+            </div>
+            <form id="form-admin-edit-mesa">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="edit-mesa-colegio" style="color: var(--text-primary);">Colegio Electoral</label>
+                        <select id="edit-mesa-colegio" class="portal-input" required>
+                            <!-- Rellenado dinámicamente -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-mesa-seccion" style="color: var(--text-primary);">Sección Censal</label>
+                        <select id="edit-mesa-seccion" class="portal-input" required>
+                            <!-- Rellenado dinámicamente según el colegio -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-mesa-census" style="color: var(--text-primary);">Censo Electoral (Votantes)</label>
+                        <input type="number" id="edit-mesa-census" class="portal-input" placeholder="Número de electores en la mesa" required min="1">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-header btn-secondary" id="btn-cancel-edit-mesa">Cancelar</button>
+                    <button type="submit" class="btn-header btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL C: VISOR DE ACTA FIRMADA (ADMINISTRACIÓN) -->
+    <div id="modal-view-acta" class="modal-container hidden">
+        <div class="modal-card large">
+            <div class="modal-header">
+                <h3 id="modal-acta-title">Acta de Escrutinio - Mesa 006A</h3>
+                <button class="modal-close" id="btn-close-acta-modal">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-acta-body-content">
+                <!-- Se poblará dinámicamente con el diseño oficial del acta para visualización -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn-header btn-secondary" id="btn-close-acta-modal-footer">Cerrar</button>
+                <button class="btn-header btn-primary" id="btn-print-acta">
+                    <i class="fa-solid fa-print"></i> Imprimir / Guardar PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ==========================================================================
+       ACTA OFICIAL DE IMPRESIÓN (ESTRUCTURA PARA MEDIA PRINT - SÓLO IMPRESORA)
+       ========================================================================== -->
+    <div id="printableActa">
+        <!-- Rellenado dinámicamente antes de invocar window.print() -->
+    </div>
+
+
+    <!-- SCRIPTS DE LA APLICACIÓN -->
+    <!-- ArcGIS SDK JS -->
+    <script src="https://js.arcgis.com/4.29/"></script>
+    
+    <!-- Datos de Configuración del Proyecto (Mapeo Rivas) -->
+    <script src="section_colegio_mapping.js?v=1.0.1"></script>
+    
+    <!-- Lógica de Control y Sincronización -->
+    <script src="app.js?v=1.2.2"></script>
+</body>
+</html>
