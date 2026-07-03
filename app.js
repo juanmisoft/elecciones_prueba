@@ -333,13 +333,6 @@ require([
             document.getElementById("modal-admin-add-mesa").classList.add("hidden");
         });
 
-        document.getElementById("btn-close-edit-mesa-modal").addEventListener("click", () => {
-            document.getElementById("modal-admin-edit-mesa").classList.add("hidden");
-        });
-        document.getElementById("btn-cancel-edit-mesa").addEventListener("click", () => {
-            document.getElementById("modal-admin-edit-mesa").classList.add("hidden");
-        });
-
         document.getElementById("btn-close-acta-modal").addEventListener("click", () => {
             document.getElementById("modal-view-acta").classList.add("hidden");
         });
@@ -867,22 +860,26 @@ require([
         document.getElementById("admin-metric-mesas-percent").textContent = `${percentClosed}%`;
         document.getElementById("admin-metric-mesas-ratio").textContent = `${closedMesas} de ${totalMesas} mesas`;
 
-        // Calcular votos válidos acumulados
-        let totalVotes = 0;
-        let censoAcumulado = 0;
+        // Calcular votos válidos acumulados y censo total
+        let totalVotosValidos = 0;
+        let totalVotosNulos = 0;
+        let censoTotal = 0;
         state.mesas.forEach(m => {
+            censoTotal += m.censo;
             if (m.estado === "Cerrada") {
                 PARTIES_CONFIG.forEach(p => {
-                    totalVotes += (m[p.field] || 0);
+                    totalVotosValidos += (m[p.field] || 0);
                 });
-                totalVotes += (m.votos_blancos || 0);
-                censoAcumulado += m.censo;
+                totalVotosValidos += (m.votos_blancos || 0);
+                totalVotosNulos += (m.votos_nulos || 0);
             }
         });
 
-        document.getElementById("admin-metric-votos-total").textContent = totalVotes.toLocaleString();
+        const totalVotosEmitidos = totalVotosValidos + totalVotosNulos;
+
+        document.getElementById("admin-metric-votos-total").textContent = totalVotosValidos.toLocaleString();
         
-        const partPercent = censoAcumulado > 0 ? ((totalVotes / censoAcumulado) * 100).toFixed(2) : "0.00";
+        const partPercent = censoTotal > 0 ? ((totalVotosEmitidos / censoTotal) * 100).toFixed(2) : "0.00";
         document.getElementById("admin-metric-participation").textContent = `${partPercent}%`;
 
         // Renderizar Colegios con botones de Cierre
@@ -987,9 +984,6 @@ require([
                 `;
             } else {
                 actionButtons = `
-                    <button class="admin-btn-action btn-edit-mesa" data-codigo="${mesa.codigo}" title="Modificar Censo">
-                        <i class="fa-solid fa-pen-to-square"></i>
-                    </button>
                     <button class="admin-btn-action btn-delete-mesa" data-codigo="${mesa.codigo}" title="Eliminar Mesa">
                         <i class="fa-solid fa-trash-can" style="color: #ef4444;"></i>
                     </button>
@@ -1014,13 +1008,6 @@ require([
             btn.addEventListener("click", function() {
                 const cod = this.getAttribute("data-codigo");
                 viewMesaActa(cod);
-            });
-        });
-
-        tbody.querySelectorAll(".btn-edit-mesa").forEach(btn => {
-            btn.addEventListener("click", function() {
-                const cod = this.getAttribute("data-codigo");
-                editMesaPrompt(cod);
             });
         });
 
@@ -1397,7 +1384,7 @@ require([
         document.getElementById("global-scrutiny-bar").style.width = `${progress}%`;
         document.getElementById("global-mesas-ratio").textContent = `${closedMesas} de ${totalMesas} mesas cerradas`;
 
-        // Calcular censo acumulado y votos de las mesas CERRADAS
+        // Calcular censo de todas las mesas y votos de las mesas CERRADAS
         let totalCensus = 0;
         let totalNulos = 0;
         let totalBlancos = 0;
@@ -1407,8 +1394,8 @@ require([
         PARTIES_CONFIG.forEach(p => { partyTotals[p.id] = 0; });
 
         state.mesas.forEach(m => {
+            totalCensus += m.censo;
             if (m.estado === "Cerrada") {
-                totalCensus += m.censo;
                 totalNulos += m.votos_nulos;
                 totalBlancos += m.votos_blancos;
                 totalVotosValidos += m.votos_blancos; // Voto en blanco cuenta como válido en España
@@ -1586,10 +1573,8 @@ require([
         // Censo Total del colegio obtenido sumando el censo real de todas sus mesas en la base de datos
         const colCensoTotal = colMesas.reduce((acc, m) => acc + m.censo, 0);
         
-        // Censo de las mesas que ya están cerradas (escrutadas) para el cálculo de la participación
-        const colCensoEscrutado = colMesas.filter(m => m.estado === "Cerrada").reduce((acc, m) => acc + m.censo, 0);
-        
         let colVotes = 0;
+        let colVotesNulos = 0;
         const colPartyVotes = {};
         PARTIES_CONFIG.forEach(p => { colPartyVotes[p.id] = 0; });
 
@@ -1601,12 +1586,15 @@ require([
                     colVotes += v;
                 });
                 colVotes += m.votos_blancos;
+                colVotesNulos += m.votos_nulos;
             }
         });
 
+        const colVotesEmitidos = colVotes + colVotesNulos;
+
         document.getElementById("modal-colegio-census-val").textContent = colCensoTotal.toLocaleString();
         
-        const partRate = colCensoEscrutado > 0 ? ((colVotes / colCensoEscrutado) * 100).toFixed(2) : "0.00";
+        const partRate = colCensoTotal > 0 ? ((colVotesEmitidos / colCensoTotal) * 100).toFixed(2) : "0.00";
         document.getElementById("modal-colegio-participation-val").textContent = `${partRate}%`;
         document.getElementById("modal-colegio-mesas-val").textContent = `${closedMesas} de ${totalMesas}`;
 
@@ -2571,79 +2559,6 @@ require([
         });
     }
 
-    function editMesaPrompt(codigo) {
-        const target = state.mesas.find(m => m.codigo === codigo);
-        if (!target) return;
-
-        // Mostrar el modal de edición y poner título
-        document.getElementById("edit-mesa-code-title").textContent = codigo;
-        
-        // Rellenar colegios
-        const selectCol = document.getElementById("edit-mesa-colegio");
-        selectCol.innerHTML = "";
-        for (const colName in COLEGIO_DETAILS) {
-            const opt = document.createElement("option");
-            opt.value = colName;
-            opt.textContent = colName;
-            if (colName === target.colegio) {
-                opt.selected = true;
-            }
-            selectCol.appendChild(opt);
-        }
-
-        // Rellenar secciones basadas en el colegio
-        const selectSec = document.getElementById("edit-mesa-seccion");
-        updateMesaSeccionDropdown(target.colegio, selectSec, target.seccion);
-
-        // Censo
-        document.getElementById("edit-mesa-census").value = target.censo;
-
-        // Registrar manejador de cambio de colegio (usar clon para evitar duplicados)
-        const newSelectCol = selectCol.cloneNode(true);
-        selectCol.parentNode.replaceChild(newSelectCol, selectCol);
-        newSelectCol.addEventListener("change", (e) => {
-            updateMesaSeccionDropdown(e.target.value, document.getElementById("edit-mesa-seccion"));
-        });
-
-        // Registrar manejador de submit (usar clon)
-        const form = document.getElementById("form-admin-edit-mesa");
-        const newForm = form.cloneNode(true);
-        form.parentNode.replaceChild(newForm, form);
-
-        newForm.addEventListener("submit", (e) => {
-            e.preventDefault();
-            
-            const selectedCol = newSelectCol.value;
-            const selectedSec = document.getElementById("edit-mesa-seccion").value;
-            const newCensus = parseInt(document.getElementById("edit-mesa-census").value, 10);
-
-            if (isNaN(newCensus) || newCensus <= 0) {
-                alert("Censo no válido.");
-                return;
-            }
-
-            // Actualizar objeto mesa
-            target.colegio = selectedCol;
-            target.seccion = selectedSec;
-            target.censo = newCensus;
-
-            saveLocalDatabase();
-            rebuildDynamicMappings();
-
-            if (state.arcgisMode) {
-                sendMesaUpdateToServer(target);
-                document.getElementById("modal-admin-edit-mesa").classList.add("hidden");
-            } else {
-                alert(`Mesa ${codigo} modificada correctamente.`);
-                document.getElementById("modal-admin-edit-mesa").classList.add("hidden");
-                renderAdminPortal();
-                updateGlobalMetrics();
-                renderMapTheme();
-            }
-        });
-
-        document.getElementById("modal-admin-edit-mesa").classList.remove("hidden");
-    }
 
     function exportToCSV() {
         console.log("Generando exportación CSV...");

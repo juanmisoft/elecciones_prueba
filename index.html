@@ -566,40 +566,6 @@
         </div>
     </div>
 
-    <!-- MODAL B2: EDITAR MESA EXISTENTE (ADMINISTRACIÓN) -->
-    <div id="modal-admin-edit-mesa" class="modal-container hidden">
-        <div class="modal-card">
-            <div class="modal-header">
-                <h3>Editar Mesa Electoral <span id="edit-mesa-code-title" style="color: var(--primary-color);"></span></h3>
-                <button class="modal-close" id="btn-close-edit-mesa-modal">&times;</button>
-            </div>
-            <form id="form-admin-edit-mesa">
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label for="edit-mesa-colegio" style="color: var(--text-primary);">Colegio Electoral</label>
-                        <select id="edit-mesa-colegio" class="portal-input" required>
-                            <!-- Rellenado dinámicamente -->
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="edit-mesa-seccion" style="color: var(--text-primary);">Sección Censal</label>
-                        <select id="edit-mesa-seccion" class="portal-input" required>
-                            <!-- Rellenado dinámicamente según el colegio -->
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="edit-mesa-census" style="color: var(--text-primary);">Censo Electoral (Votantes)</label>
-                        <input type="number" id="edit-mesa-census" class="portal-input" placeholder="Número de electores en la mesa" required min="1">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn-header btn-secondary" id="btn-cancel-edit-mesa">Cancelar</button>
-                    <button type="submit" class="btn-header btn-primary">Guardar Cambios</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <!-- MODAL C: VISOR DE ACTA FIRMADA (ADMINISTRACIÓN) -->
     <div id="modal-view-acta" class="modal-container hidden">
         <div class="modal-card large">

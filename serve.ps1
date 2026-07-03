@@ -30,7 +30,7 @@ try {
     Write-Host "==========================================================" -ForegroundColor Green
     
     # Abre automáticamente el navegador predeterminado en el puerto asignado
-    Start-Process "http://localhost:$port/index.html"
+    # Start-Process "http://localhost:$port/index.html"
     
     while ($listener.IsListening) {
         try {
