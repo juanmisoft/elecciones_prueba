@@ -402,6 +402,7 @@ require([
 
         document.getElementById("btn-admin-reset-db").addEventListener("click", handleAdminResetDB);
         document.getElementById("btn-admin-demo-fill").addEventListener("click", handleAdminDemoFill);
+        document.getElementById("btn-admin-delete-demo-mesas").addEventListener("click", handleAdminDeleteAllMesas);
 
         // Imprimir acta
         document.getElementById("btn-print-acta").addEventListener("click", () => {
@@ -735,7 +736,12 @@ require([
     function recalculateVotesSum() {
         let sum = 0;
         document.querySelectorAll(".vote-input-field").forEach(input => {
-            sum += parseInt(input.value, 10) || 0;
+            // Evitar valores negativos: si el usuario escribe un negativo, lo corregimos a 0
+            const val = parseInt(input.value, 10) || 0;
+            if (val < 0) {
+                input.value = 0;
+            }
+            sum += Math.max(0, val);
         });
 
         document.getElementById("portal-votes-sum").textContent = sum;
@@ -756,6 +762,20 @@ require([
     // Enviar escrutinio de mesa (Paso 5)
     function handleMesaEscrutinioSubmit() {
         if (!state.selectedMesa) return;
+
+        // Validar que la suma de votos no supere el censo antes de proceder
+        let sumVotos = 0;
+        document.querySelectorAll(".vote-input-field").forEach(input => {
+            sumVotos += parseInt(input.value, 10) || 0;
+        });
+
+        const censoMesa = parseInt(state.selectedMesa.censo, 10) || 0;
+        console.log(`[Validación Cierre] Suma de votos: ${sumVotos}, Censo de mesa: ${censoMesa}`);
+
+        if (sumVotos > censoMesa) {
+            alert(`Error de validación: El total de votos contabilizados (${sumVotos}) supera el censo electoral de esta mesa (${censoMesa}). No es posible cerrar la mesa con esta incongruencia. Por favor, revise y corrija los valores.`);
+            return;
+        }
 
         // Validar campos de texto vacíos
         const presiName = document.getElementById("input-member-president").value.trim();
@@ -1067,6 +1087,7 @@ require([
         };
 
         state.mesas.push(nuevaMesa);
+        localStorage.removeItem("elecciones_mesas_vacias");
         saveLocalDatabase();
         
         // SI ESTAMOS EN MODO ARCGIS: enviar adición al servidor
@@ -1093,6 +1114,83 @@ require([
         } else {
             state.mesas = state.mesas.filter(m => m.codigo !== codigo);
             saveLocalDatabase();
+            renderAdminPortal();
+            updateGlobalMetrics();
+            renderMapTheme();
+        }
+    }
+
+    // Eliminar TODAS las mesas generadas (útil para volver a crearlas manualmente)
+    function handleAdminDeleteAllMesas() {
+        const conf = confirm(
+            "ATENCIÓN: Se van a ELIMINAR todas las mesas del sistema (tanto locales como en el servidor remoto de ArcGIS).\n\n" +
+            "Esta acción vaciará completamente la tabla y no se puede deshacer. ¿Desea continuar?"
+        );
+        if (!conf) return;
+
+        // Establecer flag para evitar recarga de datos antiguos de ArcGIS Server público
+        localStorage.setItem("elecciones_mesas_vacias", "true");
+
+        // SI ESTAMOS EN MODO ARCGIS: consultar y borrar todos los registros de la tabla del servidor en bloque
+        if (state.arcgisMode) {
+            console.log("Consultando todas las mesas en el servidor ArcGIS para su eliminación...");
+            const tablesLayer = new FeatureLayer({ 
+                url: URL_MESAS_TABLE_EDIT,
+                outFields: ["*"]
+            });
+            
+            tablesLayer.load().then(() => {
+                const query = tablesLayer.createQuery();
+                query.where = "1=1";
+                query.outFields = ["*"];
+                
+                tablesLayer.queryFeatures(query).then(results => {
+                    if (results.features.length > 0) {
+                        console.log(`Eliminando ${results.features.length} registros del servidor ArcGIS...`);
+                        tablesLayer.applyEdits({
+                            deleteFeatures: results.features
+                        }).then(result => {
+                            console.log("Servidor ArcGIS completamente vaciado:", result);
+                            alert("Se han eliminado todas las mesas del servidor de ArcGIS y en local.");
+                            
+                            // Vaciar localmente tras el borrado remoto exitoso
+                            state.mesas = [];
+                            saveLocalDatabase();
+                            localStorage.setItem("elecciones_colegios_cerrados", JSON.stringify([]));
+                            
+                            renderAdminPortal();
+                            updateGlobalMetrics();
+                            renderMapTheme();
+                        }).catch(err => {
+                            console.error("Error al vaciar la tabla en ArcGIS Server (applyEdits):", err);
+                            alert("Se detectó un error al vaciar los registros del servidor remoto.");
+                        });
+                    } else {
+                        console.log("La tabla del servidor de ArcGIS ya estaba vacía.");
+                        // Vaciar localmente
+                        state.mesas = [];
+                        saveLocalDatabase();
+                        localStorage.setItem("elecciones_colegios_cerrados", JSON.stringify([]));
+                        
+                        renderAdminPortal();
+                        updateGlobalMetrics();
+                        renderMapTheme();
+                    }
+                }).catch(err => {
+                    console.error("Error al ejecutar queryFeatures en ArcGIS Server:", err);
+                    alert("No se pudieron recuperar los registros del servidor remoto.");
+                });
+            }).catch(err => {
+                console.error("Error al cargar la capa FeatureLayer (load) de ArcGIS:", err);
+                alert("No se pudo conectar con el servidor remoto para vaciar la tabla.");
+            });
+        } else {
+            // Vaciar todas las mesas en local
+            state.mesas = [];
+            saveLocalDatabase();
+            localStorage.setItem("elecciones_colegios_cerrados", JSON.stringify([]));
+            alert("Todas las mesas locales han sido eliminadas.");
+            
             renderAdminPortal();
             updateGlobalMetrics();
             renderMapTheme();
@@ -1134,7 +1232,7 @@ require([
     function handleAdminDemoFill() {
         const conf = confirm(
             "¿Desea rellenar el censo municipal completo generando 3 mesas por sección (A, B, C) con votos aleatorios ponderados realistas?\n\n" +
-            "Esto simulará el 100% de las mesas de Rivas-Vaciamadrid (198 mesas en total) y pintará el mapa completo."
+            "Esto simulará el 100% de las mesas de Rivas-Vaciamadrid y pintará el mapa completo."
         );
         if (!conf) return;
 
@@ -1213,6 +1311,7 @@ require([
 
         // Actualizar el estado en memoria
         state.mesas = simulatedMesas;
+        localStorage.removeItem("elecciones_mesas_vacias");
         saveLocalDatabase();
         rebuildDynamicMappings();
 
@@ -1484,8 +1583,11 @@ require([
         const secciones = Object.keys(SECTION_COLEGIO_MAPPING).filter(sec => SECTION_COLEGIO_MAPPING[sec] === colName);
         document.getElementById("modal-colegio-sections-list").textContent = secciones.join(", ");
 
-        // Censo Oficial del colegio obtenido directamente del censo geográfico consolidado
-        const colCenso = secciones.reduce((acc, sec) => acc + (CENSUS_2023[sec] || 0), 0);
+        // Censo Total del colegio obtenido sumando el censo real de todas sus mesas en la base de datos
+        const colCensoTotal = colMesas.reduce((acc, m) => acc + m.censo, 0);
+        
+        // Censo de las mesas que ya están cerradas (escrutadas) para el cálculo de la participación
+        const colCensoEscrutado = colMesas.filter(m => m.estado === "Cerrada").reduce((acc, m) => acc + m.censo, 0);
         
         let colVotes = 0;
         const colPartyVotes = {};
@@ -1502,9 +1604,9 @@ require([
             }
         });
 
-        document.getElementById("modal-colegio-census-val").textContent = colCenso.toLocaleString();
+        document.getElementById("modal-colegio-census-val").textContent = colCensoTotal.toLocaleString();
         
-        const partRate = colCenso > 0 ? ((colVotes / colCenso) * 100).toFixed(2) : "0.00";
+        const partRate = colCensoEscrutado > 0 ? ((colVotes / colCensoEscrutado) * 100).toFixed(2) : "0.00";
         document.getElementById("modal-colegio-participation-val").textContent = `${partRate}%`;
         document.getElementById("modal-colegio-mesas-val").textContent = `${closedMesas} de ${totalMesas}`;
 
@@ -2266,7 +2368,7 @@ require([
             </div>
 
             <div class="acta-footer">
-                Documento oficial generado e informatizado de forma segura mediante integración en el Portal ArcGIS Enterprise.<br>
+                Documento oficial generado e informatizado de forma segura.<br>
                 Fecha de escrutinio oficial: ${new Date().toLocaleDateString('es-ES')} - Rivas-Vaciamadrid, Madrid.
             </div>
         `;
@@ -2395,7 +2497,7 @@ require([
             </div>
 
             <div class="acta-footer">
-                Documento oficial consolidado e informatizado mediante integración en el Portal ArcGIS Enterprise.<br>
+                Documento oficial consolidado e informatizado de forma segura.<br>
                 Fecha de consolidación: ${new Date().toLocaleDateString('es-ES')} - Rivas-Vaciamadrid, Madrid.
             </div>
         `;
@@ -2825,6 +2927,11 @@ require([
 
     // Descarga resultados públicos desde el servidor de ArcGIS de forma anónima (para el Visor Público)
     function loadResultsFromServer() {
+        if (localStorage.getItem("elecciones_mesas_vacias") === "true") {
+            console.log("Las mesas han sido vaciadas manualmente. Omitiendo la descarga de datos anteriores del servidor público.");
+            return;
+        }
+        
         console.log("Intentando descargar resultados públicos desde ArcGIS Server...");
         console.log("URL de la tabla de mesas pública:", URL_MESAS_TABLE);
         
