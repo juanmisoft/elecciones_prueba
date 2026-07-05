@@ -126,6 +126,11 @@ require([
                     state.currentUser = parsed;
                     state.arcgisMode = localStorage.getItem("elecciones_arcgis_mode") === "true";
                     showLoggedInUserInterface();
+                    
+                    // Si estamos en modo ArcGIS, forzar sincronización de mesas tras restaurar sesión
+                    if (state.arcgisMode) {
+                        syncDataWithArcGISServer();
+                    }
                 } else {
                     localStorage.removeItem("elecciones_user");
                     localStorage.removeItem("elecciones_arcgis_mode");
@@ -2854,6 +2859,11 @@ require([
 
     // Descarga resultados públicos desde el servidor de ArcGIS de forma anónima (para el Visor Público)
     function loadResultsFromServer() {
+        if (state.currentUser) {
+            console.log("Usuario autenticado detectado. Omitiendo la descarga de resultados públicos del visor.");
+            return;
+        }
+        
         console.log("Intentando descargar resultados públicos desde ArcGIS Server...");
         console.log("URL de la tabla de mesas pública:", URL_MESAS_TABLE);
         
