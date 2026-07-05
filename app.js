@@ -98,10 +98,9 @@ require([
 
     // Inicializa la base de datos local en localStorage
     function initLocalDatabase() {
-        if (!localStorage.getItem("elecciones_mesas")) {
-            localStorage.setItem("elecciones_mesas", JSON.stringify(DEFAULT_MESAS));
-        }
-        state.mesas = JSON.parse(localStorage.getItem("elecciones_mesas"));
+        // En lugar de inicializar localmente con DEFAULT_MESAS, inicializamos vacío
+        // para asegurar que el único origen de datos sea ArcGIS Server.
+        state.mesas = [];
         
         // Si no existen colegios cerrados en local, los creamos
         if (!localStorage.getItem("elecciones_colegios_cerrados")) {
@@ -112,7 +111,8 @@ require([
 
     // Guarda el estado actual de las mesas en localStorage
     function saveLocalDatabase() {
-        localStorage.setItem("elecciones_mesas", JSON.stringify(state.mesas));
+        // No hacemos persistencia de mesas en localStorage para evitar discrepancias
+        // con la tabla en ArcGIS Server, garantizando que el servidor sea la única fuente de verdad.
     }
 
     // Intenta restaurar sesión de usuario de localStorage
@@ -556,35 +556,47 @@ require([
     }
 
     function logoutUser() {
-        // Si hay una mesa asignada pero no cerrada, la liberamos
+        console.log("Iniciando cierre de sesión efectivo y limpieza de almacenamiento local...");
+        
+        // Si hay una mesa asignada pero no cerrada, intentar liberarla antes de salir
         if (state.selectedMesa && state.selectedMesa.estado === "Asignada") {
-            updateMesaState(state.selectedMesa.codigo, "Abierta");
+            try {
+                updateMesaState(state.selectedMesa.codigo, "Abierta");
+            } catch (e) {
+                console.error("Error al liberar la mesa durante el logout:", e);
+            }
         }
 
-        state.currentUser = null;
-        state.selectedMesa = null;
-        state.arcgisMode = false;
+        // 1. Destruir credenciales de ArcGIS en memoria
+        if (typeof IdentityManager !== "undefined" && IdentityManager.destroyCredentials) {
+            IdentityManager.destroyCredentials();
+        }
 
-        localStorage.removeItem("elecciones_user");
-        localStorage.removeItem("elecciones_arcgis_mode");
+        // 2. Limpiar todas las claves de localStorage y sessionStorage asociadas a elecciones o ArcGIS
+        try {
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+                const key = localStorage.key(i);
+                if (key && (key.includes("esri") || key.includes("elecciones"))) {
+                    localStorage.removeItem(key);
+                }
+            }
+        } catch (e) {
+            console.error("Error al limpiar localStorage:", e);
+        }
 
-        document.getElementById("logged-user-area").classList.add("hidden");
-        
-        const btnPortalAction = document.getElementById("btn-portal-action");
-        btnPortalAction.classList.remove("btn-danger");
-        btnPortalAction.classList.add("btn-primary");
-        btnPortalAction.querySelector("span").textContent = "Acceso Portal";
-        btnPortalAction.querySelector("i").className = "fa-solid fa-lock";
+        try {
+            for (let i = sessionStorage.length - 1; i >= 0; i--) {
+                const key = sessionStorage.key(i);
+                if (key && (key.includes("esri") || key.includes("elecciones"))) {
+                    sessionStorage.removeItem(key);
+                }
+            }
+        } catch (e) {
+            console.error("Error al limpiar sessionStorage:", e);
+        }
 
-        // Limpiar canvas
-        document.getElementById("canvas-signature-president").clear();
-        document.getElementById("canvas-signature-vocal1").clear();
-        document.getElementById("canvas-signature-vocal2").clear();
-
-        // Destruir credenciales de ArcGIS si las hubiera
-        IdentityManager.destroyCredentials();
-
-        switchView("public-dashboard-view");
+        // 3. Recargar la página para asegurar un reinicio completo y limpio del estado de la aplicación
+        window.location.reload();
     }
 
     // ==========================================================================
@@ -2842,11 +2854,6 @@ require([
 
     // Descarga resultados públicos desde el servidor de ArcGIS de forma anónima (para el Visor Público)
     function loadResultsFromServer() {
-        if (localStorage.getItem("elecciones_mesas_vacias") === "true") {
-            console.log("Las mesas han sido vaciadas manualmente. Omitiendo la descarga de datos anteriores del servidor público.");
-            return;
-        }
-        
         console.log("Intentando descargar resultados públicos desde ArcGIS Server...");
         console.log("URL de la tabla de mesas pública:", URL_MESAS_TABLE);
         
@@ -2901,7 +2908,12 @@ require([
                         updateGlobalMetrics();
                         renderMapTheme();
                     } else {
-                        console.log("La tabla de mesas pública no devolvió ningún registro.");
+                        console.log("La tabla de mesas pública no devolvió ningún registro (vacía).");
+                        state.mesas = [];
+                        rebuildDynamicMappings();
+                        saveLocalDatabase();
+                        updateGlobalMetrics();
+                        renderMapTheme();
                     }
                 }).catch(err => {
                     console.error("Error en queryFeatures de la tabla de mesas pública:", err);
@@ -2997,9 +3009,17 @@ require([
                     showSchoolPortalView();
                 }
             } else {
-                // Si la tabla del servidor está vacía, subimos las mesas locales iniciales por defecto!
-                console.log("Servidor vacío. Subiendo mesas iniciales por defecto...");
-                state.mesas.forEach(sendMesaAddToServer);
+                console.log("Servidor vacío. No hay mesas registradas en el portal de ArcGIS.");
+                state.mesas = [];
+                rebuildDynamicMappings();
+                saveLocalDatabase();
+                updateGlobalMetrics();
+                renderMapTheme();
+                if (state.currentUser && state.currentUser.role === "admin") {
+                    renderAdminPortal();
+                } else if (state.currentUser && state.currentUser.role === "colegio") {
+                    showSchoolPortalView();
+                }
             }
         }).catch(err => {
             console.error("Fallo al consultar la tabla de mesas en ArcGIS Server:", err);
