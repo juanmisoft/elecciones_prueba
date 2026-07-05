@@ -34,6 +34,7 @@ require([
         currentUser: null,  // Usuario actual logueado: { username, role: 'admin'|'colegio', colegioName }
         selectedMesa: null, // Mesa que está escrutando el usuario actual
         arcgisMode: false,  // True si está autenticado en ArcGIS y sincronizando
+        syncInterval: null, // Intervalo para sincronización periódica en segundo plano
         map: null,
         view: null,
         seccionesLayer: null,
@@ -130,6 +131,7 @@ require([
                     // Si estamos en modo ArcGIS, forzar sincronización de mesas tras restaurar sesión
                     if (state.arcgisMode) {
                         syncDataWithArcGISServer();
+                        startPeriodicSync();
                     }
                 } else {
                     localStorage.removeItem("elecciones_user");
@@ -526,6 +528,7 @@ require([
         // Si estamos en modo ArcGIS, sincronizamos datos
         if (isArcGIS) {
             syncDataWithArcGISServer();
+            startPeriodicSync();
         }
         return true;
     }
@@ -570,6 +573,12 @@ require([
             } catch (e) {
                 console.error("Error al liberar la mesa durante el logout:", e);
             }
+        }
+
+        // Destruir intervalo de sincronización periódica
+        if (state.syncInterval) {
+            clearInterval(state.syncInterval);
+            state.syncInterval = null;
         }
 
         // 1. Destruir credenciales de ArcGIS en memoria
@@ -669,20 +678,95 @@ require([
 
     // Selecciona una mesa y bloquea su edición (la pone como "Asignada")
     function selectMesaForScrutiny(mesa) {
-        state.selectedMesa = mesa;
-        
-        // Cambiar estado a "Asignada" en caliente para evitar que otros usuarios del colegio la elijan
-        updateMesaState(mesa.codigo, "Asignada");
+        // Si no estamos en modo ArcGIS, asignación local directa
+        if (!state.arcgisMode) {
+            state.selectedMesa = mesa;
+            updateMesaState(mesa.codigo, "Asignada");
+            openScrutinyForm(mesa);
+            return;
+        }
 
+        // Si estamos en modo ArcGIS, verificar en el servidor primero
+        console.log(`Verificando disponibilidad en caliente de la mesa ${mesa.codigo} en ArcGIS...`);
+        
+        try {
+            const tablesLayer = new FeatureLayer({
+                url: URL_MESAS_TABLE_EDIT,
+                outFields: ["*"]
+            });
+
+            const query = tablesLayer.createQuery();
+            query.where = `codigo = '${mesa.codigo}'`;
+            query.outFields = ["*"];
+
+            tablesLayer.queryFeatures(query).then(results => {
+                if (results.features.length > 0) {
+                    const feat = results.features[0];
+                    const attrs = feat.attributes;
+                    const serverEstado = getAttributeValue(attrs, "estado") || "Abierta";
+                    const objectid = getAttributeValue(attrs, "objectid") || getAttributeValue(attrs, "OBJECTID") || getAttributeValue(attrs, "FID");
+
+                    if (serverEstado !== "Abierta") {
+                        alert(`La mesa ${mesa.codigo} ya está siendo escrutada por otro usuario o ha sido cerrada.`);
+                        // Forzar sincronización silenciosa para refrescar la lista local
+                        syncDataWithArcGISServer();
+                        return;
+                    }
+
+                    // Si está libre, la reservamos ("Asignada") inmediatamente en el servidor
+                    console.log(`Mesa ${mesa.codigo} libre. Reservando estado en ArcGIS Server...`);
+                    
+                    // Asegurar objectid en memoria local
+                    mesa.objectid = objectid;
+                    mesa.estado = "Asignada";
+                    
+                    const attributes = {
+                        objectid: objectid,
+                        OBJECTID: objectid,
+                        codigo: mesa.codigo,
+                        estado: "Asignada"
+                    };
+
+                    const editGraphic = new Graphic({ attributes: attributes });
+
+                    tablesLayer.applyEdits({
+                        updateFeatures: [editGraphic]
+                    }).then(result => {
+                        console.log("Reserva de mesa confirmada en ArcGIS Server:", result);
+                        state.selectedMesa = mesa;
+                        openScrutinyForm(mesa);
+                        // Sincronizar en segundo plano para refrescar el resto del estado
+                        syncDataWithArcGISServer();
+                    }).catch(err => {
+                        console.error("Fallo al reservar mesa en ArcGIS Server:", err);
+                        alert("No se pudo reservar la mesa en ArcGIS Server. Comprueba tu conexión de red.");
+                    });
+                } else {
+                    alert("La mesa seleccionada no existe en el servidor.");
+                    syncDataWithArcGISServer();
+                }
+            }).catch(err => {
+                console.error("Error al consultar el estado de la mesa en el servidor:", err);
+                alert("Error de conexión al verificar la disponibilidad de la mesa.");
+            });
+        } catch (e) {
+            console.error("Excepción al verificar estado de mesa:", e);
+            alert("Error al inicializar la verificación de mesa.");
+        }
+    }
+
+    // Abre el formulario visualmente y limpia los campos e inputs de firmas
+    function openScrutinyForm(mesa) {
         // Cargar datos en la UI
         document.getElementById("portal-active-mesa-title").textContent = `Mesa ${mesa.codigo} (Sección ${mesa.seccion})`;
         document.getElementById("portal-active-mesa-census").textContent = `Censo: ${mesa.censo} electores`;
 
-        // Vaciar inputs
+        // Vaciar inputs de miembros
         document.getElementById("input-member-president").value = "";
         document.getElementById("input-member-vocal1").value = "";
         document.getElementById("input-member-vocal2").value = "";
 
+        // Vaciar votos
         PARTIES_CONFIG.forEach(p => {
             const input = document.getElementById(`input-vote-${p.id}`);
             if (input) input.value = "0";
@@ -690,14 +774,14 @@ require([
         document.getElementById("input-vote-blanco").value = "0";
         document.getElementById("input-vote-nulo").value = "0";
 
-        // Limpiar firmas
+        // Limpiar firmas digitales
         document.getElementById("canvas-signature-president").clear();
         document.getElementById("canvas-signature-vocal1").clear();
         document.getElementById("canvas-signature-vocal2").clear();
 
         recalculateVotesSum();
 
-        // Mostrar formulario y ocultar selector
+        // Mostrar formulario y ocultar cuadrícula
         document.getElementById("portal-step-select-mesa").classList.add("hidden");
         document.getElementById("portal-escrutinio-container").classList.remove("hidden");
     }
@@ -862,6 +946,29 @@ require([
             saveLocalDatabase();
             // Notificar a otras pestañas si se abre/cierra
             localStorage.setItem("elecciones_refresh_trigger", Date.now().toString());
+            
+            // Sincronizar de forma inmediata con el servidor de ArcGIS
+            if (state.arcgisMode && target.objectid !== null) {
+                console.log(`Sincronizando cambio de estado de mesa ${codigo} a ${nuevoEstado} en ArcGIS Server...`);
+                try {
+                    const tablesLayer = new FeatureLayer({ url: URL_MESAS_TABLE_EDIT });
+                    const attributes = {
+                        objectid: target.objectid,
+                        OBJECTID: target.objectid,
+                        codigo: target.codigo,
+                        estado: nuevoEstado
+                    };
+                    const editGraphic = new Graphic({ attributes: attributes });
+                    
+                    tablesLayer.applyEdits({ updateFeatures: [editGraphic] }).then(result => {
+                        console.log(`Estado de mesa ${codigo} actualizado con éxito en ArcGIS Server:`, result);
+                    }).catch(err => {
+                        console.error(`Fallo al sincronizar estado de mesa ${codigo} en ArcGIS Server:`, err);
+                    });
+                } catch (e) {
+                    console.error("Excepción al sincronizar estado de mesa en ArcGIS:", e);
+                }
+            }
         }
     }
 
@@ -3016,7 +3123,9 @@ require([
                 if (state.currentUser && state.currentUser.role === "admin") {
                     renderAdminPortal();
                 } else if (state.currentUser && state.currentUser.role === "colegio") {
-                    showSchoolPortalView();
+                    if (state.selectedMesa === null) {
+                        showSchoolPortalView();
+                    }
                 }
             } else {
                 console.log("Servidor vacío. No hay mesas registradas en el portal de ArcGIS.");
@@ -3028,7 +3137,9 @@ require([
                 if (state.currentUser && state.currentUser.role === "admin") {
                     renderAdminPortal();
                 } else if (state.currentUser && state.currentUser.role === "colegio") {
-                    showSchoolPortalView();
+                    if (state.selectedMesa === null) {
+                        showSchoolPortalView();
+                    }
                 }
             }
         }).catch(err => {
@@ -3038,6 +3149,19 @@ require([
                 console.error("Error Details:", JSON.stringify(err.details));
             }
         });
+    }
+
+    // Configura e inicia la sincronización periódica en segundo plano
+    function startPeriodicSync() {
+        if (state.syncInterval) {
+            clearInterval(state.syncInterval);
+        }
+        state.syncInterval = setInterval(() => {
+            if (state.arcgisMode) {
+                console.log("Sincronización periódica en segundo plano con ArcGIS Server...");
+                syncDataWithArcGISServer();
+            }
+        }, 5000); // 5 segundos
     }
 
     // Enviar votos e informes de una mesa al servidor mediante applyEdits
