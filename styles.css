@@ -499,13 +499,14 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: 0 0 0 3px rgba(227, 6, 19, 0.15);
 }
 
-.search-box i {
+.search-box > i {
     position: absolute;
     left: 14px;
     top: 50%;
     transform: translateY(-50%);
     color: var(--text-muted);
     font-size: 0.9rem;
+    pointer-events: none;
 }
 
 .colegios-list {
@@ -1389,3 +1390,199 @@ h1, h2, h3, h4, h5, h6 {
         page-break-inside: avoid;
     }
 }
+
+/* ==========================================================================
+   OPTIMIZACIÓN MÓVIL EXCLUSIVA PARA REPRESENTANTES DE COLEGIO (CAPTURA DE DATOS)
+   ========================================================================== */
+
+.colegio-portal-view {
+    flex: 1;
+    width: 100%;
+    overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+    /* Cabecera adaptativa centrada en dispositivos móviles */
+    .main-header {
+        height: auto;
+        padding: 12px 14px;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 10px;
+    }
+
+    .header-brand {
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        text-align: center;
+    }
+
+    .brand-logo {
+        height: 36px;
+        margin: 0 auto;
+    }
+
+    .brand-title {
+        font-size: 1rem;
+        align-items: center;
+        text-align: center;
+    }
+
+    .brand-subtitle {
+        text-align: center;
+    }
+
+    .header-status {
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .user-badge, .scrutiny-pill {
+        font-size: 0.78rem;
+        padding: 6px 12px;
+        justify-content: center;
+    }
+
+    /* Reglas exclusivas para el portal de representante de colegio en móvil */
+    .colegio-portal-view {
+        padding: 14px 12px !important;
+        width: 100% !important;
+        overflow-y: auto !important;
+    }
+
+    .colegio-portal-view .portal-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+    }
+
+    /* Bienvenida y títulos centrados */
+    .colegio-portal-view .portal-welcome {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 12px;
+        padding-bottom: 14px;
+    }
+
+    .colegio-portal-view .welcome-info {
+        text-align: center;
+        width: 100%;
+    }
+
+    .colegio-portal-view .welcome-info h2 {
+        font-size: 1.4rem;
+        text-align: center;
+    }
+
+    .colegio-portal-view .welcome-info p {
+        text-align: center;
+    }
+
+    .colegio-portal-view #btn-portal-logout {
+        align-self: center;
+        margin: 0 auto;
+    }
+
+    .colegio-portal-view .portal-card {
+        padding: 18px 14px !important;
+        margin-bottom: 16px !important;
+        width: 100% !important;
+        text-align: center;
+    }
+
+    .colegio-portal-view .step-title {
+        justify-content: center;
+        text-align: center;
+    }
+
+    .colegio-portal-view .text-secondary {
+        text-align: center;
+    }
+
+    /* Selector de mesas centrado */
+    .colegio-portal-view .mesa-selector-grid {
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        width: 100%;
+        gap: 12px;
+    }
+
+    .colegio-portal-view .mesa-btn-select {
+        width: 100%;
+        max-width: 320px;
+        margin: 0 auto;
+        align-items: center;
+        text-align: center;
+        padding: 14px 18px;
+    }
+
+    /* Formulario de Miembros (Presidente y Vocales) centrados */
+    .colegio-portal-view .form-grid-2col {
+        grid-template-columns: 1fr !important;
+        gap: 14px !important;
+    }
+
+    .colegio-portal-view .form-group {
+        text-align: center;
+    }
+
+    .colegio-portal-view .form-group label {
+        text-align: center;
+        display: block;
+        width: 100%;
+    }
+
+    .colegio-portal-view .portal-input {
+        text-align: center;
+    }
+
+    /* Formulario de Entrada de Votos por Partido centrados */
+    .colegio-portal-view .votos-entry-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+
+    .colegio-portal-view .vote-input-card {
+        padding: 14px;
+        font-size: 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .colegio-portal-view .vote-input-field {
+        font-size: 1.3rem !important;
+        height: 50px !important;
+        padding: 8px 12px !important;
+        text-align: center;
+        font-weight: 800;
+        width: 100%;
+        max-width: 220px;
+        margin: 6px auto 0 auto;
+    }
+
+    .colegio-portal-view .portal-actions {
+        justify-content: center;
+    }
+
+    .colegio-portal-view .portal-actions button {
+        width: 100%;
+        max-width: 340px;
+        margin: 0 auto;
+        padding: 16px;
+        font-size: 1.05rem;
+        font-weight: 700;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(227, 6, 19, 0.3);
+    }
+}
+

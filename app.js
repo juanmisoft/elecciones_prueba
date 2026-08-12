@@ -300,7 +300,19 @@ require([
 
 
 
-        // Pestañas de la Barra Lateral (Global / Colegios)
+        // Buscador de Censo por DNI
+        const btnDniSearch = document.getElementById("btn-dni-search-action");
+        if (btnDniSearch) {
+            btnDniSearch.addEventListener("click", handleDniSearch);
+        }
+        const inputDniSearch = document.getElementById("dni-search-input");
+        if (inputDniSearch) {
+            inputDniSearch.addEventListener("keypress", (e) => {
+                if (e.key === "Enter") handleDniSearch();
+            });
+        }
+
+        // Pestañas de la Barra Lateral (Global / Colegios / Mi Colegio)
         document.querySelectorAll(".tab-btn").forEach(btn => {
             btn.addEventListener("click", () => {
                 const targetTabId = btn.getAttribute("data-tab");
@@ -379,9 +391,23 @@ require([
 
         // Acciones de Administración
         document.getElementById("btn-admin-logout").addEventListener("click", logoutUser);
-        document.getElementById("add-mesa-colegio").addEventListener("change", (e) => {
-            updateMesaSeccionDropdown(e.target.value, document.getElementById("add-mesa-seccion"));
-        });
+        
+        const addMesaColSelect = document.getElementById("add-mesa-colegio");
+        const addMesaSecSelect = document.getElementById("add-mesa-seccion");
+        const addMesaLetSelect = document.getElementById("add-mesa-letra");
+
+        if (addMesaColSelect) {
+            addMesaColSelect.addEventListener("change", (e) => {
+                updateMesaSeccionDropdown(e.target.value, addMesaSecSelect);
+                updateAddMesaPreview();
+            });
+        }
+        if (addMesaSecSelect) {
+            addMesaSecSelect.addEventListener("change", updateAddMesaPreview);
+        }
+        if (addMesaLetSelect) {
+            addMesaLetSelect.addEventListener("change", updateAddMesaPreview);
+        }
 
         document.getElementById("btn-admin-add-mesa").addEventListener("click", () => {
             // Cargar selectores de colegios
@@ -396,6 +422,7 @@ require([
                 select.appendChild(opt);
             }
             updateMesaSeccionDropdown(firstColName, document.getElementById("add-mesa-seccion"));
+            updateAddMesaPreview();
             
             document.getElementById("modal-admin-add-mesa").classList.remove("hidden");
         });
@@ -761,23 +788,31 @@ require([
         document.getElementById("portal-active-mesa-title").textContent = `Mesa ${mesa.codigo} (Sección ${mesa.seccion})`;
         document.getElementById("portal-active-mesa-census").textContent = `Censo: ${mesa.censo} electores`;
 
-        // Vaciar inputs de miembros
-        document.getElementById("input-member-president").value = "";
-        document.getElementById("input-member-vocal1").value = "";
-        document.getElementById("input-member-vocal2").value = "";
+        // Cargar/Vaciar inputs de miembros
+        let presi = "", v1 = "", v2 = "";
+        if (mesa.miembros) {
+            try {
+                const mObj = JSON.parse(mesa.miembros);
+                presi = mObj.presi || "";
+                v1 = mObj.vocal1 || "";
+                v2 = mObj.vocal2 || "";
+            } catch (e) {
+                presi = mesa.miembros;
+            }
+        }
+        document.getElementById("input-member-president").value = presi;
+        document.getElementById("input-member-vocal1").value = v1;
+        document.getElementById("input-member-vocal2").value = v2;
 
-        // Vaciar votos
+        // Cargar/Vaciar votos
         PARTIES_CONFIG.forEach(p => {
             const input = document.getElementById(`input-vote-${p.id}`);
-            if (input) input.value = "0";
+            if (input) input.value = mesa[p.field] !== undefined ? mesa[p.field] : "0";
         });
-        document.getElementById("input-vote-blanco").value = "0";
-        document.getElementById("input-vote-nulo").value = "0";
-
-        // Limpiar firmas digitales
-        document.getElementById("canvas-signature-president").clear();
-        document.getElementById("canvas-signature-vocal1").clear();
-        document.getElementById("canvas-signature-vocal2").clear();
+        const inputBlanco = document.getElementById("input-vote-blanco");
+        if (inputBlanco) inputBlanco.value = mesa.votos_blancos !== undefined ? mesa.votos_blancos : "0";
+        const inputNulo = document.getElementById("input-vote-nulo");
+        if (inputNulo) inputNulo.value = mesa.votos_nulos !== undefined ? mesa.votos_nulos : "0";
 
         recalculateVotesSum();
 
@@ -798,7 +833,7 @@ require([
             card.innerHTML = `
                 <img src="${p.logo}" alt="Logo ${p.name}" class="party-logo">
                 <label for="input-vote-${p.id}">${p.name}</label>
-                <input type="number" id="input-vote-${p.id}" class="vote-input-field" value="0" min="0" data-party="${p.id}">
+                <input type="number" inputmode="numeric" pattern="[0-9]*" id="input-vote-${p.id}" class="vote-input-field" value="0" min="0" data-party="${p.id}">
             `;
             container.appendChild(card);
         });
@@ -810,7 +845,7 @@ require([
         cardBlanco.innerHTML = `
             <div style="width: 32px; height: 32px; border-radius: 50%; background-color:#7f8c8d; border: 1px solid #ccc; flex-shrink:0;"></div>
             <label for="input-vote-blanco">Votos en Blanco</label>
-            <input type="number" id="input-vote-blanco" class="vote-input-field" value="0" min="0" data-special="blanco">
+            <input type="number" inputmode="numeric" pattern="[0-9]*" id="input-vote-blanco" class="vote-input-field" value="0" min="0" data-special="blanco">
         `;
         container.appendChild(cardBlanco);
 
@@ -821,7 +856,7 @@ require([
         cardNulo.innerHTML = `
             <div style="width: 32px; height: 32px; border-radius: 50%; background-color:#95a5a6; border: 1px solid #ccc; flex-shrink:0;"></div>
             <label for="input-vote-nulo">Votos Nulos</label>
-            <input type="number" id="input-vote-nulo" class="vote-input-field" value="0" min="0" data-special="nulo">
+            <input type="number" inputmode="numeric" pattern="[0-9]*" id="input-vote-nulo" class="vote-input-field" value="0" min="0" data-special="nulo">
         `;
         container.appendChild(cardNulo);
     }
@@ -881,18 +916,8 @@ require([
             return;
         }
 
-        // Obtener firmas
-        const sigPresi = document.getElementById("canvas-signature-president").getCoordinateString();
-        const sigVocal1 = document.getElementById("canvas-signature-vocal1").getCoordinateString();
-        const sigVocal2 = document.getElementById("canvas-signature-vocal2").getCoordinateString();
-
-        if (!sigPresi || !sigVocal1 || !sigVocal2) {
-            alert("Todos los miembros de la mesa deben realizar su firma digital para proceder.");
-            return;
-        }
-
-        // Advertencia crítica antes de cerrar
-        const confirmClose = confirm("¿Está seguro de que desea CERRAR LA MESA? Esta acción es irreversible, transmitirá los resultados al servidor central y bloqueará posteriores modificaciones.");
+        // Advertencia antes de cerrar
+        const confirmClose = confirm("¿Está seguro de que desea CERRAR LA MESA? Esta acción transmitirá los resultados al servidor central.");
         if (!confirmClose) return;
 
         // Recoger votos
@@ -919,9 +944,9 @@ require([
             targetMesa.votos_nulos = votosNulo;
             targetMesa.miembros = miembrosJson;
             targetMesa.estado = "Cerrada";
-            targetMesa.firma_presi = sigPresi;
-            targetMesa.firma_vocal1 = sigVocal1;
-            targetMesa.firma_vocal2 = sigVocal2;
+            targetMesa.firma_presi = "firmado";
+            targetMesa.firma_vocal1 = "firmado";
+            targetMesa.firma_vocal2 = "firmado";
         }
 
         saveLocalDatabase();
@@ -1102,8 +1127,11 @@ require([
             let actionButtons = "";
             if (mesa.estado === "Cerrada") {
                 actionButtons = `
-                    <button class="admin-btn-action btn-view-acta" data-codigo="${mesa.codigo}" title="Ver Acta Firmada">
+                    <button class="admin-btn-action btn-view-acta" data-codigo="${mesa.codigo}" title="Ver Acta Escrutada">
                         <i class="fa-solid fa-file-signature" style="color: var(--primary-color);"></i>
+                    </button>
+                    <button class="admin-btn-action btn-reopen-mesa" data-codigo="${mesa.codigo}" title="Reabrir Mesa para corrección">
+                        <i class="fa-solid fa-folder-open" style="color: #f59e0b;"></i>
                     </button>
                 `;
             } else {
@@ -1132,6 +1160,13 @@ require([
             btn.addEventListener("click", function() {
                 const cod = this.getAttribute("data-codigo");
                 viewMesaActa(cod);
+            });
+        });
+
+        tbody.querySelectorAll(".btn-reopen-mesa").forEach(btn => {
+            btn.addEventListener("click", function() {
+                const cod = this.getAttribute("data-codigo");
+                reopenMesaPrompt(cod);
             });
         });
 
@@ -2340,22 +2375,6 @@ require([
                         </tr>
                     </tbody>
                 </table>
-
-                <div style="font-weight:700; margin-bottom:6px; font-size:0.85rem; border-bottom:1px solid #cbd5e1; padding-bottom:3px;">Firmas Conformidad</div>
-                <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-top:10px;">
-                    <div style="border:1px solid #e2e8f0; border-radius:6px; padding:6px; text-align:center; background:#fff;">
-                        <span style="font-size:0.65rem; font-weight:700; text-transform:uppercase; color:var(--text-secondary);">Presidente/a</span>
-                        <div style="height:60px; display:flex; align-items:center; justify-content:center;">${svgPresi}</div>
-                    </div>
-                    <div style="border:1px solid #e2e8f0; border-radius:6px; padding:6px; text-align:center; background:#fff;">
-                        <span style="font-size:0.65rem; font-weight:700; text-transform:uppercase; color:var(--text-secondary);">Primer Vocal</span>
-                        <div style="height:60px; display:flex; align-items:center; justify-content:center;">${svgVocal1}</div>
-                    </div>
-                    <div style="border:1px solid #e2e8f0; border-radius:6px; padding:6px; text-align:center; background:#fff;">
-                        <span style="font-size:0.65rem; font-weight:700; text-transform:uppercase; color:var(--text-secondary);">Segundo Vocal</span>
-                        <div style="height:60px; display:flex; align-items:center; justify-content:center;">${svgVocal2}</div>
-                    </div>
-                </div>
             </div>
         `;
 
@@ -2460,26 +2479,7 @@ require([
                 </tbody>
             </table>
 
-            <div class="acta-title-section">Firmas Conformidad de los Miembros</div>
-            <div class="acta-signatures-block">
-                <div class="acta-signature-box">
-                    <strong>Presidente/a</strong>
-                    ${svgPresi}
-                    <span>Fdo: ${miembros.presi}</span>
-                </div>
-                <div class="acta-signature-box">
-                    <strong>Primer Vocal</strong>
-                    ${svgVocal1}
-                    <span>Fdo: ${miembros.vocal1}</span>
-                </div>
-                <div class="acta-signature-box">
-                    <strong>Segundo Vocal</strong>
-                    ${svgVocal2}
-                    <span>Fdo: ${miembros.vocal2}</span>
-                </div>
-            </div>
-
-            <div class="acta-footer">
+            <div class="acta-footer" style="margin-top: 30px;">
                 Documento oficial generado e informatizado de forma segura.<br>
                 Fecha de escrutinio oficial: ${new Date().toLocaleDateString('es-ES')} - Rivas-Vaciamadrid, Madrid.
             </div>
@@ -2681,6 +2681,17 @@ require([
             }
             seccionSelect.appendChild(opt);
         });
+    }
+
+    function updateAddMesaPreview() {
+        const secSelect = document.getElementById("add-mesa-seccion");
+        const letSelect = document.getElementById("add-mesa-letra");
+        const previewSpan = document.getElementById("add-mesa-code-preview");
+        if (secSelect && letSelect && previewSpan) {
+            const sec = secSelect.value || "000";
+            const letMesa = letSelect.value || "A";
+            previewSpan.textContent = sec + letMesa;
+        }
     }
 
 
@@ -3344,6 +3355,319 @@ require([
             console.error("Fallo al borrar mesa en ArcGIS Server:", err);
             alert("No se pudo borrar del servidor de ArcGIS. Comprueba tu conexión.");
         });
+    }
+
+    // ==========================================================================
+    // REAPERTURA DE MESA Y CONSULTA DE CENSO POR DNI
+    // ==========================================================================
+    function reopenMesaPrompt(codigo) {
+        const mesa = state.mesas.find(m => m.codigo === codigo);
+        if (!mesa) return;
+
+        const conf = confirm(`¿Está seguro de que desea REABRIR la Mesa ${codigo}? Esto permitirá volver a modificar e introducir votos en esta mesa por si ha habido errores en la captura.`);
+        if (!conf) return;
+
+        mesa.estado = "Abierta";
+
+        // Si estamos en modo ArcGIS: actualizar servidor
+        if (state.arcgisMode) {
+            sendMesaToArcGISServer(mesa);
+        }
+
+        saveLocalDatabase();
+        renderAdminPortal();
+        updateGlobalMetrics();
+        alert(`La Mesa ${codigo} ha sido reabierta correctamente.`);
+    }
+
+    let censusMap = null;
+    let censusLoading = false;
+
+    function loadCensusData() {
+        if (censusMap) return Promise.resolve(censusMap);
+        if (censusLoading) {
+            return new Promise((resolve) => {
+                const checkInterval = setInterval(() => {
+                    if (censusMap) {
+                        clearInterval(checkInterval);
+                        resolve(censusMap);
+                    }
+                }, 100);
+            });
+        }
+        censusLoading = true;
+        const statusDiv = document.getElementById("dni-search-status");
+        if (statusDiv) statusDiv.classList.remove("hidden");
+
+        return fetch("SI_E2812301sssmCERyCERE (CENSO DEFINITIVO).txt")
+            .then(res => res.arrayBuffer())
+            .then(buf => {
+                const decoder = new TextDecoder("iso-8859-1");
+                const text = decoder.decode(buf);
+                const lines = text.split(/\r?\n/);
+                const map = new window.Map();
+
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+
+                    const cols = line.split(";").map(c => c.replace(/^"|"$/g, "").trim());
+                    if (cols.length > 27) {
+                        const ident = cols[27]; // IDENT (DNI/NIE)
+                        if (ident) {
+                            const cleanDni = ident.toUpperCase().replace(/[^A-Z0-9]/g, "");
+                            map.set(cleanDni, {
+                                dni: ident,
+                                nombre: cols[13] || "",
+                                ape1: cols[14] || "",
+                                ape2: cols[15] || "",
+                                colegio: cols[6] || "",
+                                dirMesa: cols[9] || "",
+                                distrito: cols[3] || "",
+                                seccion: cols[4] || "",
+                                mesa: cols[5] || ""
+                            });
+                        }
+                    }
+                }
+                censusMap = map;
+                censusLoading = false;
+                if (statusDiv) statusDiv.classList.add("hidden");
+                return censusMap;
+            })
+            .catch(err => {
+                console.error("Error al cargar el censo:", err);
+                censusLoading = false;
+                if (statusDiv) {
+                    statusDiv.innerHTML = `<span style="color:#ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> No se pudo cargar el censo.</span>`;
+                }
+                return null;
+            });
+    }
+
+    function calculateDniLetter(numStr) {
+        const letters = "TRWAGMYFPDXBNJZSQVHLCKE";
+        const cleanDigits = numStr.replace(/[^0-9]/g, "");
+        if (!cleanDigits) return "";
+        const num = parseInt(cleanDigits, 10);
+        if (isNaN(num)) return "";
+        return letters[num % 23];
+    }
+
+    function findInCensus(rawQuery, cMap) {
+        const q = rawQuery.toUpperCase().replace(/[^A-Z0-9]/g, "");
+        if (!q || !cMap) return null;
+
+        // 1. Coincidencia exacta (ej. 51017266T o 02324267W)
+        if (cMap.has(q)) return cMap.get(q);
+
+        // 2. Si el usuario introdujo solo números (se le olvidó la letra)
+        const isNumeric = /^[0-9]+$/.test(q);
+        if (isNumeric) {
+            const letter = calculateDniLetter(q);
+            if (letter) {
+                // Probar número + letra calculada (ej. 51017266T)
+                const withLetter = q + letter;
+                if (cMap.has(withLetter)) return cMap.get(withLetter);
+
+                // Probar rellenando ceros a la izquierda hasta 8 dígitos + letra (ej. 02324267W)
+                const paddedDigits = q.padStart(8, '0');
+                const paddedLetter = calculateDniLetter(paddedDigits);
+                const paddedWithLetter = paddedDigits + paddedLetter;
+                if (cMap.has(paddedWithLetter)) return cMap.get(paddedWithLetter);
+            }
+        }
+
+        // 3. Si introdujo número con letra pero omitió el cero inicial (ej. 2324267W en lugar de 02324267W)
+        const matchDigitsLetter = q.match(/^([0-9]+)([A-Z])$/);
+        if (matchDigitsLetter) {
+            const digits = matchDigitsLetter[1];
+            const letter = matchDigitsLetter[2];
+            const padded = digits.padStart(8, '0') + letter;
+            if (cMap.has(padded)) return cMap.get(padded);
+        }
+
+        // 4. Si introdujo un NIE con letra pero le falta cero inicial (ej. X234567W en lugar de X0234567W)
+        const matchNie = q.match(/^([A-Z])([0-9]+)([A-Z])$/);
+        if (matchNie) {
+            const prefix = matchNie[1];
+            const digits = matchNie[2];
+            const letter = matchNie[3];
+            const paddedNie = prefix + digits.padStart(7, '0') + letter;
+            if (cMap.has(paddedNie)) return cMap.get(paddedNie);
+        }
+
+        // 5. Búsqueda por escaneo de dígitos limpios (ignorando ceros a la izquierda y letras)
+        const qCleanDigits = q.replace(/[^0-9]/g, "").replace(/^0+/, "");
+        if (qCleanDigits.length >= 6) {
+            for (const item of cMap.values()) {
+                const itemDigits = item.dni.replace(/[^0-9]/g, "").replace(/^0+/, "");
+                if (itemDigits === qCleanDigits) {
+                    return item;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    function getColegioOfficialAddress(colName, rawDir) {
+        if (!colName) return rawDir || "";
+        const cleanColName = colName.trim().toUpperCase();
+
+        // 1. Coincidencia directa
+        if (COLEGIO_DETAILS[colName] && COLEGIO_DETAILS[colName].address) {
+            return COLEGIO_DETAILS[colName].address;
+        }
+
+        // 2. Búsqueda insensible a acentos/mayúsculas
+        const normCol = cleanColName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+        for (const key in COLEGIO_DETAILS) {
+            const normKey = key.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+            if (normKey === normCol || normCol.includes(normKey) || normKey.includes(normCol)) {
+                if (COLEGIO_DETAILS[key].address) {
+                    return COLEGIO_DETAILS[key].address;
+                }
+            }
+        }
+
+        return rawDir || "";
+    }
+
+    function handleDniSearch() {
+        const input = document.getElementById("dni-search-input");
+        const container = document.getElementById("dni-search-result-container");
+        if (!input || !container) return;
+
+        const rawQuery = input.value.trim();
+        const query = rawQuery.toUpperCase().replace(/[^A-Z0-9]/g, "");
+        if (!query) {
+            container.innerHTML = `
+                <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 20px 10px;">
+                    Por favor, introduce un DNI o NIE válido.
+                </div>`;
+            return;
+        }
+
+        container.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.85rem;">
+                <i class="fa-solid fa-spinner fa-spin"></i> Consultando censo electoral...
+            </div>`;
+
+        loadCensusData().then(cMap => {
+            if (!cMap) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: #ef4444; padding: 20px;">
+                        Error al consultar el censo. Inténtalo de nuevo.
+                    </div>`;
+                return;
+            }
+
+            const result = findInCensus(rawQuery, cMap);
+            if (!result) {
+                container.innerHTML = `
+                    <div class="stat-card" style="border-left: 4px solid #ef4444; background: #fff5f5; padding: 16px; margin-top: 10px;">
+                        <div style="font-weight: 700; color: #ef4444; margin-bottom: 6px; display:flex; align-items:center; gap:8px;">
+                            <i class="fa-solid fa-circle-xmark"></i> No encontrado
+                        </div>
+                        <p style="font-size: 0.82rem; color: #475569; margin: 0;">
+                            No se ha encontrado ninguna inscripción en Rivas-Vaciamadrid para el DNI/NIE <strong>${rawQuery}</strong> en el Censo Definitivo.
+                        </p>
+                    </div>`;
+                return;
+            }
+
+            const fullName = `${result.nombre} ${result.ape1} ${result.ape2}`.trim();
+            const officialAddress = getColegioOfficialAddress(result.colegio, result.dirMesa);
+            const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(result.colegio + ", " + officialAddress)}`;
+            
+            container.innerHTML = `
+                <div class="stat-card" style="border-left: 5px solid var(--primary-color); background: #ffffff; padding: 20px; box-shadow: var(--shadow-md); margin-top: 10px; border-radius: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--primary-color); letter-spacing: 0.5px;">
+                            <i class="fa-solid fa-user-check"></i> Elector Empadronado
+                        </span>
+                        <span style="font-size: 0.72rem; background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 12px; font-weight: 600;">
+                            <i class="fa-solid fa-clock"></i> 09:00h - 20:00h
+                        </span>
+                    </div>
+                    
+                    <h4 style="font-size: 1.2rem; margin: 0 0 14px 0; color: var(--text-primary); font-family: var(--font-heading); font-weight: 800;">
+                        ${fullName}
+                    </h4>
+
+                    <!-- Bloque 1: Colegio Electoral -->
+                    <div style="background: #f8fafc; padding: 12px 14px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 12px;">
+                        <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 2px;">
+                            Centro de Votación (Dónde ir)
+                        </div>
+                        <div style="font-size: 1.05rem; font-weight: 800; color: var(--primary-color); margin-bottom: 4px;">
+                            ${result.colegio}
+                        </div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); display: flex; align-items: flex-start; gap: 6px;">
+                            <i class="fa-solid fa-location-dot" style="margin-top: 3px; color: #ef4444; flex-shrink: 0;"></i>
+                            <span>${officialAddress}</span>
+                        </div>
+                    </div>
+
+                    <!-- Bloque 2: Mesa y Sección Igualadas y Destacadas -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+                        <div style="background: #fff1f2; border: 1px solid #fecdd3; padding: 12px; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 0.75rem; color: #9f1239; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Mesa Electoral</div>
+                            <div style="font-size: 1.45rem; font-weight: 800; color: var(--primary-color); font-family: var(--font-heading); margin-top: 4px;">
+                                Mesa ${result.mesa}
+                            </div>
+                        </div>
+
+                        <div style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 12px; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Sección Censal</div>
+                            <div style="font-size: 1.45rem; font-weight: 800; color: var(--text-primary); font-family: var(--font-heading); margin-top: 4px;">
+                                Sección ${result.seccion}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botones de Acción -->
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <button id="btn-censo-view-map" class="btn-header btn-primary" style="width: 100%; justify-content: center; font-size: 0.85rem; padding: 10px;" data-colegio="${result.colegio}">
+                            <i class="fa-solid fa-map-location-dot"></i> Ver en el Mapa interactivo
+                        </button>
+                        <a href="${googleMapsUrl}" target="_blank" class="btn-header btn-secondary" style="width: 100%; justify-content: center; font-size: 0.82rem; padding: 8px; text-decoration: none; display: flex; align-items: center; gap: 6px; background: #ffffff; border: 1px solid #cbd5e1; color: var(--text-primary);">
+                            <i class="fa-solid fa-route" style="color: #4285F4;"></i> Cómo llegar (Google Maps GPS)
+                        </a>
+                    </div>
+                </div>`;
+
+            const mapBtn = document.getElementById("btn-censo-view-map");
+            if (mapBtn) {
+                mapBtn.addEventListener("click", function() {
+                    const colName = this.getAttribute("data-colegio");
+                    locateColegioOnMap(colName);
+                });
+            }
+        });
+    }
+
+    function locateColegioOnMap(colName) {
+        viewColegioDetails(colName);
+        const modal = document.getElementById("modal-colegio-detail");
+        if (modal) modal.classList.remove("hidden");
+
+        if (state.view && geomsCache && geomsCache.length > 0) {
+            const secKey = Object.keys(SECTION_COLEGIO_MAPPING).find(k => SECTION_COLEGIO_MAPPING[k] === colName);
+            if (secKey) {
+                const feat = geomsCache.find(f => {
+                    const s = f.attributes.SECCION || f.attributes.seccion || f.attributes.Seccion;
+                    return s && (s.toString().padStart(3, '0') === secKey.padStart(3, '0') || s.toString() === secKey);
+                });
+                if (feat && feat.geometry) {
+                    state.view.goTo({
+                        target: feat.geometry,
+                        zoom: 15
+                    }, { duration: 1200 });
+                }
+            }
+        }
     }
 
     // ==========================================================================

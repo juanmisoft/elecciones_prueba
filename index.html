@@ -77,6 +77,10 @@
                         <i class="fa-solid fa-school"></i>
                         <span>Colegios</span>
                     </button>
+                    <button class="tab-btn" data-tab="censo-search-pane">
+                        <i class="fa-solid fa-id-card"></i>
+                        <span>Mi Colegio</span>
+                    </button>
                 </div>
                 
                 <!-- PESTAÑA A: Estadísticas Globales del Municipio -->
@@ -144,6 +148,38 @@
                         <!-- Listado -->
                         <div id="colegios-list-container" class="colegios-list">
                             <!-- Se rellena dinámicamente -->
+                        </div>
+                    </div>
+
+                    <!-- PESTAÑA C: Consulta de Censo por DNI -->
+                    <div id="censo-search-pane" class="tab-pane">
+                        <div class="card-title">Consulta de Censo Electoral</div>
+                        <p class="text-secondary" style="font-size: 0.8rem; margin-bottom: 14px;">
+                            Introduce tu DNI o NIE para consultar en qué colegio, sección y mesa te corresponde votar.
+                        </p>
+
+                        <!-- Buscador de DNI -->
+                        <div style="display: flex; gap: 8px; margin-bottom: 14px;">
+                            <div class="search-box" style="flex: 1; margin-bottom: 0;">
+                                <i class="fa-solid fa-id-card"></i>
+                                <input type="text" id="dni-search-input" placeholder="Ej. 12345678A..." style="text-transform: uppercase;">
+                            </div>
+                            <button id="btn-dni-search-action" class="btn-header btn-primary" style="padding: 0 16px; font-size: 0.85rem; border-radius: 6px; flex-shrink: 0;">
+                                <i class="fa-solid fa-magnifying-glass"></i> Buscar
+                            </button>
+                        </div>
+
+                        <!-- Indicador de Carga / Estado -->
+                        <div id="dni-search-status" class="hidden" style="text-align: center; padding: 12px; font-size: 0.85rem; color: var(--text-muted);">
+                            <i class="fa-solid fa-spinner fa-spin"></i> Cargando censo electoral...
+                        </div>
+
+                        <!-- Contenedor de Resultados -->
+                        <div id="dni-search-result-container">
+                            <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 30px 10px;">
+                                <i class="fa-solid fa-address-card" style="font-size: 2.2rem; margin-bottom: 10px; display: block; opacity: 0.35;"></i>
+                                Escribe tu DNI/NIE y pulsa Buscar para saber dónde votar.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -259,18 +295,18 @@
                             <div class="step-num">2</div>
                             <span>Miembros de la Mesa Electoral</span>
                         </div>
-                        <div class="form-grid-2col">
-                            <div class="form-group" style="grid-column: span 2;">
-                                <label for="input-member-president" style="color: var(--text-primary); font-weight: 700;">Presidente/a de la Mesa</label>
-                                <input type="text" id="input-member-president" class="portal-input" placeholder="Nombre completo del Presidente/a" required>
+                        <div style="display: flex; flex-direction: column; gap: 16px;">
+                            <div class="form-group">
+                                <label for="input-member-president" style="color: var(--text-primary); font-weight: 700; display: block; margin-bottom: 6px; text-align: center;">Presidente/a de la Mesa</label>
+                                <input type="text" id="input-member-president" class="portal-input" placeholder="Nombre completo del Presidente/a" required style="text-align: center;">
                             </div>
                             <div class="form-group">
-                                <label for="input-member-vocal1" style="color: var(--text-primary); font-weight: 700;">Primer Vocal</label>
-                                <input type="text" id="input-member-vocal1" class="portal-input" placeholder="Nombre completo del Primer Vocal" required>
+                                <label for="input-member-vocal1" style="color: var(--text-primary); font-weight: 700; display: block; margin-bottom: 6px; text-align: center;">Primer Vocal</label>
+                                <input type="text" id="input-member-vocal1" class="portal-input" placeholder="Nombre completo del Primer Vocal" required style="text-align: center;">
                             </div>
                             <div class="form-group">
-                                <label for="input-member-vocal2" style="color: var(--text-primary); font-weight: 700;">Segundo Vocal</label>
-                                <input type="text" id="input-member-vocal2" class="portal-input" placeholder="Nombre completo del Segundo Vocal" required>
+                                <label for="input-member-vocal2" style="color: var(--text-primary); font-weight: 700; display: block; margin-bottom: 6px; text-align: center;">Segundo Vocal</label>
+                                <input type="text" id="input-member-vocal2" class="portal-input" placeholder="Nombre completo del Segundo Vocal" required style="text-align: center;">
                             </div>
                         </div>
                     </div>
@@ -298,47 +334,7 @@
                         </div>
                     </div>
 
-                    <!-- PASO 4: FIRMA DIGITAL EN PANTALLA -->
-                    <div class="portal-card">
-                        <div class="step-title">
-                            <div class="step-num">4</div>
-                            <span>Firma del Acta por los Miembros de la Mesa</span>
-                        </div>
-                        <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 20px;">
-                            Utiliza el ratón o la pantalla táctil de tu dispositivo para realizar la firma digital dentro de los recuadros correspondientes.
-                        </p>
-                        
-                        <div class="signatures-grid">
-                            <!-- Firma Presidente -->
-                            <div class="signature-container">
-                                <span class="signature-label">Presidente/a</span>
-                                <canvas id="canvas-signature-president" class="signature-canvas" width="220" height="120"></canvas>
-                                <div class="signature-actions">
-                                    <button type="button" class="btn-clear-canvas" data-canvas="canvas-signature-president">Borrar</button>
-                                </div>
-                            </div>
-                            
-                            <!-- Firma Vocal 1 -->
-                            <div class="signature-container">
-                                <span class="signature-label">Primer Vocal</span>
-                                <canvas id="canvas-signature-vocal1" class="signature-canvas" width="220" height="120"></canvas>
-                                <div class="signature-actions">
-                                    <button type="button" class="btn-clear-canvas" data-canvas="canvas-signature-vocal1">Borrar</button>
-                                </div>
-                            </div>
-                            
-                            <!-- Firma Vocal 2 -->
-                            <div class="signature-container">
-                                <span class="signature-label">Segundo Vocal</span>
-                                <canvas id="canvas-signature-vocal2" class="signature-canvas" width="220" height="120"></canvas>
-                                <div class="signature-actions">
-                                    <button type="button" class="btn-clear-canvas" data-canvas="canvas-signature-vocal2">Borrar</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- PASO 5: FINALIZAR Y ENVIAR -->
+                    <!-- PASO 4: FINALIZAR Y ENVIAR -->
                     <div class="portal-actions">
                         <button type="button" id="btn-submit-mesa" class="btn-header btn-primary">
                             <i class="fa-solid fa-cloud-arrow-up"></i> Cerrar Mesa y Transmitir Acta
@@ -550,12 +546,28 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="add-mesa-letra" style="color: var(--text-primary);">Letra de la Mesa</label>
-                        <input type="text" id="add-mesa-letra" class="portal-input" placeholder="Ej: A, B o U" required maxLength="1" pattern="[a-zA-Z]">
+                        <label for="add-mesa-letra" style="color: var(--text-primary); font-weight:700;">Tipo / Letra de la Mesa</label>
+                        <select id="add-mesa-letra" class="portal-input" required>
+                            <option value="A">Mesa A (Apellidos A - G/L)</option>
+                            <option value="B">Mesa B (Apellidos H/M - Z)</option>
+                            <option value="C">Mesa C (Tercera subdivisión por apellidos)</option>
+                            <option value="U">Mesa U (Mesa Única de la Sección)</option>
+                        </select>
+                        <span class="text-secondary" style="font-size: 0.75rem; margin-top: 4px; display: block;">
+                            <i class="fa-solid fa-circle-info"></i> Usa <strong>U</strong> si la sección tiene 1 sola mesa, o <strong>A/B/C</strong> si está dividida por tramos de apellido.
+                        </span>
                     </div>
+
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <div style="background-color: #f1f5f9; padding: 10px 14px; border-radius: 6px; border: 1px dashed #cbd5e1; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">Código de Mesa Resultante:</span>
+                            <span id="add-mesa-code-preview" style="font-family: var(--font-heading); font-size: 1.15rem; font-weight: 800; color: var(--primary-color);">001A</span>
+                        </div>
+                    </div>
+
                     <div class="form-group">
-                        <label for="add-mesa-census" style="color: var(--text-primary);">Censo Electoral (Votantes)</label>
-                        <input type="number" id="add-mesa-census" class="portal-input" placeholder="Número de electores en la mesa" required min="1">
+                        <label for="add-mesa-census" style="color: var(--text-primary); font-weight:700;">Censo Electoral (Electores)</label>
+                        <input type="number" id="add-mesa-census" class="portal-input" placeholder="Ej: 750" required min="1">
                     </div>
                 </div>
                 <div class="modal-footer">
