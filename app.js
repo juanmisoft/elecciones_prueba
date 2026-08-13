@@ -46,7 +46,11 @@ require([
     const LOCAL_USERS = {
         "AdminEleccionesGenPrueba": { role: "admin", colegio: null },
         "JaramaEleccionesGenPrueba": { role: "colegio", colegio: "C.E.I.P. JARAMA" },
-        "AlmendrosEleccionesGenPrueba": { role: "colegio", colegio: "C.E.I.P. LOS ALMENDROS" }
+        "AlmendrosEleccionesGenPrueba": { role: "colegio", colegio: "C.E.I.P. LOS ALMENDROS" },
+        "jmrojas": { role: "admin", colegio: null },
+        "camartin": { role: "admin", colegio: null },
+        "sbenito": { role: "colegio", colegio: "C.E.I.P. LOS ALMENDROS" },
+        "tromero": { role: "colegio", colegio: "C.E.I.P. JARAMA" }
     };
 
     // Mesas iniciales por defecto para la prueba (Jarama y Almendros)
@@ -122,7 +126,7 @@ require([
         if (storedUser) {
             try {
                 const parsed = JSON.parse(storedUser);
-                const allowedUsers = ["admineleccionesgenprueba", "jaramaeleccionesgenprueba", "almendroseleccionesgenprueba"];
+                const allowedUsers = Object.keys(LOCAL_USERS).map(u => u.toLowerCase());
                 if (parsed && parsed.username && allowedUsers.includes(parsed.username.toLowerCase())) {
                     state.currentUser = parsed;
                     state.arcgisMode = localStorage.getItem("elecciones_arcgis_mode") === "true";
@@ -515,7 +519,7 @@ require([
     }
 
     function loginUserSuccess(username, isArcGIS) {
-        const allowedUsers = ["admineleccionesgenprueba", "jaramaeleccionesgenprueba", "almendroseleccionesgenprueba"];
+        const allowedUsers = Object.keys(LOCAL_USERS).map(u => u.toLowerCase());
         if (!allowedUsers.includes(username.toLowerCase())) {
             console.warn(`Usuario no autorizado intentó acceder: ${username}`);
             
@@ -2602,7 +2606,7 @@ require([
                 <div></div>
                 <div style="border: 1px solid #000; padding:15px; height:120px; display:flex; flex-direction:column; justify-content:space-between;">
                     <strong style="font-size:10px; text-transform:uppercase;">Firma del Administrador</strong>
-                    <div style="font-family:'Outfit', cursive; font-size:18px; color:#555; text-align:center; font-style:italic;">AdminEleccionesGenPrueba</div>
+                    <div style="font-family:'Outfit', cursive; font-size:18px; color:#555; text-align:center; font-style:italic;">${state.currentUser ? state.currentUser.username : 'Administrador'}</div>
                     <span>Cierre de Colegio</span>
                 </div>
                 <div></div>
