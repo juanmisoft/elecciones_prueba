@@ -144,9 +144,21 @@ const DEFAULT_PARTIES_CONFIG = [];
 let PARTIES_CONFIG = (function() {
   try {
     const saved = localStorage.getItem("elecciones_parties_config");
+    let customLogos = {};
+    try {
+      const c = localStorage.getItem("elecciones_custom_party_logos");
+      if (c) customLogos = JSON.parse(c);
+    } catch (err) {}
     if (saved !== null) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) {
+        parsed.forEach(p => {
+          if (p && p.id && customLogos[p.id]) {
+            p.logo = customLogos[p.id];
+          }
+        });
+        return parsed;
+      }
     }
   } catch (e) {}
   return [...DEFAULT_PARTIES_CONFIG];

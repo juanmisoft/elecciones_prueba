@@ -1,31 +1,36 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Elecciones Municipales Rivas Vaciamadrid 2027</title>
-    
+
     <!-- SEO Meta Tags -->
-    <meta name="description" content="Portal oficial para el escrutinio en tiempo real de las Elecciones Municipales Rivas Vaciamadrid 2027, con visualización georeferenciada.">
+    <meta name="description"
+        content="Portal oficial para el escrutinio en tiempo real de las Elecciones Municipales Rivas Vaciamadrid 2027, con visualización georeferenciada.">
     <meta name="author" content="Oficina de Información Territorial de Rivas (OITR)">
-    
+
     <!-- Google Fonts & FontAwesome Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- ArcGIS API for JavaScript CSS -->
     <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css">
-    
+
     <!-- Estilos del Proyecto -->
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
 
     <!-- CONTENEDOR PRINCIPAL DE LA APP -->
     <div id="app-container">
-        
+
         <!-- CABECERA GLOBAL DE LA APLICACIÓN -->
         <header class="main-header">
             <div class="header-brand">
@@ -35,14 +40,14 @@
                     <span class="brand-subtitle">Rivas Vaciamadrid 2027</span>
                 </div>
             </div>
-            
+
             <div class="header-status">
                 <!-- Porcentaje de escrutinio general -->
                 <div class="scrutiny-pill">
                     <span class="scrutiny-dot"></span>
                     <span>Escrutado: <span id="header-scrutiny-percent">0.00%</span></span>
                 </div>
-                
+
                 <!-- Usuario logueado (si aplica) -->
                 <div id="logged-user-area" class="hidden">
                     <span class="user-badge">
@@ -50,7 +55,7 @@
                         <span id="logged-username">Usuario</span>
                     </span>
                 </div>
-                
+
                 <!-- Botón de Acción Portal/Logout -->
                 <button id="btn-portal-action" class="btn-header btn-primary">
                     <i class="fa-solid fa-lock"></i>
@@ -63,10 +68,10 @@
            VISTA 1: DASHBOARD PÚBLICO (MAPA Y ESTADÍSTICAS EN TIEMPO REAL)
            ========================================================================== -->
         <section id="public-dashboard-view" class="view-section">
-            
+
             <!-- Barra Lateral con Estadísticas y Colegios -->
             <aside class="dashboard-sidebar">
-                
+
                 <!-- Pestañas de la barra lateral -->
                 <div class="sidebar-tabs">
                     <button class="tab-btn active" data-tab="general-stats-pane">
@@ -82,12 +87,12 @@
                         <span>Mi Colegio</span>
                     </button>
                 </div>
-                
+
                 <!-- PESTAÑA A: Estadísticas Globales del Municipio -->
                 <div class="tab-content">
                     <div id="general-stats-pane" class="tab-pane active">
                         <div class="card-title">Métricas Generales</div>
-                        
+
                         <div class="stats-grid">
                             <!-- Escrutinio -->
                             <div class="stat-card full-width">
@@ -96,18 +101,22 @@
                                 <div class="stat-progress-bar">
                                     <div class="stat-progress-fill" id="global-scrutiny-bar" style="width: 0%;"></div>
                                 </div>
-                                <span class="stat-label" style="margin-top: 8px; font-size: 0.65rem;" id="global-mesas-ratio">0 de 0 mesas cerradas</span>
+                                <span class="stat-label" style="margin-top: 8px; font-size: 0.65rem;"
+                                    id="global-mesas-ratio">0 de 0 mesas cerradas</span>
                             </div>
-                            
+
                             <!-- Participación Total -->
                             <div class="stat-card">
                                 <span class="stat-label">Participación</span>
                                 <div class="stat-value" id="global-participation-val">0.00%</div>
                                 <div class="stat-progress-bar">
-                                    <div class="stat-progress-fill" id="global-participation-bar" style="width: 0%; background-color: #f59e0b;"></div>
+                                    <div class="stat-progress-fill" id="global-participation-bar"
+                                        style="width: 0%; background-color: #f59e0b;"></div>
                                 </div>
+                                <span class="stat-label" style="margin-top: 6px; font-size: 0.65rem; text-transform: none; letter-spacing: normal;"
+                                    id="global-participation-sub">Pendiente de avances</span>
                             </div>
-                            
+
                             <!-- Censo -->
                             <div class="stat-card">
                                 <span class="stat-label">Censo Total</span>
@@ -117,34 +126,47 @@
                             <!-- Avance 1 (14:00h) -->
                             <div class="stat-card">
                                 <span class="stat-label"><i class="fa-regular fa-clock"></i> Avance 1 (14:00h)</span>
-                                <div class="stat-value" style="font-size: 1.15rem; color: #2563eb;" id="global-part1-val">--</div>
-                                <span class="stat-label" style="font-size: 0.65rem;" id="global-part1-sub">Pendiente</span>
+                                <div class="stat-value" style="font-size: 1.15rem; color: #2563eb;"
+                                    id="global-part1-val">--</div>
+                                <div class="stat-label"
+                                    style="font-size: 0.68rem; text-transform: none; letter-spacing: normal; line-height: 1.3;"
+                                    id="global-part1-sub">Pendiente (14:00h)</div>
                             </div>
 
                             <!-- Avance 2 (18:00h) -->
                             <div class="stat-card">
                                 <span class="stat-label"><i class="fa-regular fa-clock"></i> Avance 2 (18:00h)</span>
-                                <div class="stat-value" style="font-size: 1.15rem; color: #7c3aed;" id="global-part2-val">--</div>
-                                <span class="stat-label" style="font-size: 0.65rem;" id="global-part2-sub">Pendiente</span>
+                                <div class="stat-value" style="font-size: 1.15rem; color: #7c3aed;"
+                                    id="global-part2-val">--</div>
+                                <div class="stat-label"
+                                    style="font-size: 0.68rem; text-transform: none; letter-spacing: normal; line-height: 1.3;"
+                                    id="global-part2-sub">Pendiente (18:00h)</div>
                             </div>
-                            
+
                             <!-- Votos Nulos -->
                             <div class="stat-card">
                                 <span class="stat-label">Votos Nulos</span>
-                                <div class="stat-value" style="font-size: 1.15rem;" id="global-nulos-val">0 <span style="font-size: 0.75rem; font-weight: 400; color: var(--text-muted);">(0.00%)</span></div>
+                                <div class="stat-value" style="font-size: 1.15rem;" id="global-nulos-val">0 <span
+                                        style="font-size: 0.75rem; font-weight: 400; color: var(--text-muted);">(0.00%)</span>
+                                </div>
                             </div>
-                            
+
                             <!-- Votos en Blanco -->
                             <div class="stat-card">
                                 <span class="stat-label">Votos en Blanco</span>
-                                <div class="stat-value" style="font-size: 1.15rem;" id="global-blancos-val">0 <span style="font-size: 0.75rem; font-weight: 400; color: var(--text-muted);">(0.00%)</span></div>
+                                <div class="stat-value" style="font-size: 1.15rem;" id="global-blancos-val">0 <span
+                                        style="font-size: 0.75rem; font-weight: 400; color: var(--text-muted);">(0.00%)</span>
+                                </div>
                             </div>
                         </div>
-                        
+
                         <!-- Reparto de Concejales -->
-                        <div class="card-title" style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center;">
-                            <span><i class="fa-solid fa-chair" style="color: var(--primary-color);"></i> Reparto de Concejales</span>
-                            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">25 Escaños (Barrera 5%)</span>
+                        <div class="card-title"
+                            style="margin-top: 24px; display: flex; justify-content: space-between; align-items: center;">
+                            <span><i class="fa-solid fa-chair" style="color: var(--primary-color);"></i> Reparto de
+                                Concejales</span>
+                            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 500;">25 Escaños
+                                (Barrera 5%)</span>
                         </div>
                         <div id="dhondt-results-container" style="margin-bottom: 20px;">
                             <!-- Se rellena dinámicamente -->
@@ -154,20 +176,22 @@
                         <div class="card-title" style="margin-top: 24px;">Resultados Electorales</div>
                         <div id="global-parties-container" class="party-results-list">
                             <!-- Se rellena dinámicamente -->
-                            <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 20px 0;">Esperando datos de escrutinio...</div>
+                            <div
+                                style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 20px 0;">
+                                Esperando datos de escrutinio...</div>
                         </div>
                     </div>
 
                     <!-- PESTAÑA B: Listado de Colegios Electorales -->
                     <div id="colegios-list-pane" class="tab-pane">
                         <div class="card-title">Centros de Votación</div>
-                        
+
                         <!-- Buscador de Colegios -->
                         <div class="search-box">
                             <i class="fa-solid fa-magnifying-glass"></i>
                             <input type="text" id="colegio-search" placeholder="Buscar colegio o dirección...">
                         </div>
-                        
+
                         <!-- Listado -->
                         <div id="colegios-list-container" class="colegios-list">
                             <!-- Se rellena dinámicamente -->
@@ -185,22 +209,27 @@
                         <div style="display: flex; gap: 8px; margin-bottom: 14px;">
                             <div class="search-box" style="flex: 1; margin-bottom: 0;">
                                 <i class="fa-solid fa-id-card"></i>
-                                <input type="text" id="dni-search-input" placeholder="Ej. 12345678A..." style="text-transform: uppercase;">
+                                <input type="text" id="dni-search-input" placeholder="Ej. 12345678A..."
+                                    style="text-transform: uppercase;">
                             </div>
-                            <button id="btn-dni-search-action" class="btn-header btn-primary" style="padding: 0 16px; font-size: 0.85rem; border-radius: 6px; flex-shrink: 0;">
+                            <button id="btn-dni-search-action" class="btn-header btn-primary"
+                                style="padding: 0 16px; font-size: 0.85rem; border-radius: 6px; flex-shrink: 0;">
                                 <i class="fa-solid fa-magnifying-glass"></i> Buscar
                             </button>
                         </div>
 
                         <!-- Indicador de Carga / Estado -->
-                        <div id="dni-search-status" class="hidden" style="text-align: center; padding: 12px; font-size: 0.85rem; color: var(--text-muted);">
+                        <div id="dni-search-status" class="hidden"
+                            style="text-align: center; padding: 12px; font-size: 0.85rem; color: var(--text-muted);">
                             <i class="fa-solid fa-spinner fa-spin"></i> Cargando censo electoral...
                         </div>
 
                         <!-- Contenedor de Resultados -->
                         <div id="dni-search-result-container">
-                            <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 30px 10px;">
-                                <i class="fa-solid fa-address-card" style="font-size: 2.2rem; margin-bottom: 10px; display: block; opacity: 0.35;"></i>
+                            <div
+                                style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 30px 10px;">
+                                <i class="fa-solid fa-address-card"
+                                    style="font-size: 2.2rem; margin-bottom: 10px; display: block; opacity: 0.35;"></i>
                                 Escribe tu DNI/NIE y pulsa Buscar para saber dónde votar.
                             </div>
                         </div>
@@ -213,17 +242,18 @@
                 <div class="map-overlay-title">
                     <h3 id="map-current-title">Mapa Electoral de Rivas-Vaciamadrid</h3>
                 </div>
-                
+
                 <!-- Mapa Div -->
                 <div id="mapViewDiv"></div>
-                
+
                 <!-- Leyenda de colores del mapa -->
                 <div id="mapLegend" class="map-legend">
                     <div class="legend-title">Top 3 Municipio</div>
                     <div id="legend-items-container">
                         <!-- Rellenado dinámicamente con partidos configurados -->
                     </div>
-                    <div class="legend-item" style="margin-top: 8px; border-top: 1px dashed rgba(0,0,0,0.1); padding-top: 6px;">
+                    <div class="legend-item"
+                        style="margin-top: 8px; border-top: 1px dashed rgba(0,0,0,0.1); padding-top: 6px;">
                         <div class="legend-color" style="background-color: #b4b4b4;"></div>
                         <span>Sin datos / Empate</span>
                     </div>
@@ -242,36 +272,46 @@
                 <img src="Imagenes/Logo_OITR.png" alt="ArcGIS Portal Logo" class="login-logo">
                 <div class="login-title">Portal ArcGIS Enterprise</div>
                 <div class="login-subtitle">Introduce tus credenciales para acceder a la aplicación electoral</div>
-                
+
                 <!-- Mensaje de error -->
                 <div id="login-error-msg" class="login-error hidden">
                     <i class="fa-solid fa-circle-exclamation"></i>
                     <span id="login-error-text">Error al autenticar.</span>
                 </div>
-                
+
                 <form id="form-login-direct" style="width: 100%; display: flex; flex-direction: column; gap: 14px;">
                     <div class="form-group" style="text-align: left;">
-                        <label for="login-username" style="color: rgba(255,255,255,0.9); font-weight: 600; font-size: 0.85rem; margin-bottom: 6px; display: block;">Nombre de usuario</label>
-                        <input type="text" id="login-username" class="portal-input" placeholder="Ej: AdminEleccionesGenPrueba" required style="width: 100%; text-align: left;">
+                        <label for="login-username"
+                            style="color: rgba(255,255,255,0.9); font-weight: 600; font-size: 0.85rem; margin-bottom: 6px; display: block;">Nombre
+                            de usuario</label>
+                        <input type="text" id="login-username" class="portal-input"
+                            placeholder="Ej: AdminEleccionesGenPrueba" required style="width: 100%; text-align: left;">
                     </div>
 
                     <div class="form-group" style="text-align: left;">
-                        <label for="login-password" style="color: rgba(255,255,255,0.9); font-weight: 600; font-size: 0.85rem; margin-bottom: 6px; display: block;">Contraseña</label>
+                        <label for="login-password"
+                            style="color: rgba(255,255,255,0.9); font-weight: 600; font-size: 0.85rem; margin-bottom: 6px; display: block;">Contraseña</label>
                         <div class="password-wrapper">
-                            <input type="password" id="login-password" class="portal-input" placeholder="Introduce tu contraseña" style="width: 100%; text-align: left; padding-right: 42px;">
-                            <i class="fa-solid fa-eye toggle-password-btn" style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); cursor: pointer; color: rgba(255,255,255,0.7); z-index: 10;"></i>
+                            <input type="password" id="login-password" class="portal-input"
+                                placeholder="Introduce tu contraseña"
+                                style="width: 100%; text-align: left; padding-right: 42px;">
+                            <i class="fa-solid fa-eye toggle-password-btn"
+                                style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); cursor: pointer; color: rgba(255,255,255,0.7); z-index: 10;"></i>
                         </div>
                     </div>
 
-                    <button type="submit" id="btn-login-submit" class="btn-header btn-primary btn-login" style="justify-content: center; padding: 14px; font-size: 1rem; margin-top: 6px;">
+                    <button type="submit" id="btn-login-submit" class="btn-header btn-primary btn-login"
+                        style="justify-content: center; padding: 14px; font-size: 1rem; margin-top: 6px;">
                         <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión
                     </button>
-                    
-                    <button type="button" id="btn-login-arcgis" class="btn-header btn-secondary" style="justify-content: center; padding: 10px; font-size: 0.82rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff;">
+
+                    <button type="button" id="btn-login-arcgis" class="btn-header btn-secondary"
+                        style="justify-content: center; padding: 10px; font-size: 0.82rem; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff;">
                         <i class="fa-solid fa-shield-halved"></i> Conectar vía Diálogo Oficial ArcGIS
                     </button>
 
-                    <button type="button" id="btn-login-cancel" class="btn-header btn-secondary" style="width:100%; justify-content: center; background: transparent; border: none; color: rgba(255,255,255,0.6); margin-top: 2px;">
+                    <button type="button" id="btn-login-cancel" class="btn-header btn-secondary"
+                        style="width:100%; justify-content: center; background: transparent; border: none; color: rgba(255,255,255,0.6); margin-top: 2px;">
                         Volver al Visor Público
                     </button>
                 </form>
@@ -283,7 +323,7 @@
            ========================================================================== -->
         <section id="colegio-portal-view" class="view-section colegio-portal-view hidden">
             <div class="portal-container">
-                
+
                 <!-- Bienvenida de Colegio -->
                 <div class="portal-welcome">
                     <div class="welcome-info">
@@ -302,9 +342,11 @@
                         <span>Selecciona una Mesa Electoral para el recuento</span>
                     </div>
                     <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 16px;">
-                        Selecciona tu mesa para comenzar o continuar con la transmisión de datos. El color de cada tarjeta indica su estado: verde (abierta), morado (en recuento), azul/ámbar (avances de participación enviados) y rojo (mesa cerrada definitivamente).
+                        Selecciona tu mesa para comenzar o continuar con la transmisión de datos. El color de cada
+                        tarjeta indica su estado: verde (abierta), morado (en recuento), azul/ámbar (avances de
+                        participación enviados) y rojo (mesa cerrada definitivamente).
                     </p>
-                    
+
                     <div id="portal-mesas-selection-grid" class="mesa-selector-grid">
                         <!-- Rellenado dinámicamente con mesas del colegio -->
                     </div>
@@ -312,18 +354,25 @@
 
                 <!-- FORMULARIO PRINCIPAL DE GESTIÓN DE MESA (Oculto hasta elegir mesa) -->
                 <div id="portal-escrutinio-container" class="hidden">
-                    
+
                     <!-- Ficha de la Mesa Seleccionada -->
-                    <div class="portal-card" style="background-color: rgba(227, 6, 19, 0.03); border-color: rgba(227, 6, 19, 0.2); margin-bottom: 16px;">
-                        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                    <div class="portal-card"
+                        style="background-color: rgba(227, 6, 19, 0.03); border-color: rgba(227, 6, 19, 0.2); margin-bottom: 16px;">
+                        <div
+                            style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
                             <div>
-                                <span style="font-weight: 700; text-transform: uppercase; font-size: 0.75rem; color: var(--primary-color); display: block; letter-spacing: 0.5px;">Mesa Seleccionada</span>
-                                <h3 style="font-size: 1.5rem; font-family: var(--font-heading); color: var(--text-primary);" id="portal-active-mesa-title">Mesa 006A</h3>
+                                <span
+                                    style="font-weight: 700; text-transform: uppercase; font-size: 0.75rem; color: var(--primary-color); display: block; letter-spacing: 0.5px;">Mesa
+                                    Seleccionada</span>
+                                <h3 style="font-size: 1.5rem; font-family: var(--font-heading); color: var(--text-primary);"
+                                    id="portal-active-mesa-title">Mesa 006A</h3>
                             </div>
                             <div style="text-align: right;">
-                                <span class="badge badge-warning" id="portal-active-mesa-census" style="font-size: 0.85rem; padding: 6px 12px;">Censo: 800 electores</span>
+                                <span class="badge badge-warning" id="portal-active-mesa-census"
+                                    style="font-size: 0.85rem; padding: 6px 12px;">Censo: 800 electores</span>
                             </div>
-                            <button id="btn-change-mesa" class="btn-header btn-secondary" style="font-size: 0.8rem; padding: 6px 14px;">
+                            <button id="btn-change-mesa" class="btn-header btn-secondary"
+                                style="font-size: 0.8rem; padding: 6px 14px;">
                                 <i class="fa-solid fa-rotate-left"></i> Cambiar de Mesa
                             </button>
                         </div>
@@ -345,7 +394,8 @@
                                 <span class="phase-status" id="phase-status-part2">Pendiente</span>
                             </div>
                         </button>
-                        <button type="button" class="portal-phase-btn" id="btn-phase-escrutinio" data-phase="escrutinio">
+                        <button type="button" class="portal-phase-btn" id="btn-phase-escrutinio"
+                            data-phase="escrutinio">
                             <div class="phase-btn-icon"><i class="fa-solid fa-check-to-slot"></i></div>
                             <div class="phase-btn-text">
                                 <span class="phase-title">Escrutinio (20:00h)</span>
@@ -363,25 +413,33 @@
                                 <div class="step-num"><i class="fa-solid fa-1"></i></div>
                                 <span>1º Avance de Participación (14:00h)</span>
                             </div>
-                            <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 20px; line-height: 1.5;">
-                                Introduce el número total de personas censadas en esta mesa que han acudido a votar hasta las 14:00 horas (consultando la lista de votantes de la mesa). En esta fase <strong>no se cuentan votos de partidos</strong>.
+                            <p class="text-secondary"
+                                style="font-size: 0.85rem; margin-bottom: 20px; line-height: 1.5;">
+                                Introduce el número total de personas censadas en esta mesa que han acudido a votar
+                                hasta las 14:00 horas (consultando la lista de votantes de la mesa). En esta fase
+                                <strong>no se cuentan votos de partidos</strong>.
                             </p>
 
                             <!-- Estado previo si ya fue transmitido -->
                             <div id="part1-previous-info" class="advance-info-banner hidden">
                                 <i class="fa-solid fa-circle-check" style="color: #0284c7; font-size: 1.2rem;"></i>
                                 <div>
-                                    <strong style="color: #0369a1; display: block;">Avance 1 transmitido previamente</strong>
-                                    <span id="part1-previous-details" style="font-size: 0.8rem; color: #075985;">--</span>
+                                    <strong style="color: #0369a1; display: block;">Avance 1 transmitido
+                                        previamente</strong>
+                                    <span id="part1-previous-details"
+                                        style="font-size: 0.8rem; color: #075985;">--</span>
                                 </div>
                             </div>
 
                             <div class="advance-entry-box">
-                                <label for="input-part1-voters" style="font-weight: 700; font-size: 1rem; color: var(--text-primary); display: block; margin-bottom: 8px;">
+                                <label for="input-part1-voters"
+                                    style="font-weight: 700; font-size: 1rem; color: var(--text-primary); display: block; margin-bottom: 8px;">
                                     Total de personas que han votado hasta las 14:00h:
                                 </label>
-                                <div style="display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap;">
-                                    <input type="number" inputmode="numeric" id="input-part1-voters" class="portal-input advance-large-input" placeholder="0" min="0" required>
+                                <div
+                                    style="display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap;">
+                                    <input type="number" inputmode="numeric" id="input-part1-voters"
+                                        class="portal-input advance-large-input" min="0" required>
                                     <div class="advance-metric-badge" id="part1-live-percent-badge">
                                         <span class="pct-val" id="part1-live-percent-val">0.00%</span>
                                         <span class="pct-sub" id="part1-live-ratio-sub">0 de 0 electores</span>
@@ -390,7 +448,8 @@
                             </div>
 
                             <div style="display: flex; justify-content: center; margin-top: 24px;">
-                                <button type="button" id="btn-submit-part1" class="btn-header btn-submit-transmit" style="background: linear-gradient(135deg, #e30613 0%, #b8050e 100%); color: #ffffff; border: none; padding: 14px 28px; font-size: 1rem; border-radius: 8px; font-weight: 700; cursor: pointer;">
+                                <button type="button" id="btn-submit-part1" class="btn-header btn-submit-transmit"
+                                    style="background: linear-gradient(135deg, #e30613 0%, #b8050e 100%); color: #ffffff; border: none; padding: 14px 28px; font-size: 1rem; border-radius: 8px; font-weight: 700; cursor: pointer;">
                                     <i class="fa-solid fa-paper-plane"></i> Transmitir 1º Avance de Participación
                                 </button>
                             </div>
@@ -406,16 +465,21 @@
                                 <div class="step-num"><i class="fa-solid fa-2"></i></div>
                                 <span>2º Avance de Participación (18:00h)</span>
                             </div>
-                            <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 20px; line-height: 1.5;">
-                                Introduce el número total acumulado de personas que han acudido a votar hasta las 18:00 horas. En esta fase <strong>no se cuentan votos de partidos</strong>.
+                            <p class="text-secondary"
+                                style="font-size: 0.85rem; margin-bottom: 20px; line-height: 1.5;">
+                                Introduce el número total acumulado de personas que han acudido a votar hasta las 18:00
+                                horas. En esta fase <strong>no se cuentan votos de partidos</strong>.
                             </p>
 
                             <!-- Referencia del 1º Avance -->
-                            <div id="part2-reference-banner" class="advance-info-banner" style="background-color: #f0f9ff; border-color: #bae6fd;">
+                            <div id="part2-reference-banner" class="advance-info-banner"
+                                style="background-color: #f0f9ff; border-color: #bae6fd;">
                                 <i class="fa-solid fa-info-circle" style="color: #0284c7; font-size: 1.2rem;"></i>
                                 <div>
-                                    <strong style="color: #0369a1; display: block;">Dato de referencia (1º Avance - 14:00h):</strong>
-                                    <span id="part2-p1-ref-text" style="font-size: 0.8rem; color: #075985;">No transmitido aún</span>
+                                    <strong style="color: #0369a1; display: block;">Dato de referencia (1º Avance -
+                                        14:00h):</strong>
+                                    <span id="part2-p1-ref-text" style="font-size: 0.8rem; color: #075985;">No
+                                        transmitido aún</span>
                                 </div>
                             </div>
 
@@ -423,26 +487,35 @@
                             <div id="part2-previous-info" class="advance-info-banner hidden" style="margin-top: 10px;">
                                 <i class="fa-solid fa-circle-check" style="color: #d97706; font-size: 1.2rem;"></i>
                                 <div>
-                                    <strong style="color: #b45309; display: block;">Avance 2 transmitido previamente</strong>
-                                    <span id="part2-previous-details" style="font-size: 0.8rem; color: #92400e;">--</span>
+                                    <strong style="color: #b45309; display: block;">Avance 2 transmitido
+                                        previamente</strong>
+                                    <span id="part2-previous-details"
+                                        style="font-size: 0.8rem; color: #92400e;">--</span>
                                 </div>
                             </div>
 
                             <div class="advance-entry-box">
-                                <label for="input-part2-voters" style="font-weight: 700; font-size: 1rem; color: var(--text-primary); display: block; margin-bottom: 8px;">
+                                <label for="input-part2-voters"
+                                    style="font-weight: 700; font-size: 1rem; color: var(--text-primary); display: block; margin-bottom: 8px;">
                                     Total de personas que han votado hasta las 18:00h (acumulado):
                                 </label>
-                                <div style="display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap;">
-                                    <input type="number" inputmode="numeric" id="input-part2-voters" class="portal-input advance-large-input" placeholder="0" min="0" required>
-                                    <div class="advance-metric-badge" id="part2-live-percent-badge" style="background-color: #fef3c7; border-color: #fde68a;">
-                                        <span class="pct-val" id="part2-live-percent-val" style="color: #b45309;">0.00%</span>
-                                        <span class="pct-sub" id="part2-live-ratio-sub" style="color: #92400e;">0 de 0 electores</span>
+                                <div
+                                    style="display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap;">
+                                    <input type="number" inputmode="numeric" id="input-part2-voters"
+                                        class="portal-input advance-large-input" min="0" required>
+                                    <div class="advance-metric-badge" id="part2-live-percent-badge"
+                                        style="background-color: #fef3c7; border-color: #fde68a;">
+                                        <span class="pct-val" id="part2-live-percent-val"
+                                            style="color: #b45309;">0.00%</span>
+                                        <span class="pct-sub" id="part2-live-ratio-sub" style="color: #92400e;">0 de 0
+                                            electores</span>
                                     </div>
                                 </div>
                             </div>
 
                             <div style="display: flex; justify-content: center; margin-top: 24px;">
-                                <button type="button" id="btn-submit-part2" class="btn-header btn-submit-transmit" style="background: linear-gradient(135deg, #e30613 0%, #b8050e 100%); color: #ffffff; border: none; padding: 14px 28px; font-size: 1rem; border-radius: 8px; font-weight: 700; cursor: pointer;">
+                                <button type="button" id="btn-submit-part2" class="btn-header btn-submit-transmit"
+                                    style="background: linear-gradient(135deg, #e30613 0%, #b8050e 100%); color: #ffffff; border: none; padding: 14px 28px; font-size: 1rem; border-radius: 8px; font-weight: 700; cursor: pointer;">
                                     <i class="fa-solid fa-paper-plane"></i> Transmitir 2º Avance de Participación
                                 </button>
                             </div>
@@ -453,7 +526,7 @@
                          FASE 3: FORMULARIO DE ESCRUTINIO FINAL (20:00h)
                          ======================================================== -->
                     <div id="portal-pane-escrutinio" class="portal-phase-pane hidden">
-                        
+
                         <!-- PASO 1: MIEMBROS DE LA MESA -->
                         <div class="portal-card">
                             <div class="step-title">
@@ -461,20 +534,30 @@
                                 <span>1. Miembros de la Mesa Electoral</span>
                             </div>
                             <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 14px;">
-                                Identifica a los componentes que han constituido la mesa electoral para el acta de escrutinio.
+                                Identifica a los componentes que han constituido la mesa electoral para el acta de
+                                escrutinio.
                             </p>
                             <div style="display: flex; flex-direction: column; gap: 16px;">
                                 <div class="form-group">
-                                    <label for="input-member-president" style="color: var(--text-primary); font-weight: 700; display: block; margin-bottom: 6px;">Presidente/a de la Mesa</label>
-                                    <input type="text" id="input-member-president" class="portal-input" placeholder="Nombre y apellidos del Presidente/a" required>
+                                    <label for="input-member-president"
+                                        style="color: var(--text-primary); font-weight: 700; display: block; margin-bottom: 6px;">Presidente/a
+                                        de la Mesa</label>
+                                    <input type="text" id="input-member-president" class="portal-input"
+                                        placeholder="Nombre y apellidos del Presidente/a" required>
                                 </div>
                                 <div class="form-group">
-                                    <label for="input-member-vocal1" style="color: var(--text-primary); font-weight: 700; display: block; margin-bottom: 6px;">Primer Vocal</label>
-                                    <input type="text" id="input-member-vocal1" class="portal-input" placeholder="Nombre y apellidos del Primer Vocal" required>
+                                    <label for="input-member-vocal1"
+                                        style="color: var(--text-primary); font-weight: 700; display: block; margin-bottom: 6px;">Primer
+                                        Vocal</label>
+                                    <input type="text" id="input-member-vocal1" class="portal-input"
+                                        placeholder="Nombre y apellidos del Primer Vocal" required>
                                 </div>
                                 <div class="form-group">
-                                    <label for="input-member-vocal2" style="color: var(--text-primary); font-weight: 700; display: block; margin-bottom: 6px;">Segundo Vocal</label>
-                                    <input type="text" id="input-member-vocal2" class="portal-input" placeholder="Nombre y apellidos del Segundo Vocal" required>
+                                    <label for="input-member-vocal2"
+                                        style="color: var(--text-primary); font-weight: 700; display: block; margin-bottom: 6px;">Segundo
+                                        Vocal</label>
+                                    <input type="text" id="input-member-vocal2" class="portal-input"
+                                        placeholder="Nombre y apellidos del Segundo Vocal" required>
                                 </div>
                             </div>
                         </div>
@@ -485,14 +568,14 @@
                                 <div class="step-num"><i class="fa-solid fa-square-poll-vertical"></i></div>
                                 <span>2. Introducción de Votos del Escrutinio</span>
                             </div>
-                            
+
                             <!-- Tarjeta de Referencia de Avances Anteriores -->
                             <div id="portal-previous-advances-banner" class="hidden"></div>
 
                             <div id="portal-votes-fields-container" class="votos-entry-grid">
                                 <!-- Los inputs de los partidos se generan dinámicamente desde JS -->
                             </div>
-                            
+
                             <!-- Resumen y validación en vivo -->
                             <div class="vote-summary-card">
                                 <div class="vote-summary-total">
@@ -512,10 +595,13 @@
                                 <span>3. Cierre Definitivo de Mesa</span>
                             </div>
                             <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 16px;">
-                                Una vez verificado el recuento con las papeletas de la urna, pulsa el botón para cerrar la mesa y transmitir los resultados definitivos al sistema central.
+                                Una vez verificado el recuento con las papeletas de la urna, pulsa el botón para cerrar
+                                la mesa y transmitir los resultados definitivos al sistema central.
                             </p>
                             <div style="display: flex; justify-content: center;">
-                                <button type="button" id="btn-submit-mesa" class="btn-header btn-submit-transmit btn-close-mesa" style="background: linear-gradient(135deg, #e30613 0%, #b8050e 100%); color: #ffffff; border: none; padding: 16px 32px; font-size: 1.05rem; border-radius: 8px; font-weight: 700; cursor: pointer;">
+                                <button type="button" id="btn-submit-mesa"
+                                    class="btn-header btn-submit-transmit btn-close-mesa"
+                                    style="background: linear-gradient(135deg, #e30613 0%, #b8050e 100%); color: #ffffff; border: none; padding: 16px 32px; font-size: 1.05rem; border-radius: 8px; font-weight: 700; cursor: pointer;">
                                     <i class="fa-solid fa-lock"></i> Cerrar Mesa y Transmitir Escrutinio
                                 </button>
                             </div>
@@ -532,7 +618,7 @@
            ========================================================================== -->
         <section id="admin-portal-view" class="view-section admin-portal-view hidden">
             <div class="portal-container" style="max-width: 1200px;">
-                
+
                 <!-- Cabecera del Panel de Control de Administración -->
                 <div class="portal-welcome">
                     <div class="welcome-info">
@@ -546,7 +632,9 @@
                         <button id="btn-export-pdf" class="btn-header btn-secondary" title="Imprimir Informe a PDF">
                             <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> Imprimir PDF
                         </button>
-                        <button id="btn-admin-manage-parties" class="btn-header btn-secondary" style="background-color: #8b5cf6; color: #fff; border: none;" title="Gestionar Fuerzas Políticas">
+                        <button id="btn-admin-manage-parties" class="btn-header btn-secondary"
+                            style="background-color: #8b5cf6; color: #fff; border: none;"
+                            title="Gestionar Fuerzas Políticas">
                             <i class="fa-solid fa-flag"></i> Fuerzas Políticas
                         </button>
                         <button id="btn-admin-add-mesa" class="btn-header btn-primary">
@@ -560,7 +648,7 @@
 
                 <!-- Grid de Administración -->
                 <div class="admin-dashboard-grid">
-                    
+
                     <!-- LADO IZQUIERDO: Control por Colegios y Mesas -->
                     <div>
                         <!-- Resumen y Mapeo de Colegios -->
@@ -568,10 +656,11 @@
                         <div id="admin-colegios-summary-container">
                             <!-- Se rellena dinámicamente con tarjetas de colegios -->
                         </div>
-                        
+
                         <!-- Listado Completo de Mesas -->
                         <div class="portal-card" style="margin-top: 24px;">
-                            <div class="card-title" style="border: none; margin-bottom: 10px;">Listado General de Mesas</div>
+                            <div class="card-title" style="border: none; margin-bottom: 10px;">Listado General de Mesas
+                            </div>
                             <div style="overflow-x: auto;">
                                 <table class="admin-table">
                                     <thead>
@@ -601,7 +690,8 @@
                                 <div class="stat-card">
                                     <span class="stat-label">Mesas Escrutadas</span>
                                     <div class="stat-value" id="admin-metric-mesas-percent">0.00%</div>
-                                    <span class="stat-label" style="margin-top: 4px; font-size: 0.65rem;" id="admin-metric-mesas-ratio">0 de 0 mesas</span>
+                                    <span class="stat-label" style="margin-top: 4px; font-size: 0.65rem;"
+                                        id="admin-metric-mesas-ratio">0 de 0 mesas</span>
                                 </div>
                                 <div class="stat-card">
                                     <span class="stat-label">Votos Totales Válidos</span>
@@ -610,26 +700,33 @@
                                 <div class="stat-card">
                                     <span class="stat-label">Participación Total</span>
                                     <div class="stat-value" id="admin-metric-participation">0.00%</div>
+                                    <span class="stat-label" style="margin-top: 4px; font-size: 0.65rem;"
+                                        id="admin-metric-participation-sub">Pendiente de avances</span>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Herramientas de Base de Datos de Prueba -->
-                        <div class="portal-card" style="border-color: rgba(245, 158, 11, 0.3); background-color: rgba(245, 158, 11, 0.02);">
-                            <div class="card-title" style="color: #d97706; display: flex; align-items: center; gap: 6px; border-bottom: none; padding-bottom: 0; margin-bottom: 6px;">
+                        <div class="portal-card"
+                            style="border-color: rgba(245, 158, 11, 0.3); background-color: rgba(245, 158, 11, 0.02);">
+                            <div class="card-title"
+                                style="color: #d97706; display: flex; align-items: center; gap: 6px; border-bottom: none; padding-bottom: 0; margin-bottom: 6px;">
                                 <i class="fa-solid fa-flask"></i> Entorno de Pruebas
                             </div>
                             <p class="text-secondary" style="font-size: 0.75rem; margin-bottom: 14px;">
                                 Acciones rápidas para simular datos y reiniciar el escrutinio.
                             </p>
                             <div style="display: flex; flex-direction: column; gap: 8px;">
-                                <button id="btn-admin-demo-fill" class="btn-header btn-secondary" style="justify-content: center; background-color: #d97706; color: #fff; border: none; padding: 10px;">
+                                <button id="btn-admin-demo-fill" class="btn-header btn-secondary"
+                                    style="justify-content: center; background-color: #d97706; color: #fff; border: none; padding: 10px;">
                                     <i class="fa-solid fa-wand-magic-sparkles"></i> Simular Todo el Municipio
                                 </button>
-                                <button id="btn-admin-delete-demo-mesas" class="btn-header btn-secondary" style="justify-content: center; background-color: #ef4444; color: #fff; border: none; padding: 10px;">
+                                <button id="btn-admin-delete-demo-mesas" class="btn-header btn-secondary"
+                                    style="justify-content: center; background-color: #ef4444; color: #fff; border: none; padding: 10px;">
                                     <i class="fa-solid fa-table-list"></i> Eliminar Todas las Mesas Generadas
                                 </button>
-                                <button id="btn-admin-reset-db" class="btn-header btn-secondary" style="justify-content: center; color: var(--text-muted); padding: 8px;">
+                                <button id="btn-admin-reset-db" class="btn-header btn-secondary"
+                                    style="justify-content: center; color: var(--text-muted); padding: 8px;">
                                     <i class="fa-solid fa-trash-can"></i> Reiniciar Escrutinio a Cero
                                 </button>
                             </div>
@@ -647,7 +744,7 @@
     <!-- ==========================================================================
        VENTANAS MODALES (POPUP WINDOWS)
        ========================================================================== -->
-    
+
     <!-- MODAL A: FICHA DE COLEGIO ELECTORAL (DASHBOARD PÚBLICO) -->
     <div id="modal-colegio-detail" class="modal-container hidden">
         <div class="modal-card large">
@@ -658,45 +755,57 @@
             <div class="modal-body" style="padding: 0;">
                 <div style="display: grid; grid-template-columns: 3fr 4fr; min-height: 400px;">
                     <!-- Imagen del colegio -->
-                    <div id="modal-colegio-img-div" style="background-size: cover; background-position: center; min-height: 250px;"></div>
-                    
+                    <div id="modal-colegio-img-div"
+                        style="background-size: cover; background-position: center; min-height: 250px;"></div>
+
                     <!-- Detalles y votos del colegio -->
                     <div style="padding: 24px; overflow-y: auto;">
                         <!-- Dirección y Ruta -->
-                        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 16px;">
+                        <div
+                            style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 16px;">
                             <div>
-                                <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; display: block;">Dirección</span>
-                                <span id="modal-colegio-address-text" style="font-size: 0.85rem; font-weight: 500;">Calle de Rivas s/n</span>
+                                <span
+                                    style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; display: block;">Dirección</span>
+                                <span id="modal-colegio-address-text"
+                                    style="font-size: 0.85rem; font-weight: 500;">Calle de Rivas s/n</span>
                             </div>
-                            <a href="#" id="modal-colegio-route-btn" target="_blank" class="btn-header btn-secondary" style="font-size: 0.75rem; padding: 6px 12px; flex-shrink:0;">
+                            <a href="#" id="modal-colegio-route-btn" target="_blank" class="btn-header btn-secondary"
+                                style="font-size: 0.75rem; padding: 6px 12px; flex-shrink:0;">
                                 <i class="fa-solid fa-route" style="color: var(--primary-color);"></i> Cómo llegar
                             </a>
                         </div>
-                        
+
                         <!-- Secciones Censales -->
                         <div style="margin-bottom: 16px;">
-                            <span style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; display: block;">Secciones Censales</span>
-                            <span id="modal-colegio-sections-list" style="font-size: 0.85rem; font-weight: 700;">006, 018</span>
+                            <span
+                                style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; display: block;">Secciones
+                                Censales</span>
+                            <span id="modal-colegio-sections-list" style="font-size: 0.85rem; font-weight: 700;">006,
+                                018</span>
                         </div>
-                        
+
                         <!-- Progreso y censo -->
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
                             <div class="stat-card" style="padding: 8px 12px;">
                                 <span class="stat-label">Censo</span>
-                                <span class="stat-value" style="font-size: 1.15rem;" id="modal-colegio-census-val">0</span>
+                                <span class="stat-value" style="font-size: 1.15rem;"
+                                    id="modal-colegio-census-val">0</span>
                             </div>
                             <div class="stat-card" style="padding: 8px 12px;">
                                 <span class="stat-label">Participación</span>
-                                <span class="stat-value" style="font-size: 1.15rem; color: #f59e0b;" id="modal-colegio-participation-val">0.00%</span>
+                                <span class="stat-value" style="font-size: 1.15rem; color: #f59e0b;"
+                                    id="modal-colegio-participation-val">0.00%</span>
                             </div>
                             <div class="stat-card" style="padding: 8px 12px; grid-column: span 2;">
                                 <span class="stat-label">Mesas Escrutadas</span>
-                                <span class="stat-value" style="font-size: 1.15rem; color: var(--primary-color);" id="modal-colegio-mesas-val">0 de 0</span>
+                                <span class="stat-value" style="font-size: 1.15rem; color: var(--primary-color);"
+                                    id="modal-colegio-mesas-val">0 de 0</span>
                             </div>
                         </div>
-                        
+
                         <!-- Lista de votos en el colegio -->
-                        <div class="card-title" style="font-size: 0.9rem; margin-bottom: 8px;">Resultados en el Centro</div>
+                        <div class="card-title" style="font-size: 0.9rem; margin-bottom: 8px;">Resultados en el Centro
+                        </div>
                         <div id="modal-colegio-parties-container" class="party-results-list">
                             <!-- Rellenado dinámicamente -->
                         </div>
@@ -731,7 +840,8 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="add-mesa-letra" style="color: var(--text-primary); font-weight:700;">Tipo / Letra de la Mesa</label>
+                        <label for="add-mesa-letra" style="color: var(--text-primary); font-weight:700;">Tipo / Letra de
+                            la Mesa</label>
                         <select id="add-mesa-letra" class="portal-input" required>
                             <option value="A">Mesa A (Apellidos A - G/L)</option>
                             <option value="B">Mesa B (Apellidos H/M - Z)</option>
@@ -739,20 +849,26 @@
                             <option value="U">Mesa U (Mesa Única de la Sección)</option>
                         </select>
                         <span class="text-secondary" style="font-size: 0.75rem; margin-top: 4px; display: block;">
-                            <i class="fa-solid fa-circle-info"></i> Usa <strong>U</strong> si la sección tiene 1 sola mesa, o <strong>A/B/C</strong> si está dividida por tramos de apellido.
+                            <i class="fa-solid fa-circle-info"></i> Usa <strong>U</strong> si la sección tiene 1 sola
+                            mesa, o <strong>A/B/C</strong> si está dividida por tramos de apellido.
                         </span>
                     </div>
 
                     <div class="form-group" style="margin-bottom: 12px;">
-                        <div style="background-color: #f1f5f9; padding: 10px 14px; border-radius: 6px; border: 1px dashed #cbd5e1; display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">Código de Mesa Resultante:</span>
-                            <span id="add-mesa-code-preview" style="font-family: var(--font-heading); font-size: 1.15rem; font-weight: 800; color: var(--primary-color);">001A</span>
+                        <div
+                            style="background-color: #f1f5f9; padding: 10px 14px; border-radius: 6px; border: 1px dashed #cbd5e1; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">Código de
+                                Mesa Resultante:</span>
+                            <span id="add-mesa-code-preview"
+                                style="font-family: var(--font-heading); font-size: 1.15rem; font-weight: 800; color: var(--primary-color);">001A</span>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label for="add-mesa-census" style="color: var(--text-primary); font-weight:700;">Censo Electoral (Electores)</label>
-                        <input type="number" id="add-mesa-census" class="portal-input" placeholder="Ej: 750" required min="1">
+                        <label for="add-mesa-census" style="color: var(--text-primary); font-weight:700;">Censo
+                            Electoral (Electores)</label>
+                        <input type="number" id="add-mesa-census" class="portal-input" placeholder="Ej: 750" required
+                            min="1">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -786,7 +902,8 @@
     <div id="modal-admin-edit-votes" class="modal-container hidden">
         <div class="modal-card large">
             <div class="modal-header">
-                <h3><i class="fa-solid fa-pen-to-square" style="color: var(--primary-color);"></i> Modificación de Votos (Admin) - <span id="modal-admin-votes-mesa-code">001A</span></h3>
+                <h3><i class="fa-solid fa-pen-to-square" style="color: var(--primary-color);"></i> Modificación de Votos
+                    (Admin) - <span id="modal-admin-votes-mesa-code">001A</span></h3>
                 <button class="modal-close" id="btn-close-admin-edit-votes">&times;</button>
             </div>
             <form id="form-admin-edit-votes">
@@ -795,32 +912,40 @@
                     <div id="admin-edit-votes-alert-box" class="alert-box info">
                         <i id="admin-edit-votes-alert-icon" class="fa-solid fa-circle-info"></i>
                         <div>
-                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-                                <strong id="admin-edit-votes-alert-title">Evaluación de Criticidad de la Modificación</strong>
-                                <span id="admin-edit-votes-alert-badge" class="alert-critical-badge info">Nivel: Bajo (Info)</span>
+                            <div
+                                style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                                <strong id="admin-edit-votes-alert-title">Evaluación de Criticidad de la
+                                    Modificación</strong>
+                                <span id="admin-edit-votes-alert-badge" class="alert-critical-badge info">Nivel: Bajo
+                                    (Info)</span>
                             </div>
-                            <span id="admin-edit-votes-alert-desc">Los datos modificados están dentro de los márgenes normales de participación y censo.</span>
+                            <span id="admin-edit-votes-alert-desc">Los datos modificados están dentro de los márgenes
+                                normales de participación y censo.</span>
                         </div>
                     </div>
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
                         <div class="stat-card" style="padding: 10px;">
                             <span class="stat-label">Censo Total Mesa</span>
-                            <span id="admin-edit-votes-census-val" class="stat-value" style="font-size: 1.2rem;">0</span>
+                            <span id="admin-edit-votes-census-val" class="stat-value"
+                                style="font-size: 1.2rem;">0</span>
                         </div>
                         <div class="stat-card" style="padding: 10px;">
                             <span class="stat-label">Total Votos Resultantes</span>
-                            <span id="admin-edit-votes-total-val" class="stat-value" style="font-size: 1.2rem; color: var(--primary-color);">0</span>
+                            <span id="admin-edit-votes-total-val" class="stat-value"
+                                style="font-size: 1.2rem; color: var(--primary-color);">0</span>
                         </div>
                     </div>
 
                     <!-- Formulario de Votos -->
-                    <div id="admin-edit-votes-fields-container" class="votos-entry-grid" style="max-height: 320px; overflow-y: auto; padding-right: 6px;">
+                    <div id="admin-edit-votes-fields-container" class="votos-entry-grid"
+                        style="max-height: 320px; overflow-y: auto; padding-right: 6px;">
                         <!-- Rellenado dinámicamente -->
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn-header btn-secondary" id="btn-cancel-admin-edit-votes">Cancelar</button>
+                    <button type="button" class="btn-header btn-secondary"
+                        id="btn-cancel-admin-edit-votes">Cancelar</button>
                     <button type="submit" class="btn-header btn-primary" id="btn-save-admin-edit-votes">
                         <i class="fa-solid fa-floppy-disk"></i> Guardar Cambios de Votos
                     </button>
@@ -833,26 +958,34 @@
     <div id="modal-admin-edit-members" class="modal-container hidden">
         <div class="modal-card">
             <div class="modal-header">
-                <h3><i class="fa-solid fa-users-gear" style="color: var(--primary-color);"></i> Modificar Miembros de Mesa - <span id="modal-admin-members-mesa-code">001A</span></h3>
+                <h3><i class="fa-solid fa-users-gear" style="color: var(--primary-color);"></i> Modificar Miembros de
+                    Mesa - <span id="modal-admin-members-mesa-code">001A</span></h3>
                 <button class="modal-close" id="btn-close-admin-edit-members">&times;</button>
             </div>
             <form id="form-admin-edit-members">
                 <div class="modal-body">
                     <div class="form-group">
-                        <label for="admin-member-president" style="color: var(--text-primary); font-weight: 700;">Presidente/a de Mesa</label>
-                        <input type="text" id="admin-member-president" class="portal-input" placeholder="Nombre completo" required>
+                        <label for="admin-member-president"
+                            style="color: var(--text-primary); font-weight: 700;">Presidente/a de Mesa</label>
+                        <input type="text" id="admin-member-president" class="portal-input"
+                            placeholder="Nombre completo" required>
                     </div>
                     <div class="form-group">
-                        <label for="admin-member-vocal1" style="color: var(--text-primary); font-weight: 700;">Primer Vocal</label>
-                        <input type="text" id="admin-member-vocal1" class="portal-input" placeholder="Nombre completo" required>
+                        <label for="admin-member-vocal1" style="color: var(--text-primary); font-weight: 700;">Primer
+                            Vocal</label>
+                        <input type="text" id="admin-member-vocal1" class="portal-input" placeholder="Nombre completo"
+                            required>
                     </div>
                     <div class="form-group">
-                        <label for="admin-member-vocal2" style="color: var(--text-primary); font-weight: 700;">Segundo Vocal</label>
-                        <input type="text" id="admin-member-vocal2" class="portal-input" placeholder="Nombre completo" required>
+                        <label for="admin-member-vocal2" style="color: var(--text-primary); font-weight: 700;">Segundo
+                            Vocal</label>
+                        <input type="text" id="admin-member-vocal2" class="portal-input" placeholder="Nombre completo"
+                            required>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn-header btn-secondary" id="btn-cancel-admin-edit-members">Cancelar</button>
+                    <button type="button" class="btn-header btn-secondary"
+                        id="btn-cancel-admin-edit-members">Cancelar</button>
                     <button type="submit" class="btn-header btn-primary">
                         <i class="fa-solid fa-user-check"></i> Actualizar Miembros
                     </button>
@@ -865,21 +998,27 @@
     <div id="modal-discrepancy-warning" class="modal-container hidden">
         <div class="modal-card" style="max-width: 520px; border-color: rgba(245, 158, 11, 0.5);">
             <div class="modal-header" style="background-color: rgba(245, 158, 11, 0.1);">
-                <h3 style="color: #b45309;"><i class="fa-solid fa-triangle-exclamation"></i> Discrepancia en Avance de Participación</h3>
+                <h3 style="color: #b45309;"><i class="fa-solid fa-triangle-exclamation"></i> Discrepancia en Avance de
+                    Participación</h3>
                 <button class="modal-close" id="btn-close-discrepancy-modal">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="alert-box warning" style="margin-bottom: 14px;">
                     <i class="fa-solid fa-circle-exclamation"></i>
                     <div>
-                        <strong style="display: block; margin-bottom: 4px;">Detección de Discrepancia en el Cómputo</strong>
-                        <span id="discrepancy-modal-desc">El total de votos registrado en este avance es inferior al avance anterior transmitido.</span>
+                        <strong style="display: block; margin-bottom: 4px;">Detección de Discrepancia en el
+                            Cómputo</strong>
+                        <span id="discrepancy-modal-desc">El total de votos registrado en este avance es inferior al
+                            avance anterior transmitido.</span>
                     </div>
                 </div>
                 <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 14px;">
-                    Si se ha tratado de una corrección por un error en el conteo previo de la primera participación, puedes confirmar y transmitir la rectificación. En caso contrario, pulsa cancelar para revisar los datos.
+                    Si se ha tratado de una corrección por un error en el conteo previo de la primera participación,
+                    puedes confirmar y transmitir la rectificación. En caso contrario, pulsa cancelar para revisar los
+                    datos.
                 </p>
-                <div style="background: #f8fafc; border-radius: 8px; padding: 12px; font-size: 0.8rem; border: 1px dashed #cbd5e1;" id="discrepancy-modal-details">
+                <div style="background: #f8fafc; border-radius: 8px; padding: 12px; font-size: 0.8rem; border: 1px dashed #cbd5e1;"
+                    id="discrepancy-modal-details">
                     <!-- Detalle comparativo (Participación 1 vs 2) -->
                 </div>
             </div>
@@ -887,7 +1026,8 @@
                 <button type="button" class="btn-header btn-secondary" id="btn-cancel-discrepancy">
                     <i class="fa-solid fa-arrow-left"></i> Volver y Corregir
                 </button>
-                <button type="button" class="btn-header btn-primary" id="btn-confirm-discrepancy" style="background-color: #d97706; border-color: #b45309;">
+                <button type="button" class="btn-header btn-primary" id="btn-confirm-discrepancy"
+                    style="background-color: #d97706; border-color: #b45309;">
                     <i class="fa-solid fa-check"></i> Confirmar y Transmitir Rectificación
                 </button>
             </div>
@@ -902,55 +1042,78 @@
                 <button class="modal-close" id="btn-close-parties-modal">&times;</button>
             </div>
             <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
-                
+
                 <!-- 1. Formulario de Alta de Partido -->
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 16px; border-radius: 10px; margin-bottom: 20px;">
-                    <div style="font-weight: 700; font-size: 0.9rem; margin-bottom: 12px; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-                        <i class="fa-solid fa-plus-circle" style="color: var(--primary-color);"></i> Nueva Fuerza Política
+                <div
+                    style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 16px; border-radius: 10px; margin-bottom: 20px;">
+                    <div
+                        style="font-weight: 700; font-size: 0.9rem; margin-bottom: 12px; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-plus-circle" style="color: var(--primary-color);"></i> Nueva Fuerza
+                        Política
                     </div>
-                    
+
                     <form id="form-add-party" style="display: grid; grid-template-columns: 1fr 2fr; gap: 12px;">
                         <div>
-                            <label style="font-weight: 600; font-size: 0.8rem; display: block; margin-bottom: 4px;">Siglas / ID</label>
-                            <input type="text" id="party-id-input" class="portal-input" placeholder="Ej: PODEMOS" required style="text-transform: uppercase;">
+                            <label
+                                style="font-weight: 600; font-size: 0.8rem; display: block; margin-bottom: 4px;">Siglas
+                                / ID</label>
+                            <input type="text" id="party-id-input" class="portal-input" placeholder="Ej: PODEMOS"
+                                required style="text-transform: uppercase;">
                         </div>
-                        
+
                         <div>
-                            <label style="font-weight: 600; font-size: 0.8rem; display: block; margin-bottom: 4px;">Nombre Completo</label>
-                            <input type="text" id="party-name-input" class="portal-input" placeholder="Ej: Podemos - Izquierda Unida" required>
+                            <label
+                                style="font-weight: 600; font-size: 0.8rem; display: block; margin-bottom: 4px;">Nombre
+                                Completo</label>
+                            <input type="text" id="party-name-input" class="portal-input"
+                                placeholder="Ej: Podemos - Izquierda Unida" required>
                         </div>
-                        
+
                         <div>
-                            <label style="font-weight: 600; font-size: 0.8rem; display: block; margin-bottom: 4px;">Color Representativo</label>
+                            <label
+                                style="font-weight: 600; font-size: 0.8rem; display: block; margin-bottom: 4px;">Color
+                                Representativo</label>
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <input type="color" id="party-color-input" value="#8b5cf6" style="width: 45px; height: 38px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
-                                <span id="party-color-hex" style="font-size: 0.8rem; font-family: monospace;">#8b5cf6</span>
+                                <input type="color" id="party-color-input" value="#8b5cf6"
+                                    style="width: 45px; height: 38px; border: none; border-radius: 6px; cursor: pointer; background: transparent;">
+                                <span id="party-color-hex"
+                                    style="font-size: 0.8rem; font-family: monospace;">#8b5cf6</span>
                             </div>
                         </div>
 
                         <div>
-                            <label style="font-weight: 600; font-size: 0.8rem; display: block; margin-bottom: 4px;">Logotipo de la Formación</label>
-                            <div style="display: flex; flex-direction: column; gap: 6px;">
-                                <select id="party-logo-preset-select" class="portal-input" style="font-size: 0.8rem;">
-                                    <option value="">-- Seleccionar imagen existente --</option>
+                            <label
+                                style="font-weight: 600; font-size: 0.8rem; display: block; margin-bottom: 4px;">Logotipo
+                                de la Formación</label>
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                <select id="party-logo-preset-select" class="portal-input" style="font-size: 0.85rem;"
+                                    required>
+                                    <option value="">-- Seleccionar imagen --</option>
                                     <option value="Imagenes/PP.png">PP (Imagenes/PP.png)</option>
+                                    <option value="Imagenes/PP2.png">PP 2 (Imagenes/PP2.png)</option>
                                     <option value="Imagenes/PSOE.png">PSOE (Imagenes/PSOE.png)</option>
                                     <option value="Imagenes/VOX.png">VOX (Imagenes/VOX.png)</option>
                                     <option value="Imagenes/IU.png">IU (Imagenes/IU.png)</option>
-                                    <option value="Imagenes/sumar-logo-png_seeklogo-487418.png">Sumar (Imagenes/sumar...)</option>
-                                    <option value="Imagenes/UnidasPodemos.png">Unidas Podemos (Imagenes/UnidasPodemos.png)</option>
-                                    <option value="Imagenes/Ciudadanos.png">Ciudadanos (Imagenes/Ciudadanos.png)</option>
+                                    <option value="Imagenes/sumar-logo-png_seeklogo-487418.png">Sumar
+                                        (Imagenes/sumar...)</option>
+                                    <option value="Imagenes/UnidasPodemos.png">Unidas Podemos
+                                        (Imagenes/UnidasPodemos.png)</option>
+                                    <option value="Imagenes/Ciudadanos.png">Ciudadanos (Imagenes/Ciudadanos.png)
+                                    </option>
                                     <option value="Imagenes/PACMA.png">PACMA (Imagenes/PACMA.png)</option>
-                                    <option value="Imagenes/Seacabolafiesta.png">SALF (Imagenes/Seacabolafiesta.png)</option>
-                                    <option value="Imagenes/Logo_OITR.png">Genérico (Imagenes/Logo_OITR.png)</option>
+                                    <option value="Imagenes/Seacabolafiesta.png">SALF (Imagenes/Seacabolafiesta.png)
+                                    </option>
+                                    <option value="Imagenes/Logo_OITR.png">Genérico OITR (Imagenes/Logo_OITR.png)
+                                    </option>
                                 </select>
-                                <span style="font-size: 0.72rem; color: var(--text-muted); text-align: center;">o sube tu propia imagen (Data URL / Base64):</span>
-                                <input type="file" id="party-logo-file-input" accept="image/*" class="portal-input" style="font-size: 0.75rem; padding: 6px;">
+                                <span style="font-size: 0.72rem; color: var(--text-muted);">Sube nuevos logos a la
+                                    carpeta <code>Imagenes/</code> del proyecto.</span>
                             </div>
                         </div>
 
                         <div style="grid-column: span 2; display: flex; justify-content: flex-end; margin-top: 6px;">
-                            <button type="submit" class="btn-header btn-primary" style="background-color: #8b5cf6; border-color: #7c3aed;">
+                            <button type="submit" class="btn-header btn-primary"
+                                style="background-color: #8b5cf6; border-color: #7c3aed;">
                                 <i class="fa-solid fa-plus"></i> Guardar Fuerza Política
                             </button>
                         </div>
@@ -958,11 +1121,13 @@
                 </div>
 
                 <!-- 2. Lista de Partidos Registrados -->
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #cbd5e1; padding-bottom: 6px;">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #cbd5e1; padding-bottom: 6px;">
                     <div style="font-weight: 700; font-size: 0.9rem; color: #0f172a;">
                         Fuerzas Políticas Registradas (<span id="parties-count-badge">0</span>)
                     </div>
-                    <button id="btn-admin-delete-all-parties" class="btn-header btn-danger" style="padding: 5px 10px; font-size: 0.78rem;" title="Eliminar todas las formaciones políticas">
+                    <button id="btn-admin-delete-all-parties" class="btn-header btn-danger"
+                        style="padding: 5px 10px; font-size: 0.78rem;" title="Eliminar todas las formaciones políticas">
                         <i class="fa-solid fa-trash-can"></i> Borrar Todas
                     </button>
                 </div>
@@ -985,11 +1150,12 @@
     <!-- SCRIPTS DE LA APLICACIÓN -->
     <!-- ArcGIS SDK JS -->
     <script src="https://js.arcgis.com/4.29/"></script>
-    
+
     <!-- Datos de Configuración del Proyecto (Mapeo Rivas) -->
     <script src="section_colegio_mapping.js?v=2.0.0"></script>
-    
+
     <!-- Lógica de Control y Sincronización -->
     <script src="app.js?v=2.0.0"></script>
 </body>
+
 </html>

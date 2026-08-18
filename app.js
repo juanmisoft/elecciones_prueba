@@ -1239,12 +1239,15 @@ require([
         if (!state.selectedMesa) return;
         const censo = parseInt(state.selectedMesa.censo, 10) || 0;
         const input = document.getElementById("input-part1-voters");
-        let valStr = input ? input.value : "0";
-        if (valStr.length > 1 && valStr.startsWith("0")) {
-            valStr = valStr.replace(/^0+(?=\d)/, '');
-            input.value = valStr;
+        let rawStr = input ? input.value : "";
+        
+        // Si hay ceros a la izquierda (ej: 05, 0120), limpiarlos automáticamente
+        if (rawStr.length > 1 && /^0+[0-9]+/.test(rawStr)) {
+            rawStr = rawStr.replace(/^0+/, '');
+            input.value = rawStr;
         }
-        const val = Math.max(0, parseInt(valStr, 10) || 0);
+
+        const val = rawStr === "" ? 0 : Math.max(0, parseInt(rawStr, 10) || 0);
         const pct = censo > 0 ? ((val / censo) * 100).toFixed(2) : "0.00";
         
         const valEl = document.getElementById("part1-live-percent-val");
@@ -1258,12 +1261,15 @@ require([
         if (!state.selectedMesa) return;
         const censo = parseInt(state.selectedMesa.censo, 10) || 0;
         const input = document.getElementById("input-part2-voters");
-        let valStr = input ? input.value : "0";
-        if (valStr.length > 1 && valStr.startsWith("0")) {
-            valStr = valStr.replace(/^0+(?=\d)/, '');
-            input.value = valStr;
+        let rawStr = input ? input.value : "";
+        
+        // Si hay ceros a la izquierda (ej: 05, 0120), limpiarlos automáticamente
+        if (rawStr.length > 1 && /^0+[0-9]+/.test(rawStr)) {
+            rawStr = rawStr.replace(/^0+/, '');
+            input.value = rawStr;
         }
-        const val = Math.max(0, parseInt(valStr, 10) || 0);
+
+        const val = rawStr === "" ? 0 : Math.max(0, parseInt(rawStr, 10) || 0);
         const pct = censo > 0 ? ((val / censo) * 100).toFixed(2) : "0.00";
         
         const valEl = document.getElementById("part2-live-percent-val");
@@ -1423,15 +1429,89 @@ require([
         document.getElementById("portal-escrutinio-container").classList.remove("hidden");
     }
 
+    // --------------------------------------------------------------------------
+    // GESTIÓN DE LOGOS PERSONALIZADOS Y CONFIGURACIÓN DE PARTIDOS
+    // --------------------------------------------------------------------------
+    function getCustomPartyLogos() {
+        try {
+            const raw = localStorage.getItem("elecciones_custom_party_logos");
+            return raw ? JSON.parse(raw) : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function saveCustomPartyLogo(partyId, dataUrl) {
+        if (!partyId || !dataUrl) return;
+        try {
+            const custom = getCustomPartyLogos();
+            custom[partyId] = dataUrl;
+            localStorage.setItem("elecciones_custom_party_logos", JSON.stringify(custom));
+        } catch (e) {
+            console.warn("Error guardando logo personalizado en localStorage:", e);
+        }
+    }
+
+    function removeCustomPartyLogo(partyId) {
+        if (!partyId) return;
+        try {
+            const custom = getCustomPartyLogos();
+            delete custom[partyId];
+            localStorage.setItem("elecciones_custom_party_logos", JSON.stringify(custom));
+        } catch (e) {}
+    }
+
+    // Redimensiona imágenes locales a un tamaño óptimo (máx 128x128) para guardarlas como base64 ultraligero
+    function resizeImageToDataURL(file, maxWidth, maxHeight, callback) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            const img = new Image();
+            img.onload = function() {
+                let width = img.width;
+                let height = img.height;
+                if (width > maxWidth || height > maxHeight) {
+                    if (width > height) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    } else {
+                        width = Math.round((width * maxHeight) / height);
+                        height = maxHeight;
+                    }
+                }
+                const canvas = document.createElement("canvas");
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0, width, height);
+                const dataUrl = canvas.toDataURL("image/png");
+                callback(dataUrl);
+            };
+            img.onerror = function() {
+                callback("Imagenes/Logo_OITR.png");
+            };
+            img.src = evt.target.result;
+        };
+        reader.onerror = function() {
+            callback("Imagenes/Logo_OITR.png");
+        };
+        reader.readAsDataURL(file);
+    }
+
     function loadPartiesFromStorage() {
         const savedParties = localStorage.getItem("elecciones_parties_config");
+        const customLogos = getCustomPartyLogos();
         console.log("[PARTIDOS] localStorage elecciones_parties_config =", savedParties);
         if (savedParties !== null) {
             try {
                 const parsed = JSON.parse(savedParties);
                 if (Array.isArray(parsed)) {
                     PARTIES_CONFIG.length = 0;
-                    parsed.forEach(p => PARTIES_CONFIG.push(p));
+                    parsed.forEach(p => {
+                        if (p && p.id && customLogos[p.id]) {
+                            p.logo = customLogos[p.id];
+                        }
+                        PARTIES_CONFIG.push(p);
+                    });
                     window.PARTIES_CONFIG = PARTIES_CONFIG;
                     console.log("[PARTIDOS] Cargados desde localStorage:", PARTIES_CONFIG.length, "partidos");
                     return PARTIES_CONFIG;
@@ -1449,14 +1529,28 @@ require([
 
     function savePartiesToStorage(newParties) {
         console.log("[PARTIDOS] savePartiesToStorage llamado con", Array.isArray(newParties) ? newParties.length : "no-array", "partidos");
+        const customLogos = getCustomPartyLogos();
         if (Array.isArray(newParties)) {
             PARTIES_CONFIG.length = 0;
-            newParties.forEach(p => PARTIES_CONFIG.push(p));
+            newParties.forEach(p => {
+                if (p && p.id) {
+                    if (customLogos[p.id]) {
+                        p.logo = customLogos[p.id];
+                    } else if (p.logo && p.logo.startsWith("data:")) {
+                        saveCustomPartyLogo(p.id, p.logo);
+                    }
+                }
+                PARTIES_CONFIG.push(p);
+            });
             window.PARTIES_CONFIG = PARTIES_CONFIG;
         }
-        const json = JSON.stringify(PARTIES_CONFIG);
-        localStorage.setItem("elecciones_parties_config", json);
-        console.log("[PARTIDOS] Guardado en localStorage:", json);
+        try {
+            const json = JSON.stringify(PARTIES_CONFIG);
+            localStorage.setItem("elecciones_parties_config", json);
+            console.log("[PARTIDOS] Guardado en localStorage:", json);
+        } catch (e) {
+            console.warn("Error guardando partidos en localStorage:", e);
+        }
     }
 
     function getPartiesConfig() {
@@ -1753,8 +1847,34 @@ require([
 
         document.getElementById("admin-metric-votos-total").textContent = totalVotosValidos.toLocaleString();
         
-        const partPercent = censoTotal > 0 ? ((totalVotosEmitidos / censoTotal) * 100).toFixed(2) : "0.00";
-        document.getElementById("admin-metric-participation").textContent = `${partPercent}%`;
+        // Cálculo de participación dinámica en Administración (Ponderada sobre mesas comunicadas)
+        let partPercent = "0.00";
+        let partSub = "Pendiente de avances";
+
+        const part2Mesas = state.mesas.filter(m => (m.part2_votos || 0) > 0 || m.estado === "Part2_Enviada" || m.estado === "Cerrada");
+        const part1Mesas = state.mesas.filter(m => (m.part1_votos || 0) > 0 || m.estado === "Part1_Enviada" || m.estado === "Part2_Enviada" || m.estado === "Cerrada");
+
+        if (closedMesas > 0) {
+            let closedCensus = 0;
+            state.mesas.forEach(m => { if (m.estado === "Cerrada") closedCensus += (m.censo || 0); });
+            partPercent = closedCensus > 0 ? ((totalVotosEmitidos / closedCensus) * 100).toFixed(2) : "0.00";
+            partSub = `${totalVotosEmitidos.toLocaleString()} votos (${closedMesas} de ${totalMesas} mesas cerradas)`;
+        } else if (part2Mesas.length > 0) {
+            const sumP2Votos = part2Mesas.reduce((acc, m) => acc + (m.part2_votos || 0), 0);
+            const sumP2Censo = part2Mesas.reduce((acc, m) => acc + (m.censo || 0), 0);
+            partPercent = sumP2Censo > 0 ? ((sumP2Votos / sumP2Censo) * 100).toFixed(2) : "0.00";
+            partSub = `${sumP2Votos.toLocaleString()} votos (2º Avance 18:00h · ${part2Mesas.length} de ${totalMesas} mesas)`;
+        } else if (part1Mesas.length > 0) {
+            const sumP1Votos = part1Mesas.reduce((acc, m) => acc + (m.part1_votos || 0), 0);
+            const sumP1Censo = part1Mesas.reduce((acc, m) => acc + (m.censo || 0), 0);
+            partPercent = sumP1Censo > 0 ? ((sumP1Votos / sumP1Censo) * 100).toFixed(2) : "0.00";
+            partSub = `${sumP1Votos.toLocaleString()} votos (1º Avance 14:00h · ${part1Mesas.length} de ${totalMesas} mesas)`;
+        }
+
+        const adminPartEl = document.getElementById("admin-metric-participation");
+        if (adminPartEl) adminPartEl.textContent = `${partPercent}%`;
+        const adminPartSubEl = document.getElementById("admin-metric-participation-sub");
+        if (adminPartSubEl) adminPartSubEl.textContent = partSub;
 
         // Renderizar Colegios con botones de Cierre
         renderAdminColegiosList();
@@ -2165,11 +2285,11 @@ require([
         const nameInput = document.getElementById("party-name-input");
         const colorInput = document.getElementById("party-color-input");
         const presetSelect = document.getElementById("party-logo-preset-select");
-        const fileInput = document.getElementById("party-logo-file-input");
 
         const rawId = idInput.value.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
         const rawName = nameInput.value.trim();
         const color = colorInput.value;
+        const logoUrl = (presetSelect && presetSelect.value) ? presetSelect.value : "Imagenes/Logo_OITR.png";
 
         if (!rawId || !rawName) {
             alert("Por favor, introduce las siglas (ID) y el nombre completo de la formación política.");
@@ -2183,55 +2303,39 @@ require([
 
         const fieldName = `votos_${rawId.toLowerCase()}`;
 
-        const processPartySave = (logoUrl) => {
-            const newParty = {
-                id: rawId,
-                name: rawName,
-                color: color,
-                logo: logoUrl || "Imagenes/Logo_OITR.png",
-                field: fieldName
-            };
-
-            const updated = [...PARTIES_CONFIG, newParty];
-            savePartiesToStorage(updated);
-            savePartiesToArcGIS(PARTIES_CONFIG); // Sincronizar con servidor para otros navegadores
-
-            // Inicializar campo en 0 para todas las mesas en memoria
-            state.mesas.forEach(m => {
-                if (m[fieldName] === undefined) {
-                    m[fieldName] = 0;
-                }
-            });
-            saveLocalDatabase();
-
-            // Limpiar campos del formulario
-            idInput.value = "";
-            nameInput.value = "";
-            presetSelect.value = "";
-            fileInput.value = "";
-
-            // Re-generar vista y notificar a la app
-            generateVoteFields();
-            renderAdminPartiesModal();
-            updateGlobalMetrics();
-            renderMapTheme();
-            renderAdminPortal();
-
-            alert(`¡Fuerza política '${rawName}' (${rawId}) agregada con éxito!`);
+        const newParty = {
+            id: rawId,
+            name: rawName,
+            color: color,
+            logo: logoUrl,
+            field: fieldName
         };
 
-        // Si se subió un archivo, lo procesamos como Data URL (Base64)
-        if (fileInput.files && fileInput.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(evt) {
-                processPartySave(evt.target.result);
-            };
-            reader.readAsDataURL(fileInput.files[0]);
-        } else if (presetSelect.value) {
-            processPartySave(presetSelect.value);
-        } else {
-            processPartySave("Imagenes/Logo_OITR.png");
-        }
+        const updated = [...PARTIES_CONFIG, newParty];
+        savePartiesToStorage(updated);
+        savePartiesToArcGIS(PARTIES_CONFIG); // Sincronizar con servidor para otros navegadores
+
+        // Inicializar campo en 0 para todas las mesas en memoria
+        state.mesas.forEach(m => {
+            if (m[fieldName] === undefined) {
+                m[fieldName] = 0;
+            }
+        });
+        saveLocalDatabase();
+
+        // Limpiar campos del formulario
+        idInput.value = "";
+        nameInput.value = "";
+        if (presetSelect) presetSelect.value = "";
+
+        // Re-generar vista y notificar a la app
+        generateVoteFields();
+        renderAdminPartiesModal();
+        updateGlobalMetrics();
+        renderMapTheme();
+        renderAdminPortal();
+
+        alert(`¡Fuerza política '${rawName}' (${rawId}) agregada con éxito!`);
     }
 
     function handleAdminDeleteParty(partyId) {
@@ -2240,6 +2344,8 @@ require([
 
         const conf = confirm(`¿Estás seguro de que deseas eliminar la fuerza política '${party.name} (${party.id})'? Se borrarán sus datos contabilizados.`);
         if (!conf) return;
+
+        removeCustomPartyLogo(partyId);
 
         const fieldToDelete = party.field;
         const updated = PARTIES_CONFIG.filter(p => p.id !== partyId);
@@ -2487,45 +2593,53 @@ require([
         });
         document.getElementById("global-census-val").textContent = totalCensus.toLocaleString();
 
-        // 1. CÁLCULO DE AVANCE 1 (14:00h)
+        // 1. CÁLCULO DE AVANCE 1 (14:00h) - Ponderado sobre mesas comunicadas
         const part1Mesas = state.mesas.filter(m => (m.part1_votos || 0) > 0 || m.estado === "Part1_Enviada" || m.estado === "Part2_Enviada" || m.estado === "Cerrada");
         const p1ValEl = document.getElementById("global-part1-val");
         const p1SubEl = document.getElementById("global-part1-sub");
         let pctP1 = "0.00";
+        let sumP1Votos = 0;
+        let sumP1Censo = 0;
+
         if (part1Mesas.length > 0) {
-            const sumP1 = part1Mesas.reduce((acc, m) => {
+            part1Mesas.forEach(m => {
                 let v = m.part1_votos || 0;
                 if (!v && m.estado === "Part1_Enviada") {
                     v = PARTIES_CONFIG.reduce((s, p) => s + (m[p.field] || 0), 0) + (m.votos_blancos || 0) + (m.votos_nulos || 0);
                 }
-                return acc + v;
-            }, 0);
-            const censoP1 = part1Mesas.reduce((acc, m) => acc + (m.censo || 0), 0);
-            pctP1 = censoP1 > 0 ? ((sumP1 / censoP1) * 100).toFixed(2) : "0.00";
+                sumP1Votos += v;
+                sumP1Censo += (m.censo || 0);
+            });
+
+            pctP1 = sumP1Censo > 0 ? ((sumP1Votos / sumP1Censo) * 100).toFixed(2) : "0.00";
             if (p1ValEl) p1ValEl.textContent = `${pctP1}%`;
-            if (p1SubEl) p1SubEl.textContent = `${sumP1.toLocaleString()} votos (${part1Mesas.length} mesas)`;
+            if (p1SubEl) p1SubEl.textContent = `${sumP1Votos.toLocaleString()} votos (${part1Mesas.length} de ${totalMesas} mesas)`;
         } else {
             if (p1ValEl) p1ValEl.textContent = "--";
             if (p1SubEl) p1SubEl.textContent = "Pendiente (14:00h)";
         }
 
-        // 2. CÁLCULO DE AVANCE 2 (18:00h)
+        // 2. CÁLCULO DE AVANCE 2 (18:00h) - Ponderado sobre mesas comunicadas
         const part2Mesas = state.mesas.filter(m => (m.part2_votos || 0) > 0 || m.estado === "Part2_Enviada" || m.estado === "Cerrada");
         const p2ValEl = document.getElementById("global-part2-val");
         const p2SubEl = document.getElementById("global-part2-sub");
         let pctP2 = "0.00";
+        let sumP2Votos = 0;
+        let sumP2Censo = 0;
+
         if (part2Mesas.length > 0) {
-            const sumP2 = part2Mesas.reduce((acc, m) => {
+            part2Mesas.forEach(m => {
                 let v = m.part2_votos || 0;
                 if (!v && (m.estado === "Part2_Enviada" || m.estado === "Cerrada")) {
                     v = PARTIES_CONFIG.reduce((s, p) => s + (m[p.field] || 0), 0) + (m.votos_blancos || 0) + (m.votos_nulos || 0);
                 }
-                return acc + v;
-            }, 0);
-            const censoP2 = part2Mesas.reduce((acc, m) => acc + (m.censo || 0), 0);
-            pctP2 = censoP2 > 0 ? ((sumP2 / censoP2) * 100).toFixed(2) : "0.00";
+                sumP2Votos += v;
+                sumP2Censo += (m.censo || 0);
+            });
+
+            pctP2 = sumP2Censo > 0 ? ((sumP2Votos / sumP2Censo) * 100).toFixed(2) : "0.00";
             if (p2ValEl) p2ValEl.textContent = `${pctP2}%`;
-            if (p2SubEl) p2SubEl.textContent = `${sumP2.toLocaleString()} votos (${part2Mesas.length} mesas)`;
+            if (p2SubEl) p2SubEl.textContent = `${sumP2Votos.toLocaleString()} votos (${part2Mesas.length} de ${totalMesas} mesas)`;
         } else {
             if (p2ValEl) p2ValEl.textContent = "--";
             if (p2SubEl) p2SubEl.textContent = "Pendiente (18:00h)";
@@ -2535,11 +2649,13 @@ require([
         let totalNulos = 0;
         let totalBlancos = 0;
         let totalVotosValidos = 0;
+        let closedCensus = 0;
         const partyTotals = {};
         PARTIES_CONFIG.forEach(p => { partyTotals[p.id] = 0; });
 
         state.mesas.forEach(m => {
             if (m.estado === "Cerrada") {
+                closedCensus += (m.censo || 0);
                 totalNulos += (m.votos_nulos || 0);
                 totalBlancos += (m.votos_blancos || 0);
                 totalVotosValidos += (m.votos_blancos || 0);
@@ -2554,20 +2670,32 @@ require([
 
         const totalVotosEmitidos = totalVotosValidos + totalNulos;
 
-        // Tarjeta de Participación Global
+        // Tarjeta de Participación General (con subtítulo explicativo de la fase activa)
+        const globalPartValEl = document.getElementById("global-participation-val");
+        const globalPartBarEl = document.getElementById("global-participation-bar");
+        const globalPartSubEl = document.getElementById("global-participation-sub");
+
         if (closedMesas > 0) {
-            const partPercent = totalCensus > 0 ? ((totalVotosEmitidos / totalCensus) * 100).toFixed(2) : "0.00";
-            document.getElementById("global-participation-val").textContent = `${partPercent}%`;
-            document.getElementById("global-participation-bar").style.width = `${partPercent}%`;
+            const partPercent = closedCensus > 0 ? ((totalVotosEmitidos / closedCensus) * 100).toFixed(2) : "0.00";
+            if (globalPartValEl) globalPartValEl.textContent = `${partPercent}%`;
+            if (globalPartBarEl) globalPartBarEl.style.width = `${partPercent}%`;
+            if (globalPartSubEl) {
+                globalPartSubEl.textContent = (closedMesas === totalMesas)
+                    ? `Participación Final Oficial`
+                    : `Escrutinio (${closedMesas} de ${totalMesas} mesas cerradas)`;
+            }
         } else if (part2Mesas.length > 0 && parseFloat(pctP2) > 0) {
-            document.getElementById("global-participation-val").textContent = `${pctP2}%`;
-            document.getElementById("global-participation-bar").style.width = `${pctP2}%`;
+            if (globalPartValEl) globalPartValEl.textContent = `${pctP2}%`;
+            if (globalPartBarEl) globalPartBarEl.style.width = `${pctP2}%`;
+            if (globalPartSubEl) globalPartSubEl.textContent = `2º Avance 18:00h (${part2Mesas.length} de ${totalMesas} mesas)`;
         } else if (part1Mesas.length > 0 && parseFloat(pctP1) > 0) {
-            document.getElementById("global-participation-val").textContent = `${pctP1}%`;
-            document.getElementById("global-participation-bar").style.width = `${pctP1}%`;
+            if (globalPartValEl) globalPartValEl.textContent = `${pctP1}%`;
+            if (globalPartBarEl) globalPartBarEl.style.width = `${pctP1}%`;
+            if (globalPartSubEl) globalPartSubEl.textContent = `1º Avance 14:00h (${part1Mesas.length} de ${totalMesas} mesas)`;
         } else {
-            document.getElementById("global-participation-val").textContent = `0.00%`;
-            document.getElementById("global-participation-bar").style.width = `0%`;
+            if (globalPartValEl) globalPartValEl.textContent = `0.00%`;
+            if (globalPartBarEl) globalPartBarEl.style.width = `0%`;
+            if (globalPartSubEl) globalPartSubEl.textContent = `Pendiente de avances`;
         }
 
         // Votos Nulos y Blancos
@@ -2812,7 +2940,8 @@ require([
             const closedMesas = colMesas.filter(m => m.estado === "Cerrada").length;
 
             // Votos acumulados en este colegio
-            let colVotos = 0;
+            let colVotosValidos = 0;
+            let colVotosNulos = 0;
             let colCenso = 0;
             const colPartyVotes = {};
             PARTIES_CONFIG.forEach(p => { colPartyVotes[p.id] = 0; });
@@ -2823,11 +2952,14 @@ require([
                     PARTIES_CONFIG.forEach(p => {
                         const v = m[p.field] || 0;
                         colPartyVotes[p.id] += v;
-                        colVotos += v;
+                        colVotosValidos += v;
                     });
-                    colVotos += (m.votos_blancos || 0);
+                    colVotosValidos += (m.votos_blancos || 0);
+                    colVotosNulos += (m.votos_nulos || 0);
                 }
             });
+
+            const colVotosEmitidos = colVotosValidos + colVotosNulos;
 
             // Ganador del colegio
             let winnerParty = null;
@@ -2841,14 +2973,24 @@ require([
 
             const scrutiny = totalMesas > 0 ? ((closedMesas / totalMesas) * 100).toFixed(0) : "0";
             
-            // Participación del colegio: si hay mesas cerradas la calculamos, sino miramos avance 1 o 2
+            // Participación del colegio: calculada sobre el censo de las mesas comunicadas
             let partRate = "0.0";
-            if (closedMesas > 0 && colCenso > 0) {
-                partRate = ((colVotos / colCenso) * 100).toFixed(1);
+            if (closedMesas > 0) {
+                let closedColCenso = 0;
+                colMesas.forEach(m => { if (m.estado === "Cerrada") closedColCenso += (m.censo || 0); });
+                partRate = closedColCenso > 0 ? ((colVotosEmitidos / closedColCenso) * 100).toFixed(1) : "0.0";
             } else {
-                const p1Votos = colMesas.reduce((acc, m) => acc + (m.part1_votos || 0), 0);
-                if (p1Votos > 0 && colCenso > 0) {
-                    partRate = ((p1Votos / colCenso) * 100).toFixed(1);
+                const p2Mesas = colMesas.filter(m => (m.part2_votos || 0) > 0 || m.estado === "Part2_Enviada" || m.estado === "Cerrada");
+                const p1Mesas = colMesas.filter(m => (m.part1_votos || 0) > 0 || m.estado === "Part1_Enviada" || m.estado === "Part2_Enviada" || m.estado === "Cerrada");
+
+                if (p2Mesas.length > 0) {
+                    const p2Votos = p2Mesas.reduce((acc, m) => acc + (m.part2_votos || 0), 0);
+                    const p2Censo = p2Mesas.reduce((acc, m) => acc + (m.censo || 0), 0);
+                    partRate = p2Censo > 0 ? ((p2Votos / p2Censo) * 100).toFixed(1) : "0.0";
+                } else if (p1Mesas.length > 0) {
+                    const p1Votos = p1Mesas.reduce((acc, m) => acc + (m.part1_votos || 0), 0);
+                    const p1Censo = p1Mesas.reduce((acc, m) => acc + (m.censo || 0), 0);
+                    partRate = p1Censo > 0 ? ((p1Votos / p1Censo) * 100).toFixed(1) : "0.0";
                 }
             }
 
@@ -2932,12 +3074,22 @@ require([
         document.getElementById("modal-colegio-census-val").textContent = colCensoTotal.toLocaleString();
         
         let partRate = "0.00";
-        if (closedMesas > 0 && colCensoTotal > 0) {
-            partRate = ((colVotesEmitidos / colCensoTotal) * 100).toFixed(2);
+        if (closedMesas > 0) {
+            let closedColCenso = 0;
+            colMesas.forEach(m => { if (m.estado === "Cerrada") closedColCenso += (m.censo || 0); });
+            partRate = closedColCenso > 0 ? ((colVotesEmitidos / closedColCenso) * 100).toFixed(2) : "0.00";
         } else {
-            const p1 = colMesas.reduce((acc, m) => acc + (m.part1_votos || 0), 0);
-            if (p1 > 0 && colCensoTotal > 0) {
-                partRate = ((p1 / colCensoTotal) * 100).toFixed(2);
+            const p2Mesas = colMesas.filter(m => (m.part2_votos || 0) > 0 || m.estado === "Part2_Enviada" || m.estado === "Cerrada");
+            const p1Mesas = colMesas.filter(m => (m.part1_votos || 0) > 0 || m.estado === "Part1_Enviada" || m.estado === "Part2_Enviada" || m.estado === "Cerrada");
+
+            if (p2Mesas.length > 0) {
+                const p2 = p2Mesas.reduce((acc, m) => acc + (m.part2_votos || 0), 0);
+                const p2Censo = p2Mesas.reduce((acc, m) => acc + (m.censo || 0), 0);
+                partRate = p2Censo > 0 ? ((p2 / p2Censo) * 100).toFixed(2) : "0.00";
+            } else if (p1Mesas.length > 0) {
+                const p1 = p1Mesas.reduce((acc, m) => acc + (m.part1_votos || 0), 0);
+                const p1Censo = p1Mesas.reduce((acc, m) => acc + (m.censo || 0), 0);
+                partRate = p1Censo > 0 ? ((p1 / p1Censo) * 100).toFixed(2) : "0.00";
             }
         }
 
@@ -3135,8 +3287,9 @@ require([
 
             let markerSymbol;
             if (winParty.logo) {
+                const logoUrl = (winParty.logo.startsWith("data:") || winParty.logo.startsWith("http")) ? winParty.logo : (baseUrl + winParty.logo);
                 markerSymbol = new PictureMarkerSymbol({
-                    url: baseUrl + winParty.logo,
+                    url: logoUrl,
                     width: "26px",
                     height: "26px"
                 });
@@ -3298,12 +3451,30 @@ require([
         });
 
         const totalMesas = secMesas.length;
-        const activeMesas = secMesas.filter(isMesaActiveWithData).length;
         const closedMesas = secMesas.filter(m => m.estado === "Cerrada").length;
-        const scrutinyPercent = totalMesas > 0 ? ((activeMesas / totalMesas) * 100).toFixed(2) : "0.00";
+        const scrutinyPercent = totalMesas > 0 ? ((closedMesas / totalMesas) * 100).toFixed(2) : "0.00";
 
         const totalVotesEmitidos = votesTotal + nulos;
-        const partPercent = totalCensus > 0 ? ((totalVotesEmitidos / totalCensus) * 100).toFixed(2) : "0.00";
+        
+        let partPercent = "0.00";
+        if (closedMesas > 0) {
+            let closedCensusSec = 0;
+            secMesas.forEach(m => { if (m.estado === "Cerrada") closedCensusSec += (m.censo || 0); });
+            partPercent = closedCensusSec > 0 ? ((totalVotesEmitidos / closedCensusSec) * 100).toFixed(2) : "0.00";
+        } else {
+            const p2Mesas = secMesas.filter(m => (m.part2_votos || 0) > 0 || m.estado === "Part2_Enviada" || m.estado === "Cerrada");
+            const p1Mesas = secMesas.filter(m => (m.part1_votos || 0) > 0 || m.estado === "Part1_Enviada" || m.estado === "Part2_Enviada" || m.estado === "Cerrada");
+
+            if (p2Mesas.length > 0) {
+                const p2 = p2Mesas.reduce((acc, m) => acc + (m.part2_votos || 0), 0);
+                const p2Censo = p2Mesas.reduce((acc, m) => acc + (m.censo || 0), 0);
+                partPercent = p2Censo > 0 ? ((p2 / p2Censo) * 100).toFixed(2) : "0.00";
+            } else if (p1Mesas.length > 0) {
+                const p1 = p1Mesas.reduce((acc, m) => acc + (m.part1_votos || 0), 0);
+                const p1Censo = p1Mesas.reduce((acc, m) => acc + (m.censo || 0), 0);
+                partPercent = p1Censo > 0 ? ((p1 / p1Censo) * 100).toFixed(2) : "0.00";
+            }
+        }
 
         const baseUrl = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
 
@@ -4384,6 +4555,12 @@ require([
                                     const parsed = JSON.parse(raw);
                                     const serverList = parsed.parties_config || (Array.isArray(parsed) ? parsed : null);
                                     if (serverList && Array.isArray(serverList) && serverList.length > 0) {
+                                        const customLogos = getCustomPartyLogos();
+                                        serverList.forEach(p => {
+                                            if (p && p.id && customLogos[p.id]) {
+                                                p.logo = customLogos[p.id];
+                                            }
+                                        });
                                         const currentIds = PARTIES_CONFIG.map(p => p.id).sort().join(",");
                                         const serverIds  = serverList.map(p => p.id).sort().join(",");
                                         if (currentIds !== serverIds || PARTIES_CONFIG.length === 0) {
@@ -4469,6 +4646,12 @@ require([
                                 const parsed = JSON.parse(raw);
                                 const serverList = parsed.parties_config || (Array.isArray(parsed) ? parsed : null);
                                 if (serverList && Array.isArray(serverList) && serverList.length > 0) {
+                                    const customLogos = getCustomPartyLogos();
+                                    serverList.forEach(p => {
+                                        if (p && p.id && customLogos[p.id]) {
+                                            p.logo = customLogos[p.id];
+                                        }
+                                    });
                                     const currentIds = PARTIES_CONFIG.map(p => p.id).sort().join(",");
                                     const serverIds  = serverList.map(p => p.id).sort().join(",");
                                     if (currentIds !== serverIds || PARTIES_CONFIG.length === 0) {
