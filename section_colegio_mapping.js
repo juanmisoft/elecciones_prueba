@@ -138,7 +138,7 @@ const COLEGIO_DETAILS = {
   }
 };
 
-// Configuración de los partidos políticos para la Elección General de prueba
+// Configuración de los partidos políticos (se obtiene dinámicamente desde el JSON de la GDB de ArcGIS)
 const DEFAULT_PARTIES_CONFIG = [];
 
 let PARTIES_CONFIG = (function() {
@@ -151,7 +151,7 @@ let PARTIES_CONFIG = (function() {
     } catch (err) {}
     if (saved !== null) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
         parsed.forEach(p => {
           if (p && p.id && customLogos[p.id]) {
             p.logo = customLogos[p.id];
@@ -161,5 +161,5 @@ let PARTIES_CONFIG = (function() {
       }
     }
   } catch (e) {}
-  return [...DEFAULT_PARTIES_CONFIG];
+  return [];
 })();

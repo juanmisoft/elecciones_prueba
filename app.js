@@ -1497,14 +1497,28 @@ require([
         reader.readAsDataURL(file);
     }
 
+    const KNOWN_PARTIES_CATALOG = {
+        "PP": { name: "PP", color: "#1d84ce", logo: "Imagenes/PP.png" },
+        "PSOE": { name: "PSOE", color: "#ef1c27", logo: "Imagenes/PSOE.png" },
+        "VOX": { name: "VOX", color: "#63be21", logo: "Imagenes/VOX.png" },
+        "VPR": { name: "Vecinos por Rivas", color: "#00a896", logo: "Imagenes/Logo_OITR.png" },
+        "IU": { name: "IU - Más Madrid - Verdes Equo", color: "#7b1fa2", logo: "Imagenes/IU.png" },
+        "PODEMOS": { name: "Podemos", color: "#673ab7", logo: "Imagenes/UnidasPodemos.png" },
+        "MM": { name: "Más Madrid", color: "#00c39a", logo: "Imagenes/Logo_OITR.png" },
+        "CS": { name: "Ciudadanos", color: "#fa5000", logo: "Imagenes/Ciudadanos.png" },
+        "PACMA": { name: "PACMA", color: "#16a085", logo: "Imagenes/PACMA.png" },
+        "SALF": { name: "Se Acabó La Fiesta", color: "#0f172a", logo: "Imagenes/Seacabolafiesta.png" }
+    };
+
+    const AUTO_PALETTE = ["#0284c7", "#e11d48", "#16a34a", "#0d9488", "#9333ea", "#d97706", "#4f46e5", "#059669", "#dc2626", "#475569"];
+
     function loadPartiesFromStorage() {
         const savedParties = localStorage.getItem("elecciones_parties_config");
         const customLogos = getCustomPartyLogos();
-        console.log("[PARTIDOS] localStorage elecciones_parties_config =", savedParties);
         if (savedParties !== null) {
             try {
                 const parsed = JSON.parse(savedParties);
-                if (Array.isArray(parsed)) {
+                if (Array.isArray(parsed) && parsed.length > 0) {
                     PARTIES_CONFIG.length = 0;
                     parsed.forEach(p => {
                         if (p && p.id && customLogos[p.id]) {
@@ -1520,27 +1534,98 @@ require([
                 console.warn("Error cargando partidos de localStorage:", e);
             }
         }
-        console.log("[PARTIDOS] No había clave en localStorage, usando PARTIES_CONFIG actual:", PARTIES_CONFIG.length, "partidos");
-        try {
-            localStorage.setItem("elecciones_parties_config", JSON.stringify(PARTIES_CONFIG));
-        } catch (e) {}
+        
+        // Fallback a DEFAULT_PARTIES_CONFIG si no hay datos en localStorage
+        if (typeof DEFAULT_PARTIES_CONFIG !== "undefined" && Array.isArray(DEFAULT_PARTIES_CONFIG) && DEFAULT_PARTIES_CONFIG.length > 0) {
+            PARTIES_CONFIG.length = 0;
+            DEFAULT_PARTIES_CONFIG.forEach(p => {
+                const copy = { ...p };
+                if (copy.id && customLogos[copy.id]) {
+                    copy.logo = customLogos[copy.id];
+                }
+                PARTIES_CONFIG.push(copy);
+            });
+            window.PARTIES_CONFIG = PARTIES_CONFIG;
+            try {
+                localStorage.setItem("elecciones_parties_config", JSON.stringify(PARTIES_CONFIG));
+            } catch (e) {}
+            console.log("[PARTIDOS] Inicializados desde DEFAULT_PARTIES_CONFIG:", PARTIES_CONFIG.length, "partidos");
+            return PARTIES_CONFIG;
+        }
+
         return PARTIES_CONFIG;
     }
 
+    // Auto-detecta y registra cualquier partido presente en los JSON de votos de las features de la GDB
+    function ensurePartiesFromFeatures(features) {
+        if (!features || !Array.isArray(features) || features.length === 0) return false;
+        let modified = false;
+        const customLogos = getCustomPartyLogos();
+
+        // Extraer todos los partidos que realmente existen en el JSON de las mesas de la GDB
+        const foundPartiesInGdb = new Set();
+
+        features.forEach(feat => {
+            const attrs = feat.attributes || feat;
+            const resJsonRaw = getAttributeValue(attrs, "resultados_json") || getAttributeValue(attrs, "RESULTADOS_JSON");
+            let resObj = null;
+            if (resJsonRaw && typeof resJsonRaw === "string" && resJsonRaw.trim().startsWith("{")) {
+                try { resObj = JSON.parse(resJsonRaw); } catch(e) {}
+            } else if (resJsonRaw && typeof resJsonRaw === "object") {
+                resObj = resJsonRaw;
+            }
+
+            const partyVotesObj = (resObj && resObj.votos_partidos) ? resObj.votos_partidos : {};
+            Object.keys(partyVotesObj).forEach(key => {
+                const upper = key.trim().toUpperCase();
+                if (upper === "BLANCOS" || upper === "NULOS" || !upper) return;
+                foundPartiesInGdb.add(upper);
+            });
+        });
+
+        // Para cada partido encontrado en la GDB, asegurarse de que está en PARTIES_CONFIG
+        foundPartiesInGdb.forEach(upper => {
+            const exists = PARTIES_CONFIG.some(p => p.id.toUpperCase() === upper || p.field.toUpperCase() === ("VOTOS_" + upper));
+            if (!exists) {
+                const known = KNOWN_PARTIES_CATALOG[upper];
+                const colorIndex = PARTIES_CONFIG.length % AUTO_PALETTE.length;
+                const newParty = {
+                    id: upper,
+                    name: known ? known.name : upper,
+                    field: "votos_" + upper.toLowerCase(),
+                    color: known ? known.color : AUTO_PALETTE[colorIndex],
+                    logo: (customLogos[upper]) || (known ? known.logo : "Imagenes/Logo_OITR.png")
+                };
+                PARTIES_CONFIG.push(newParty);
+                modified = true;
+            }
+        });
+
+        if (modified) {
+            window.PARTIES_CONFIG = PARTIES_CONFIG;
+            savePartiesToStorage(PARTIES_CONFIG);
+            generateVoteFields();
+            console.log("[PARTIDOS GDB] Partidos sincronizados desde el JSON de la GDB:", PARTIES_CONFIG.map(p => p.id).join(", "));
+        }
+        return modified;
+    }
+
     function savePartiesToStorage(newParties) {
-        console.log("[PARTIDOS] savePartiesToStorage llamado con", Array.isArray(newParties) ? newParties.length : "no-array", "partidos");
         const customLogos = getCustomPartyLogos();
         if (Array.isArray(newParties)) {
+            // Clonar para evitar vaciar el array cuando newParties === PARTIES_CONFIG
+            const sourceList = [...newParties];
             PARTIES_CONFIG.length = 0;
-            newParties.forEach(p => {
+            sourceList.forEach(p => {
                 if (p && p.id) {
-                    if (customLogos[p.id]) {
-                        p.logo = customLogos[p.id];
-                    } else if (p.logo && p.logo.startsWith("data:")) {
-                        saveCustomPartyLogo(p.id, p.logo);
+                    const copy = { ...p };
+                    if (customLogos[copy.id]) {
+                        copy.logo = customLogos[copy.id];
+                    } else if (copy.logo && copy.logo.startsWith("data:")) {
+                        saveCustomPartyLogo(copy.id, copy.logo);
                     }
+                    PARTIES_CONFIG.push(copy);
                 }
-                PARTIES_CONFIG.push(p);
             });
             window.PARTIES_CONFIG = PARTIES_CONFIG;
         }
@@ -2804,6 +2889,17 @@ require([
             return (partyTotals[y.id] || 0) - (partyTotals[x.id] || 0);
         });
 
+        if (!sortedParties || sortedParties.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; color: var(--text-muted); font-size: 0.82rem; padding: 20px 15px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                    <i class="fa-solid fa-chair" style="font-size: 1.4rem; margin-bottom: 6px; color: #cbd5e1;"></i>
+                    <div style="font-weight: 600; color: #64748b;">Proyección de Concejales</div>
+                    <span style="font-size: 0.75rem;">Se calculará el reparto (25 concejales) al comenzar el escrutinio de mesas.</span>
+                </div>
+            `;
+            return;
+        }
+
         // 1. Barra de Hemiciclo / Pleno Municipal (25 bloques)
         let hemicicloHtml = `<div style="display:flex; height:24px; border-radius:6px; overflow:hidden; border:1px solid #cbd5e1; background:#e2e8f0; margin-bottom:10px; position:relative;" title="Hemiciclo Municipal: 25 concejales">`;
         sortedParties.forEach(p => {
@@ -2822,19 +2918,26 @@ require([
         // Indicador de Mayoría Absoluta (13 concejales)
         let majorityStatusHtml = "";
         const maxSeatParty = sortedParties[0];
-        const maxSeats = seatsMap[maxSeatParty.id] || 0;
-        if (maxSeats >= 13) {
+        const maxSeats = (maxSeatParty && seatsMap[maxSeatParty.id]) ? seatsMap[maxSeatParty.id] : 0;
+        if (maxSeats >= 13 && maxSeatParty) {
             majorityStatusHtml = `
                 <div style="background:#ecfdf5; border:1px solid #6ee7b7; color:#047857; padding:8px 12px; border-radius:6px; font-size:0.78rem; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
                     <i class="fa-solid fa-circle-check" style="font-size:1rem; color:#059669;"></i>
                     <span>Mayoría Absoluta alcanzada: <strong>${maxSeatParty.name}</strong> (${maxSeats} concejales)</span>
                 </div>
             `;
-        } else {
+        } else if (maxSeatParty && maxSeats > 0) {
             majorityStatusHtml = `
                 <div style="background:#f8fafc; border:1px solid #e2e8f0; color:#334155; padding:8px 12px; border-radius:6px; font-size:0.78rem; font-weight:600; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
                     <span><i class="fa-solid fa-circle-info" style="color:var(--primary-color);"></i> Mayoría Absoluta: <strong>13 concejales</strong></span>
                     <span style="font-weight:400; color:#64748b; font-size:0.75rem;">Mayor representación: ${maxSeatParty.name} (${maxSeats})</span>
+                </div>
+            `;
+        } else {
+            majorityStatusHtml = `
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; color:#334155; padding:8px 12px; border-radius:6px; font-size:0.78rem; font-weight:600; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                    <span><i class="fa-solid fa-circle-info" style="color:var(--primary-color);"></i> Mayoría Absoluta: <strong>13 concejales</strong></span>
+                    <span style="font-weight:400; color:#64748b; font-size:0.75rem;">Reparto en curso</span>
                 </div>
             `;
         }
@@ -4575,6 +4678,9 @@ require([
                             }
                         }
 
+                        // 1.5 Auto-descubrir partidos a partir de los datos reales de mesas
+                        ensurePartiesFromFeatures(results.features);
+
                         // 2. Parsear mesas reales usando la configuración de partidos ya actualizada
                         const serverMesas = [];
                         results.features.forEach(feat => {
@@ -4665,6 +4771,9 @@ require([
                             console.warn("[PARTIDOS] Error leyendo config de partidos del servidor:", e);
                         }
                     }
+
+                    // 1.5 Auto-descubrir partidos a partir de los datos reales de mesas
+                    ensurePartiesFromFeatures(results.features);
 
                     // 2. Parsear mesas reales usando la configuración de partidos ya actualizada
                     const serverMesas = [];
