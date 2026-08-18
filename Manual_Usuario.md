@@ -43,53 +43,57 @@ Este manual detalla de forma sencilla y directa cómo utilizar la aplicación el
 ---
 
 ## 2. Parte del Usuario de Colegios: Representantes de Mesa
-*Esta sección está destinada exclusivamente a los representantes de la administración en cada colegio electoral para introducir los datos del escrutinio.*
+*Esta sección está destinada exclusivamente a los representantes de la administración en cada colegio electoral para transmitir los avances de participación durante la jornada y los resultados del escrutinio final.*
 
 ### Cómo acceder al portal
 `[Captura de pantalla recomendada: Botón "Acceso Portal" en la cabecera superior derecha y pantalla de Login de ArcGIS]`
 
 1. Pinche en el botón **Acceso Portal** situado en la esquina superior derecha de la cabecera de la aplicación.
-2. Pinche en el botón azul **Conectar con ArcGIS Portal**.
-3. Introduzca sus credenciales autorizadas en la ventana que aparece (por ejemplo, el usuario asignado a su colegio como `JaramaEleccionesGenPrueba`).
+2. Introduzca sus credenciales autorizadas (por ejemplo, el usuario asignado a su colegio como `JaramaEleccionesGenPrueba`).
 
-### Paso 1: Seleccionar la Mesa Electoral
-`[Captura de pantalla recomendada: Panel de bienvenida del colegio y el listado de mesas disponibles para seleccionar en el Paso 1]`
+### Selección de Mesa Electoral
+`[Captura de pantalla recomendada: Panel de bienvenida del colegio y el listado de mesas disponibles]`
 
 1. Una vez dentro del portal, verá el nombre de su colegio (por ejemplo: *C.E.I.P. JARAMA*).
-2. En el **Paso 1**, pinche sobre la mesa electoral que vaya a escrutar (por ejemplo: `Mesa 006A`). Las mesas que ya han sido cerradas no se mostrarán en esta lista para evitar errores.
+2. Pinche sobre la mesa electoral sobre la que vaya a operar (por ejemplo: `Mesa 006A`).
+3. En la parte superior dispondrá de **3 botones de fase** para elegir la operación a realizar:
+   * **1º Avance (14:00h)**
+   * **2º Avance (18:00h)**
+   * **Escrutinio (20:00h)**
 
-### Paso 2: Identificar a los Miembros de la Mesa
-`[Captura de pantalla recomendada: Formulario del Paso 2 con los campos para rellenar los nombres de los miembros de la mesa]`
+---
 
-1. En el formulario del **Paso 2**, escriba el nombre y apellidos completos de las personas que componen la mesa electoral:
-   * **Presidente/a de la Mesa**
-   * **Primer Vocal**
-   * **Segundo Vocal**
+### Opción A: Transmitir 1º Avance de Participación (14:00h)
+`[Captura de pantalla recomendada: Formulario del 1º Avance con el campo de votantes y el porcentaje en vivo]`
 
-### Paso 3: Introducir Votos del Escrutinio
-`[Captura de pantalla recomendada: Sección del Paso 3 con los campos de entrada de votos para los partidos, votos en blanco, nulos y la banda verde de validación exitosa]`
+1. Pinche en el botón **1º Avance (14:00h)**.
+2. Consulte la lista de votantes de la mesa y cuente cuántas personas han votado hasta las 14:00 horas.
+3. Introduzca ese número en la casilla única **Total de personas que han votado hasta las 14:00h**.
+4. El sistema calculará y mostrará automáticamente el porcentaje de participación en tiempo real sobre el censo de la mesa.
+5. Pinche en **Transmitir 1º Avance de Participación**. Los datos se enviarán inmediatamente al sistema central.
 
-1. En el **Paso 3**, introduzca el número de votos exacto que ha obtenido cada candidatura en las casillas correspondientes.
-2. Introduzca también el total de **Votos en Blanco** y **Votos Nulos**.
-3. Revise la tarjeta de resumen inferior:
-   * Si el total de votos introducidos no supera el censo electoral, se mostrará una banda verde indicando **Votos válidos**.
-   * Si hay alguna incoherencia o se supera el censo, revise los números introducidos.
+---
 
-### Paso 4: Firma del Acta por los Miembros de la Mesa
-`[Captura de pantalla recomendada: Tres recuadros de firma con trazos simulados y el botón de "Borrar" disponible debajo de cada uno]`
+### Opción B: Transmitir 2º Avance de Participación (18:00h)
+`[Captura de pantalla recomendada: Formulario del 2º Avance con la referencia del 1º avance y la casilla de votantes acumulados]`
 
-1. En el **Paso 4**, pida a los miembros de la mesa que firmen directamente en la pantalla de su dispositivo (puede usar el ratón si es un ordenador, o el dedo/lápiz táctil si es una tablet o móvil):
-   * Firma del **Presidente/a** (primer recuadro).
-   * Firma del **Primer Vocal** (segundo recuadro).
-   * Firma del **Segundo Vocal** (tercer recuadro).
-2. Si alguna firma no queda bien, pinche en el botón **Borrar** que aparece justo debajo de ese recuadro de firma para limpiarlo y volver a firmar.
+1. Pinche en el botón **2º Avance (18:00h)**.
+2. Verá una tarjeta informativa con el dato transmitido en el 1º Avance como referencia.
+3. Introduzca el número total acumulado de personas que han votado hasta las 18:00 horas.
+4. Pinche en **Transmitir 2º Avance de Participación**.
 
-### Paso 5: Cerrar la Mesa y Enviar los Datos
-`[Captura de pantalla recomendada: Botón "Cerrar Mesa y Transmitir Acta" en la parte inferior del portal]`
+---
 
-1. Asegúrese de que todos los datos y firmas son correctos.
-2. Pinche en el botón azul **Cerrar Mesa y Transmitir Acta**.
-3. El sistema transmitirá los datos y bloqueará la mesa. Recibirá una confirmación en pantalla y volverá a la lista de mesas para seleccionar otra si fuera necesario.
+### Opción C: Escrutinio Final y Cierre de Mesa (20:00h)
+`[Captura de pantalla recomendada: Formulario de Escrutinio con los campos de miembros de mesa, reparto de votos por partido y botón de cierre]`
+
+1. Tras el cierre del colegio y la apertura de las urnas, pinche en el botón **Escrutinio (20:00h)**.
+2. **Paso 1 - Miembros de la Mesa:** Escriba el nombre y apellidos del Presidente/a, Primer Vocal y Segundo Vocal.
+3. **Paso 2 - Introducción de Votos:** Introduzca el número de votos obtenido por cada candidatura política, así como los Votos en Blanco y Votos Nulos.
+4. Revise el indicador de validación inferior:
+   * Si la suma de votos no supera el censo, aparecerá en verde **Votos válidos**.
+   * Si hay alguna discrepancia o se supera el censo, revise los números introducidos.
+5. **Paso 3 - Cierre:** Pinche en **Cerrar Mesa y Transmitir Escrutinio**. La mesa quedará formalmente cerrada y los resultados definitivos se integrarán en el visor público y las estadísticas municipales.
 
 ---
 

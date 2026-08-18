@@ -1093,6 +1093,7 @@ h1, h2, h3, h4, h5, h6 {
     padding: 10px 12px;
     text-align: left;
     border-bottom: 1px solid #f1f5f9;
+    white-space: nowrap;
 }
 
 .admin-table th {
@@ -1106,10 +1107,14 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .status-badge-inline {
-    padding: 3px 8px;
-    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 6px;
     font-weight: 700;
-    font-size: 0.72rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
 }
 
 .admin-btn-action {
@@ -1585,4 +1590,351 @@ h1, h2, h3, h4, h5, h6 {
         box-shadow: 0 4px 12px rgba(227, 6, 19, 0.3);
     }
 }
+
+/* ==========================================================================
+   CAMPO DE CONTRASEÑA CON OJO TOGGLE
+   ========================================================================== */
+.password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.password-wrapper input[type="password"],
+.password-wrapper input[type="text"],
+.dijitDialog input[type="password"],
+.dijitDialog input[type="text"],
+.esri-identity-manager input[type="password"],
+.esri-identity-manager input[type="text"] {
+    width: 100%;
+    padding-right: 42px !important;
+}
+
+.dijitDialog .password-wrapper,
+.esri-identity-manager .password-wrapper,
+.esri-dialog .password-wrapper {
+    position: relative !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    width: 100% !important;
+}
+
+.toggle-password-btn {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    transition: color 0.2s ease, transform 0.2s ease;
+    z-index: 999999;
+    user-select: none;
+}
+
+.toggle-password-btn:hover {
+    color: var(--primary-color);
+    transform: translateY(-50%) scale(1.1);
+}
+
+/* ==========================================================================
+   ALERTAS DE CRITICIDAD Y EDICIÓN DE ADMINISTRACIÓN
+   ========================================================================== */
+.alert-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 16px;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    transition: all 0.3s ease;
+}
+
+.alert-box.info {
+    background-color: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    color: #1e40af;
+}
+
+.alert-box.warning {
+    background-color: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    color: #92400e;
+}
+
+.alert-box.critical {
+    background-color: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.5);
+    color: #991b1b;
+    animation: pulse-border 2s infinite;
+}
+
+@keyframes pulse-border {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.alert-box i {
+    font-size: 1.2rem;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.alert-critical-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.alert-critical-badge.info {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.alert-critical-badge.warning {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.alert-critical-badge.critical {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+/* ==========================================================================
+   SELECTOR DE LAS 3 FASES DE LA JORNADA (COLEGIOS)
+   ========================================================================== */
+.portal-phase-selector-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+    .portal-phase-selector-bar {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+}
+
+.portal-phase-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    background: #ffffff;
+    border: 2px solid #e2e8f0;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.portal-phase-btn:hover {
+    border-color: #cbd5e1;
+    background-color: #f8fafc;
+    transform: translateY(-1px);
+}
+
+.portal-phase-btn .phase-btn-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    background-color: #f1f5f9;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+
+.portal-phase-btn .phase-btn-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.portal-phase-btn .phase-title {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+}
+
+.portal-phase-btn .phase-status {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* Botón Fase 1 Activo */
+.portal-phase-btn[data-phase="part1"].active {
+    border-color: #0284c7;
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.2);
+}
+.portal-phase-btn[data-phase="part1"].active .phase-btn-icon {
+    background-color: #0284c7;
+    color: #fff;
+}
+.portal-phase-btn[data-phase="part1"].active .phase-title {
+    color: #0369a1;
+}
+
+/* Botón Fase 2 Activo */
+.portal-phase-btn[data-phase="part2"].active {
+    border-color: #d97706;
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.2);
+}
+.portal-phase-btn[data-phase="part2"].active .phase-btn-icon {
+    background-color: #d97706;
+    color: #fff;
+}
+.portal-phase-btn[data-phase="part2"].active .phase-title {
+    color: #b45309;
+}
+
+/* Botón Escrutinio Activo */
+.portal-phase-btn[data-phase="escrutinio"].active {
+    border-color: var(--primary-color);
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    box-shadow: 0 0 0 3px rgba(227, 6, 19, 0.2);
+}
+.portal-phase-btn[data-phase="escrutinio"].active .phase-btn-icon {
+    background-color: var(--primary-color);
+    color: #fff;
+}
+.portal-phase-btn[data-phase="escrutinio"].active .phase-title {
+    color: #b8050e;
+}
+
+/* Estado completado para botones */
+.portal-phase-btn.completed .phase-status {
+    color: #16a34a;
+    font-weight: 700;
+}
+
+/* Paneles de Fase */
+.portal-phase-pane {
+    transition: opacity 0.2s ease;
+}
+
+/* Banners y Entradas de Avance */
+.advance-info-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    background-color: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    margin-bottom: 20px;
+}
+
+.advance-entry-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    margin: 16px 0;
+}
+
+.advance-large-input {
+    width: 220px !important;
+    font-size: 2rem !important;
+    font-weight: 800 !important;
+    text-align: center !important;
+    font-family: var(--font-heading) !important;
+    color: var(--text-primary) !important;
+    border: 2px solid #cbd5e1 !important;
+    border-radius: 10px !important;
+    padding: 10px 16px !important;
+}
+
+.advance-large-input:focus {
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 4px rgba(227, 6, 19, 0.15) !important;
+}
+
+.advance-metric-badge {
+    background-color: #e0f2fe;
+    border: 1px solid #bae6fd;
+    border-radius: 10px;
+    padding: 10px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 140px;
+}
+
+.advance-metric-badge .pct-val {
+    font-size: 1.6rem;
+    font-weight: 800;
+    font-family: var(--font-heading);
+    color: #0284c7;
+}
+
+.advance-metric-badge .pct-sub {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #0369a1;
+}
+
+/* Botones de Transmitir Rojos */
+.btn-submit-transmit {
+    background: linear-gradient(135deg, #e30613 0%, #b8050e 100%) !important;
+    color: #ffffff !important;
+    border: 1px solid #b8050e !important;
+    font-weight: 700 !important;
+    box-shadow: 0 4px 12px rgba(227, 6, 19, 0.25) !important;
+    transition: all 0.2s ease !important;
+}
+
+.btn-submit-transmit:hover {
+    background: linear-gradient(135deg, #b8050e 0%, #8c040b 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 16px rgba(227, 6, 19, 0.35) !important;
+}
+
+.btn-submit-transmit:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 2px 6px rgba(227, 6, 19, 0.2) !important;
+}
+
+/* Espaciado de seguridad inferior para teclado móvil */
+.colegio-portal-view {
+    padding-bottom: 140px !important;
+}
+
+.colegio-portal-view .portal-container {
+    padding-bottom: 140px !important;
+}
+
+@media (max-width: 768px) {
+    .colegio-portal-view {
+        padding-bottom: 180px !important;
+    }
+    
+    .colegio-portal-view .portal-container {
+        padding-bottom: 180px !important;
+    }
+}
+
 

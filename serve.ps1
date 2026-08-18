@@ -1,11 +1,11 @@
 # SERVIDOR LOCAL NATIVO EN POWERSHELL PARA EVITAR ERRORES DE CORS
 # Hace doble clic sobre este script o ejecútalo en consola para iniciar el portal.
 
-$port = 8080
+$port = 8000
 $listener = New-Object System.Net.HttpListener
 $started = $false
 
-# Intenta buscar un puerto libre automáticamente entre 8080 y 8100 para evitar fallos si el 8080 está ocupado
+# Intenta buscar un puerto libre automáticamente entre 8000 y 8100
 while (-not $started -and $port -lt 8100) {
     try {
         $listener.Prefixes.Clear()
@@ -13,8 +13,14 @@ while (-not $started -and $port -lt 8100) {
         $listener.Start()
         $started = $true
     } catch {
-        Write-Host "Puerto $port ocupado. Probando con el puerto $($port + 1)..." -ForegroundColor Yellow
-        $port++
+        try {
+            $listener.Prefixes.Clear()
+            $listener.Prefixes.Add("http://127.0.0.1:$port/")
+            $listener.Start()
+            $started = $true
+        } catch {
+            $port++
+        }
     }
 }
 

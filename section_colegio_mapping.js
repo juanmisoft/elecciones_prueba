@@ -139,13 +139,15 @@ const COLEGIO_DETAILS = {
 };
 
 // Configuración de los partidos políticos para la Elección General de prueba
-const PARTIES_CONFIG = [
-  { id: "PP", name: "PP", color: "#1E5AA8", logo: "Imagenes/PP.png", field: "votos_pp" },
-  { id: "PSOE", name: "PSOE", color: "#E30613", logo: "Imagenes/PSOE.png", field: "votos_psoe" },
-  { id: "VOX", name: "VOX", color: "#5BC035", logo: "Imagenes/VOX.png", field: "votos_vox" },
-  { id: "SUMAR", name: "SUMAR", color: "#D1007A", logo: "Imagenes/sumar-logo-png_seeklogo-487418.png", field: "votos_sumar" },
-  { id: "UP", name: "Podemos-IU", color: "#7B4998", logo: "Imagenes/UnidasPodemos.png", field: "votos_up" },
-  { id: "Cs", name: "Ciudadanos", color: "#FA541C", logo: "Imagenes/Ciudadanos.png", field: "votos_cs" },
-  { id: "PACMA", name: "PACMA", color: "#00E1C1", logo: "Imagenes/PACMA.png", field: "votos_pacma" },
-  { id: "SALF", name: "SALF", color: "#34495E", logo: "Imagenes/Seacabolafiesta.png", field: "votos_salf" }
-];
+const DEFAULT_PARTIES_CONFIG = [];
+
+let PARTIES_CONFIG = (function() {
+  try {
+    const saved = localStorage.getItem("elecciones_parties_config");
+    if (saved !== null) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {}
+  return [...DEFAULT_PARTIES_CONFIG];
+})();
