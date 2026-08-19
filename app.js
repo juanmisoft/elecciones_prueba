@@ -2852,7 +2852,7 @@ require([
             return b.votes - a.votes;
         });
 
-        // Asignar los 27 escaños a los 27 mayores cocientes
+        // Asignar los 27 concejales a los 27 mayores cocientes
         const allocated = Math.min(totalSeats, quotients.length);
         for (let i = 0; i < allocated; i++) {
             const q = quotients[i];
