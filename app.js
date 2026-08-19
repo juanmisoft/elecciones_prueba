@@ -2795,7 +2795,7 @@ require([
             document.getElementById("global-blancos-val").innerHTML = `0 <span style="font-size: 0.75rem; font-weight:400; color: var(--text-muted);">(0.00%)</span>`;
         }
 
-        // Renderizar proyección D'Hondt de concejales (25 escaños)
+        // Renderizar proyección D'Hondt de concejales (27 escaños)
         renderDHondtWidget(partyTotals, totalVotosValidos, closedMesas);
 
         // Renderizar partidos en el sidebar
@@ -2806,10 +2806,10 @@ require([
     }
 
     /**
-     * Aplica la Ley D'Hondt para repartir 25 concejales municipales (Rivas-Vaciamadrid)
+     * Aplica la Ley D'Hondt para repartir 27 concejales municipales (Rivas-Vaciamadrid)
      * excluyendo a las candidaturas que no alcanzan la barrera electoral del 5% (LOREG).
      */
-    function calculateDHondtSeats(partyVotes, totalVotosValidos, totalSeats = 25, thresholdPct = 5) {
+    function calculateDHondtSeats(partyVotes, totalVotosValidos, totalSeats = 27, thresholdPct = 5) {
         const seats = {};
         const partyStats = {};
         PARTIES_CONFIG.forEach(p => {
@@ -2852,7 +2852,7 @@ require([
             return b.votes - a.votes;
         });
 
-        // Asignar los 25 escaños a los 25 mayores cocientes
+        // Asignar los 27 escaños a los 27 mayores cocientes
         const allocated = Math.min(totalSeats, quotients.length);
         for (let i = 0; i < allocated; i++) {
             const q = quotients[i];
@@ -2872,13 +2872,13 @@ require([
                 <div style="text-align: center; color: var(--text-muted); font-size: 0.82rem; padding: 20px 15px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
                     <i class="fa-solid fa-chair" style="font-size: 1.4rem; margin-bottom: 6px; color: #cbd5e1;"></i>
                     <div style="font-weight: 600; color: #64748b;">Proyección de Concejales</div>
-                    <span style="font-size: 0.75rem;">Se calculará el reparto (25 concejales) al comenzar el escrutinio de mesas.</span>
+                    <span style="font-size: 0.75rem;">Se calculará el reparto (27 concejales) al comenzar el escrutinio de mesas.</span>
                 </div>
             `;
             return;
         }
 
-        const dhondt = calculateDHondtSeats(partyTotals, totalVotosValidos, 25, 5);
+        const dhondt = calculateDHondtSeats(partyTotals, totalVotosValidos, 27, 5);
         const seatsMap = dhondt.seats;
         const statsMap = dhondt.partyStats;
 
@@ -2894,32 +2894,32 @@ require([
                 <div style="text-align: center; color: var(--text-muted); font-size: 0.82rem; padding: 20px 15px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
                     <i class="fa-solid fa-chair" style="font-size: 1.4rem; margin-bottom: 6px; color: #cbd5e1;"></i>
                     <div style="font-weight: 600; color: #64748b;">Proyección de Concejales</div>
-                    <span style="font-size: 0.75rem;">Se calculará el reparto (25 concejales) al comenzar el escrutinio de mesas.</span>
+                    <span style="font-size: 0.75rem;">Se calculará el reparto (27 concejales) al comenzar el escrutinio de mesas.</span>
                 </div>
             `;
             return;
         }
 
-        // 1. Barra de Hemiciclo / Pleno Municipal (25 bloques)
-        let hemicicloHtml = `<div style="display:flex; height:24px; border-radius:6px; overflow:hidden; border:1px solid #cbd5e1; background:#e2e8f0; margin-bottom:10px; position:relative;" title="Hemiciclo Municipal: 25 concejales">`;
+        // 1. Barra de Hemiciclo / Pleno Municipal (27 bloques)
+        let hemicicloHtml = `<div style="display:flex; height:24px; border-radius:6px; overflow:hidden; border:1px solid #cbd5e1; background:#e2e8f0; margin-bottom:10px; position:relative;" title="Hemiciclo Municipal: 27 concejales">`;
         sortedParties.forEach(p => {
             const count = seatsMap[p.id] || 0;
             if (count > 0) {
-                const widthPct = (count / 25) * 100;
+                const widthPct = (count / 27) * 100;
                 hemicicloHtml += `
-                    <div style="width:${widthPct}%; background-color:${p.color}; height:100%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:0.75rem;" title="${p.name}: ${count} concejales">
-                        ${count >= 2 ? count : ''}
+                    <div style="width:${widthPct}%; background-color:${p.color}; height:100%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:0.75rem; line-height:1;" title="${p.name}: ${count} concejales">
+                        ${count}
                     </div>
                 `;
             }
         });
         hemicicloHtml += `</div>`;
 
-        // Indicador de Mayoría Absoluta (13 concejales)
+        // Indicador de Mayoría Absoluta (14 concejales)
         let majorityStatusHtml = "";
         const maxSeatParty = sortedParties[0];
         const maxSeats = (maxSeatParty && seatsMap[maxSeatParty.id]) ? seatsMap[maxSeatParty.id] : 0;
-        if (maxSeats >= 13 && maxSeatParty) {
+        if (maxSeats >= 14 && maxSeatParty) {
             majorityStatusHtml = `
                 <div style="background:#ecfdf5; border:1px solid #6ee7b7; color:#047857; padding:8px 12px; border-radius:6px; font-size:0.78rem; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
                     <i class="fa-solid fa-circle-check" style="font-size:1rem; color:#059669;"></i>
@@ -2929,14 +2929,14 @@ require([
         } else if (maxSeatParty && maxSeats > 0) {
             majorityStatusHtml = `
                 <div style="background:#f8fafc; border:1px solid #e2e8f0; color:#334155; padding:8px 12px; border-radius:6px; font-size:0.78rem; font-weight:600; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
-                    <span><i class="fa-solid fa-circle-info" style="color:var(--primary-color);"></i> Mayoría Absoluta: <strong>13 concejales</strong></span>
+                    <span><i class="fa-solid fa-circle-info" style="color:var(--primary-color);"></i> Mayoría Absoluta: <strong>14 concejales</strong></span>
                     <span style="font-weight:400; color:#64748b; font-size:0.75rem;">Mayor representación: ${maxSeatParty.name} (${maxSeats})</span>
                 </div>
             `;
         } else {
             majorityStatusHtml = `
                 <div style="background:#f8fafc; border:1px solid #e2e8f0; color:#334155; padding:8px 12px; border-radius:6px; font-size:0.78rem; font-weight:600; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
-                    <span><i class="fa-solid fa-circle-info" style="color:var(--primary-color);"></i> Mayoría Absoluta: <strong>13 concejales</strong></span>
+                    <span><i class="fa-solid fa-circle-info" style="color:var(--primary-color);"></i> Mayoría Absoluta: <strong>14 concejales</strong></span>
                     <span style="font-weight:400; color:#64748b; font-size:0.75rem;">Reparto en curso</span>
                 </div>
             `;
