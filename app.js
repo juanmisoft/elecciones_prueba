@@ -43,7 +43,10 @@ require([
         colegiosLayer: null
     };
 
-    const PUBLIC_SYNC_MS = 35000;
+    // Intervalos de sincronización según perfil
+    const PUBLIC_SYNC_MS = 35000;   // Visor ciudadano
+    const ADMIN_SYNC_MS = 4000;     // Admin: estados de mesas casi en vivo
+    const COLEGIO_SYNC_MS = 4000;   // Colegio: solo en listado de mesas (no dentro del formulario)
 
     // Usuarios locales de respaldo (por si falla la red o para pruebas rápidas)
     const LOCAL_USERS = {
@@ -447,6 +450,10 @@ require([
                 state.selectedMesa = null;
             }
             showSchoolPortalView();
+            startPeriodicSync();
+            if (state.arcgisMode) {
+                syncDataWithArcGISServer();
+            }
         });
 
         // Cambiar Votos: Sumar en vivo en Escrutinio
@@ -1253,6 +1260,8 @@ require([
 
     function openScrutinyForm(mesa) {
         state.selectedMesa = mesa;
+        // Dentro de una mesa no hay sync periódico (evita borrar campos en edición)
+        startPeriodicSync();
         // Siempre recargar partidos y regenerar el formulario al abrir una mesa
         loadPartiesFromStorage();
         generateVoteFields(true);
@@ -1737,6 +1746,7 @@ require([
         alert(`¡Mesa ${targetMesa.codigo} cerrada y transmitida con éxito!`);
         state.selectedMesa = null;
         showSchoolPortalView();
+        startPeriodicSync();
         updateGlobalMetrics();
         renderAdminPortal();
     }
@@ -4989,21 +4999,52 @@ require([
         }
     }
 
-    // Configura e inicia la sincronización periódica en segundo plano
+    function getSyncIntervalMs() {
+        if (!state.currentUser) {
+            return PUBLIC_SYNC_MS;
+        }
+        if (state.currentUser.role === "admin") {
+            return ADMIN_SYNC_MS;
+        }
+        if (state.currentUser.role === "colegio") {
+            // Dentro del formulario de mesa: sin refresco. En el listado: cada pocos segundos.
+            return isScrutinyFormActive() ? 0 : COLEGIO_SYNC_MS;
+        }
+        return PUBLIC_SYNC_MS;
+    }
+
+    // Configura e inicia la sincronización periódica según el perfil activo
     function startPeriodicSync() {
         if (state.syncInterval) {
             clearInterval(state.syncInterval);
+            state.syncInterval = null;
         }
+
+        const intervalMs = getSyncIntervalMs();
+        if (!intervalMs) {
+            console.log("[SYNC] Periodic sync paused (colegio editing mesa).");
+            return;
+        }
+
+        console.log(`[SYNC] Periodic sync every ${intervalMs}ms`, {
+            role: state.currentUser ? state.currentUser.role : "public",
+            mesaActiva: !!(state.selectedMesa && state.selectedMesa.codigo)
+        });
+
         state.syncInterval = setInterval(() => {
-            if (isScrutinyFormActive()) {
+            // Colegio grabando datos: no sincronizar
+            if (state.currentUser && state.currentUser.role === "colegio" && isScrutinyFormActive()) {
                 return;
             }
             if (state.currentUser && state.arcgisMode) {
                 syncDataWithArcGISServer();
-            } else {
+            } else if (!state.currentUser) {
+                loadResultsFromServer();
+            } else if (state.currentUser.role === "admin") {
+                // Admin sin token ArcGIS aún: intentar lectura pública
                 loadResultsFromServer();
             }
-        }, PUBLIC_SYNC_MS);
+        }, intervalMs);
     }
 
     // Funciones auxiliares de edición en ArcGIS
