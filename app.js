@@ -1126,7 +1126,9 @@ require([
             }
             mesa.estado = "Escrutando";
             saveLocalDatabase();
-            sendMesaUpdateToServer(mesa);
+            sendMesaUpdateToServer(mesa).catch(err => {
+                console.error("Error al marcar mesa como Escrutando en servidor:", err);
+            });
         }
 
         if (!state.arcgisMode) {
@@ -1654,7 +1656,7 @@ require([
     }
 
     // Enviar escrutinio de mesa (Paso 5)
-    function handleMesaEscrutinioSubmit() {
+    async function handleMesaEscrutinioSubmit() {
         if (!state.selectedMesa) return;
 
         // Validar campos de texto vacíos
@@ -1727,28 +1729,50 @@ require([
 
         // Actualizar objeto en estado local
         const targetMesa = state.mesas.find(m => m.codigo === state.selectedMesa.codigo);
-        if (targetMesa) {
-            PARTIES_CONFIG.forEach(p => {
-                targetMesa[p.field] = votes[p.field];
-            });
-            targetMesa.votos_blancos = votosBlanco;
-            targetMesa.votos_nulos = votosNulo;
-            targetMesa.miembros = miembrosJson;
-            targetMesa.estado = "Cerrada";
-            targetMesa.firma_presi = "firmado";
-            targetMesa.firma_vocal1 = "firmado";
-            targetMesa.firma_vocal2 = "firmado";
+        if (!targetMesa) return;
+
+        const prevSnapshot = {
+            estado: targetMesa.estado,
+            miembros: targetMesa.miembros,
+            firma_presi: targetMesa.firma_presi,
+            firma_vocal1: targetMesa.firma_vocal1,
+            firma_vocal2: targetMesa.firma_vocal2,
+            votos_blancos: targetMesa.votos_blancos,
+            votos_nulos: targetMesa.votos_nulos
+        };
+        PARTIES_CONFIG.forEach(p => { prevSnapshot[p.field] = targetMesa[p.field]; });
+
+        PARTIES_CONFIG.forEach(p => {
+            targetMesa[p.field] = votes[p.field];
+        });
+        targetMesa.votos_blancos = votosBlanco;
+        targetMesa.votos_nulos = votosNulo;
+        targetMesa.miembros = miembrosJson;
+        targetMesa.estado = "Cerrada";
+        targetMesa.firma_presi = "firmado";
+        targetMesa.firma_vocal1 = "firmado";
+        targetMesa.firma_vocal2 = "firmado";
+
+        const btn = document.getElementById("btn-submit-mesa");
+        setTransmitButtonBusy(btn, true, "Enviando al servidor...");
+
+        try {
+            await persistMesaToServerOrThrow(targetMesa);
+            saveLocalDatabase();
+            alert(`¡Mesa ${targetMesa.codigo} cerrada y guardada en el servidor!`);
+            state.selectedMesa = null;
+            showSchoolPortalView();
+            startPeriodicSync();
+            updateGlobalMetrics();
+            renderAdminPortal();
+        } catch (err) {
+            console.error("Fallo al cerrar mesa en servidor:", err);
+            Object.assign(targetMesa, prevSnapshot);
+            PARTIES_CONFIG.forEach(p => { targetMesa[p.field] = prevSnapshot[p.field]; });
+            alert(`No se pudo guardar el escrutinio en el servidor.\n\n${err.message || err}\n\nRevisa la cobertura e inténtalo de nuevo. Los datos siguen en pantalla.`);
+        } finally {
+            setTransmitButtonBusy(btn, false);
         }
-
-        saveLocalDatabase();
-        sendMesaUpdateToServer(targetMesa);
-
-        alert(`¡Mesa ${targetMesa.codigo} cerrada y transmitida con éxito!`);
-        state.selectedMesa = null;
-        showSchoolPortalView();
-        startPeriodicSync();
-        updateGlobalMetrics();
-        renderAdminPortal();
     }
 
     // Actualiza el estado de una mesa por código ("Abierta", "Asignada", etc.)
@@ -2315,7 +2339,11 @@ require([
 
         state.mesas.forEach(m => {
             delete m[fieldToDelete];
-            if (state.arcgisMode) sendMesaUpdateToServer(m);
+            if (state.arcgisMode) {
+                sendMesaUpdateToServer(m).catch(err => {
+                    console.error(`Error sync mesa ${m.codigo} tras borrar partido:`, err);
+                });
+            }
         });
         saveLocalDatabase();
 
@@ -2346,7 +2374,11 @@ require([
                     delete m[k];
                 }
             });
-            if (state.arcgisMode) sendMesaUpdateToServer(m);
+            if (state.arcgisMode) {
+                sendMesaUpdateToServer(m).catch(err => {
+                    console.error(`Error sync mesa ${m.codigo} tras borrar partidos:`, err);
+                });
+            }
         });
         saveLocalDatabase();
 
@@ -5048,8 +5080,40 @@ require([
     }
 
     // Funciones auxiliares de edición en ArcGIS
+    function getApplyEditsError(res, mode) {
+        const results = mode === "add"
+            ? (res && res.addFeatureResults)
+            : (res && res.updateFeatureResults);
+        if (!results || !results.length) {
+            return "El servidor no devolvió resultado de la edición.";
+        }
+        if (results[0].error) {
+            const err = results[0].error;
+            return err.description || err.message || JSON.stringify(err);
+        }
+        return null;
+    }
+
+    function setTransmitButtonBusy(btn, busy, busyLabel) {
+        if (!btn) return;
+        if (busy) {
+            if (!btn.dataset.idleHtml) {
+                btn.dataset.idleHtml = btn.innerHTML;
+            }
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${busyLabel || "Enviando al servidor..."}`;
+        } else {
+            btn.disabled = false;
+            if (btn.dataset.idleHtml) {
+                btn.innerHTML = btn.dataset.idleHtml;
+            }
+        }
+    }
+
     function sendMesaAddToServer(nuevaMesa) {
-        if (!nuevaMesa || isConfigRecordCodigo(nuevaMesa.codigo) || typeof FeatureLayer === "undefined" || !URL_MESAS_TABLE_EDIT) return;
+        if (!nuevaMesa || isConfigRecordCodigo(nuevaMesa.codigo) || typeof FeatureLayer === "undefined" || !URL_MESAS_TABLE_EDIT) {
+            return Promise.reject(new Error("No se puede crear la mesa en el servidor (datos o servicio no disponibles)."));
+        }
 
         console.log(`Enviando creación de Mesa ${nuevaMesa.codigo} a ArcGIS Server...`);
 
@@ -5062,25 +5126,30 @@ require([
             const attrs = buildFeatureAttributesFromMesa(nuevaMesa);
             const addGraphic = new Graphic({ attributes: attrs });
 
-            tablesLayer.applyEdits({
+            return tablesLayer.applyEdits({
                 addFeatures: [addGraphic]
             }).then(res => {
+                const editErr = getApplyEditsError(res, "add");
+                if (editErr) {
+                    throw new Error(editErr);
+                }
                 console.log(`Mesa ${nuevaMesa.codigo} añadida con éxito en ArcGIS Server:`, res);
                 if (res.addFeatureResults && res.addFeatureResults.length > 0 && res.addFeatureResults[0].objectId) {
                     nuevaMesa.objectid = res.addFeatureResults[0].objectId;
                     saveLocalDatabase();
                 }
-                syncDataWithArcGISServer();
-            }).catch(err => {
-                console.error(`Error al añadir la Mesa ${nuevaMesa.codigo} en ArcGIS Server:`, err);
+                return res;
             });
         } catch (e) {
             console.error("Excepción en sendMesaAddToServer:", e);
+            return Promise.reject(e);
         }
     }
 
     function sendMesaUpdateToServer(targetMesa) {
-        if (!targetMesa || isConfigRecordCodigo(targetMesa.codigo) || typeof FeatureLayer === "undefined" || !URL_MESAS_TABLE_EDIT) return;
+        if (!targetMesa || isConfigRecordCodigo(targetMesa.codigo) || typeof FeatureLayer === "undefined" || !URL_MESAS_TABLE_EDIT) {
+            return Promise.reject(new Error("No se puede actualizar la mesa en el servidor (datos o servicio no disponibles)."));
+        }
 
         console.log(`Enviando actualización de la Mesa ${targetMesa.codigo} al servicio de ArcGIS...`);
 
@@ -5093,42 +5162,48 @@ require([
             const doUpdate = (objIdKey, objIdVal) => {
                 const updateAttrs = Object.assign({ [objIdKey]: objIdVal }, buildFeatureAttributesFromMesa(targetMesa));
                 const updateGraphic = new Graphic({ attributes: updateAttrs });
-                tablesLayer.applyEdits({ updateFeatures: [updateGraphic] }).then(res => {
+                return tablesLayer.applyEdits({ updateFeatures: [updateGraphic] }).then(res => {
+                    const editErr = getApplyEditsError(res, "update");
+                    if (editErr) {
+                        throw new Error(editErr);
+                    }
                     console.log(`Mesa ${targetMesa.codigo} actualizada con éxito en ArcGIS Server:`, res);
-                }).catch(err => {
-                    console.error(`Error al aplicar edits en ArcGIS Server para la Mesa ${targetMesa.codigo}:`, err);
+                    return res;
                 });
             };
 
-            // Camino rápido: si ya tenemos el objectid cacheado, actualizar directamente
-            // sin hacer una queryFeatures previa (evita race condition con el sync periódico)
             if (targetMesa.objectid) {
-                doUpdate("OBJECTID", targetMesa.objectid);
-                return;
+                return doUpdate("OBJECTID", targetMesa.objectid);
             }
 
-            // Camino lento: buscar el objectid primero
             const query = tablesLayer.createQuery();
-            query.where = `CODIGO = '${targetMesa.codigo}'`;
+            query.where = `CODIGO = '${String(targetMesa.codigo).replace(/'/g, "''")}'`;
             query.outFields = ["OBJECTID"];
 
-            tablesLayer.queryFeatures(query).then(results => {
+            return tablesLayer.queryFeatures(query).then(results => {
                 if (results.features && results.features.length > 0) {
                     const attrs = results.features[0].attributes;
                     const objIdKey = attrs.OBJECTID !== undefined ? "OBJECTID" : "objectid";
                     const objIdVal = attrs[objIdKey];
-                    // Cachear para futuros updates de esta mesa
                     targetMesa.objectid = objIdVal;
-                    doUpdate(objIdKey, objIdVal);
-                } else {
-                    sendMesaAddToServer(targetMesa);
+                    return doUpdate(objIdKey, objIdVal);
                 }
-            }).catch(err => {
-                console.error(`Error al consultar mesa ${targetMesa.codigo} para actualizar:`, err);
+                return sendMesaAddToServer(targetMesa);
             });
         } catch (e) {
             console.error("Excepción en sendMesaUpdateToServer:", e);
+            return Promise.reject(e);
         }
+    }
+
+    async function persistMesaToServerOrThrow(targetMesa) {
+        if (!state.arcgisMode) {
+            throw new Error("No hay sesión activa con ArcGIS. Vuelve a iniciar sesión e inténtalo de nuevo.");
+        }
+        if (!navigator.onLine) {
+            throw new Error("Sin conexión a Internet. Revisa la cobertura y pulsa de nuevo para transmitir.");
+        }
+        return sendMesaUpdateToServer(targetMesa);
     }
 
     function sendMesaDeleteToServer(mesaOrCode) {
@@ -5170,7 +5245,9 @@ require([
 
     // Alias para compatibilidad
     function sendMesaToArcGISServer(mesaObj) {
-        sendMesaUpdateToServer(mesaObj);
+        sendMesaUpdateToServer(mesaObj).catch(err => {
+            console.error("Error sync mesa (alias):", err);
+        });
     }
 
     // ==========================================================================
@@ -5562,7 +5639,7 @@ require([
     // ==========================================================================
     // TRANSMISIÓN DE AVANCES DE PARTICIPACIÓN (PARTICIPACIÓN 1 Y 2)
     // ==========================================================================
-    function handleParticipacion1Submit() {
+    async function handleParticipacion1Submit() {
         if (!state.selectedMesa) return;
 
         const inputEl = document.getElementById("input-part1-voters");
@@ -5590,30 +5667,43 @@ require([
         if (!confirmSubmit) return;
 
         const targetMesa = state.mesas.find(m => m.codigo === state.selectedMesa.codigo);
-        if (targetMesa) {
-            targetMesa.part1_votos = numVotantes;
-            targetMesa.part1_time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            if (targetMesa.estado !== "Cerrada" && targetMesa.estado !== "Part2_Enviada") {
-                targetMesa.estado = "Part1_Enviada";
-            }
+        if (!targetMesa) return;
 
+        const prevPart1 = {
+            part1_votos: targetMesa.part1_votos,
+            part1_time: targetMesa.part1_time,
+            estado: targetMesa.estado
+        };
+
+        targetMesa.part1_votos = numVotantes;
+        targetMesa.part1_time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        if (targetMesa.estado !== "Cerrada" && targetMesa.estado !== "Part2_Enviada") {
+            targetMesa.estado = "Part1_Enviada";
+        }
+
+        const btn = document.getElementById("btn-submit-part1");
+        setTransmitButtonBusy(btn, true, "Enviando al servidor...");
+
+        try {
+            await persistMesaToServerOrThrow(targetMesa);
             saveLocalDatabase();
-
-            if (state.arcgisMode) {
-                sendMesaUpdateToServer(targetMesa);
-            }
-
-            alert(`¡1º AVANCE TRANSMITIDO CON ÉXITO!\nMesa ${targetMesa.codigo} | ${numVotantes.toLocaleString()} votantes (${pct}%)`);
-            
-            // Actualizar vista interna de la mesa y pasar a la siguiente fase recomendada
+            alert(`¡1º AVANCE GUARDADO EN EL SERVIDOR!\nMesa ${targetMesa.codigo} | ${numVotantes.toLocaleString()} votantes (${pct}%)`);
             openScrutinyForm(targetMesa);
             switchPortalPhase("part2");
             updateGlobalMetrics();
             renderAdminPortal();
+        } catch (err) {
+            console.error("Fallo al transmitir 1º avance:", err);
+            targetMesa.part1_votos = prevPart1.part1_votos;
+            targetMesa.part1_time = prevPart1.part1_time;
+            targetMesa.estado = prevPart1.estado;
+            alert(`No se pudo guardar el 1º avance en el servidor.\n\n${err.message || err}\n\nRevisa la cobertura e inténtalo de nuevo.`);
+        } finally {
+            setTransmitButtonBusy(btn, false);
         }
     }
 
-    function handleParticipacion2Submit() {
+    async function handleParticipacion2Submit() {
         if (!state.selectedMesa) return;
 
         const inputEl = document.getElementById("input-part2-voters");
@@ -5641,7 +5731,6 @@ require([
 
         const pct = censoMesa > 0 ? ((numVotantes / censoMesa) * 100).toFixed(2) : "0.00";
 
-        // Advertencia si la cifra de la tarde es inferior a la del mediodía
         if (targetMesa.part1_votos && numVotantes < targetMesa.part1_votos) {
             const confirmLower = confirm(`AVISO DE DISCREPANCIA:\nEl número acumulado del 2º Avance (${numVotantes.toLocaleString()}) es menor que el enviado en el 1º Avance (${targetMesa.part1_votos.toLocaleString()}).\n\nSi se trata de una corrección previa, pulsa 'Aceptar' para transmitir la rectificación. En caso contrario, pulsa 'Cancelar' para revisar los datos.`);
             if (!confirmLower) return;
@@ -5650,25 +5739,38 @@ require([
             if (!confirmSubmit) return;
         }
 
+        const prevPart2 = {
+            part2_votos: targetMesa.part2_votos,
+            part2_time: targetMesa.part2_time,
+            estado: targetMesa.estado
+        };
+
         targetMesa.part2_votos = numVotantes;
         targetMesa.part2_time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         if (targetMesa.estado !== "Cerrada") {
             targetMesa.estado = "Part2_Enviada";
         }
 
-        saveLocalDatabase();
+        const btn = document.getElementById("btn-submit-part2");
+        setTransmitButtonBusy(btn, true, "Enviando al servidor...");
 
-        if (state.arcgisMode) {
-            sendMesaUpdateToServer(targetMesa);
+        try {
+            await persistMesaToServerOrThrow(targetMesa);
+            saveLocalDatabase();
+            alert(`¡2º AVANCE GUARDADO EN EL SERVIDOR!\nMesa ${targetMesa.codigo} | ${numVotantes.toLocaleString()} votantes (${pct}%)`);
+            openScrutinyForm(targetMesa);
+            switchPortalPhase("escrutinio");
+            updateGlobalMetrics();
+            renderAdminPortal();
+        } catch (err) {
+            console.error("Fallo al transmitir 2º avance:", err);
+            targetMesa.part2_votos = prevPart2.part2_votos;
+            targetMesa.part2_time = prevPart2.part2_time;
+            targetMesa.estado = prevPart2.estado;
+            alert(`No se pudo guardar el 2º avance en el servidor.\n\n${err.message || err}\n\nRevisa la cobertura e inténtalo de nuevo.`);
+        } finally {
+            setTransmitButtonBusy(btn, false);
         }
-
-        alert(`¡2º AVANCE TRANSMITIDO CON ÉXITO!\nMesa ${targetMesa.codigo} | ${numVotantes.toLocaleString()} votantes (${pct}%)`);
-
-        // Actualizar vista interna de la mesa y pasar a la fase de escrutinio
-        openScrutinyForm(targetMesa);
-        switchPortalPhase("escrutinio");
-        updateGlobalMetrics();
-        renderAdminPortal();
     }
 
     // ==========================================================================
@@ -5820,7 +5922,10 @@ require([
 
         saveLocalDatabase();
 
-        sendMesaUpdateToServer(mesa);
+        sendMesaUpdateToServer(mesa).catch(err => {
+            console.error("Error al guardar votos admin en servidor:", err);
+            alert(`Los votos se guardaron en local, pero falló el envío al servidor:\n${err.message || err}`);
+        });
 
         document.getElementById("modal-admin-edit-votes").classList.add("hidden");
         alert(`¡Votos de la Mesa ${mesa.codigo} actualizados con éxito por Administración!`);
@@ -5879,7 +5984,10 @@ require([
         saveLocalDatabase();
 
         if (state.arcgisMode) {
-            sendMesaUpdateToServer(mesa);
+            sendMesaUpdateToServer(mesa).catch(err => {
+                console.error("Error al guardar miembros admin en servidor:", err);
+                alert(`Los miembros se guardaron en local, pero falló el envío al servidor:\n${err.message || err}`);
+            });
         }
 
         document.getElementById("modal-admin-edit-members").classList.add("hidden");
