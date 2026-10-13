@@ -138,7 +138,19 @@ const COLEGIO_DETAILS = {
   }
 };
 
-// Configuración de los partidos políticos (se obtiene dinámicamente desde el JSON de la GDB de ArcGIS)
-const DEFAULT_PARTIES_CONFIG = [];
+// Catálogo inicial municipales (ampliable desde administración; se sincroniza a GDB como __PARTIES_MUNI__)
+const DEFAULT_PARTIES_CONFIG = [
+  { id: "PP", name: "PP", color: "#1d84ce", logo: "Imagenes/logos/municipales/PP.png", field: "votos_pp" },
+  { id: "PSOE", name: "PSOE", color: "#ef1c27", logo: "Imagenes/logos/municipales/PSOE.png", field: "votos_psoe" },
+  { id: "VOX", name: "VOX", color: "#63be21", logo: "Imagenes/logos/municipales/VOX.png", field: "votos_vox" },
+  { id: "VPR", name: "Vecinos por Rivas", color: "#00a896", logo: "Imagenes/logos/municipales/Logo_OITR.png", field: "votos_vpr" },
+  { id: "IU", name: "IU - Más Madrid - Verdes Equo", color: "#7b1fa2", logo: "Imagenes/logos/municipales/IU.png", field: "votos_iu" },
+  { id: "PODEMOS", name: "Podemos", color: "#673ab7", logo: "Imagenes/logos/municipales/UnidasPodemos.png", field: "votos_podemos" },
+  { id: "MM", name: "Más Madrid", color: "#00c39a", logo: "Imagenes/logos/municipales/Logo_OITR.png", field: "votos_mm" },
+  { id: "CS", name: "Ciudadanos", color: "#fa5000", logo: "Imagenes/logos/municipales/Ciudadanos.png", field: "votos_cs" },
+  { id: "PACMA", name: "PACMA", color: "#16a085", logo: "Imagenes/logos/municipales/PACMA.png", field: "votos_pacma" },
+  { id: "SALF", name: "Se Acabó La Fiesta", color: "#0f172a", logo: "Imagenes/logos/municipales/Seacabolafiesta.png", field: "votos_salf" }
+];
 
+// Vacío hasta leer/escribir el Feature __PARTIES_MUNI__. DEFAULT_PARTIES_CONFIG es solo plantilla.
 let PARTIES_CONFIG = [];

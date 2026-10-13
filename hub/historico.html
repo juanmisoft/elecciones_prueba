@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Histórico electoral · Rivas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css">
+  <link rel="stylesheet" href="css/hub.css?v=1.3.2">
+</head>
+<body class="ambito-page">
+  <header class="ambito-top">
+    <div class="ambito-top-row ambito-top-row-wide">
+      <a class="btn-back-hub" href="index.html" title="Volver al HUB" aria-label="Volver al HUB">
+        <span class="btn-back-hub-arrow" aria-hidden="true">&#8592;</span>
+        <span>HUB</span>
+      </a>
+      <div class="ambito-top-text">
+        <p class="ambito-eyebrow" id="ambitoEyebrow">Históricos</p>
+        <h1 class="ambito-title" id="ambitoTitle">Ámbito</h1>
+        <p class="ambito-sub" id="ambitoSub"></p>
+      </div>
+      <div class="ambito-top-actions" id="nextNoticeInline">
+        <div class="next-inline hidden" id="nextNotice">
+          <div class="next-inline-text">
+            <strong id="nextTitle">Próxima convocatoria</strong>
+            <span id="nextDate"></span>
+            <span class="next-inline-note" id="nextNote"></span>
+          </div>
+          <a class="btn hidden" id="nextCta" href="#">En vivo</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="workspace compare-hidden" id="workspace">
+    <aside class="side-panel">
+      <div class="panel-block">
+        <h4>Modo</h4>
+        <div class="mode-toggle">
+          <button type="button" id="btnModeSingle" class="active">Un año</button>
+          <button type="button" id="btnModeCompare">Comparar</button>
+        </div>
+      </div>
+
+      <div class="panel-block">
+        <h4>Convocatoria</h4>
+        <div class="field">
+          <label for="yearA">Año A</label>
+          <select id="yearA"></select>
+        </div>
+        <div class="field" id="yearBField">
+          <label for="yearB">Año B (swipe)</label>
+          <select id="yearB"></select>
+        </div>
+      </div>
+    </aside>
+
+    <section class="map-wrap">
+      <div id="mapViewDiv"></div>
+      <div class="map-loader" id="mapLoader">Cargando mapa…</div>
+    </section>
+
+    <aside class="summary-rail" id="summaryRail">
+      <article class="summary-card" id="metricsA">
+        <header class="summary-card-head">
+          <span class="summary-badge">A</span>
+          <div>
+            <h3 id="aYearLabel">—</h3>
+            <p class="summary-caption">Resumen del año seleccionado</p>
+          </div>
+        </header>
+        <div class="summary-stats">
+          <div class="metric">
+            <div class="label">Participación</div>
+            <div class="value" id="aParticipation">—</div>
+            <div class="hint" id="aPartHint"></div>
+          </div>
+          <div class="metric">
+            <div class="label">Blancos</div>
+            <div class="value" id="aBlank">—</div>
+          </div>
+          <div class="metric">
+            <div class="label">Nulos</div>
+            <div class="value" id="aNull">—</div>
+          </div>
+        </div>
+        <div class="summary-parties">
+          <h4>Más votadas</h4>
+          <div class="legend-list" id="aLegend"></div>
+        </div>
+      </article>
+
+      <article class="summary-card summary-card-b" id="metricsB">
+        <header class="summary-card-head">
+          <span class="summary-badge badge-b">B</span>
+          <div>
+            <h3 id="bYearLabel">—</h3>
+            <p class="summary-caption">Resumen del año a comparar</p>
+          </div>
+        </header>
+        <div class="summary-stats">
+          <div class="metric">
+            <div class="label">Participación</div>
+            <div class="value" id="bParticipation">—</div>
+            <div class="hint" id="bPartHint"></div>
+          </div>
+          <div class="metric">
+            <div class="label">Blancos</div>
+            <div class="value" id="bBlank">—</div>
+          </div>
+          <div class="metric">
+            <div class="label">Nulos</div>
+            <div class="value" id="bNull">—</div>
+          </div>
+        </div>
+        <div class="summary-parties">
+          <h4>Más votadas</h4>
+          <div class="legend-list" id="bLegend"></div>
+        </div>
+      </article>
+    </aside>
+  </div>
+
+  <script src="js/config.js?v=1.2.7"></script>
+  <script src="https://js.arcgis.com/4.29/"></script>
+  <script src="js/historico-app.js?v=1.3.0"></script>
+</body>
+</html>

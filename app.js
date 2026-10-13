@@ -21,6 +21,10 @@ require([
     const URL_COLEGIOS = `${PUBLIC_SERVICE_URL}/0`;
     const URL_SECCIONES = `${PUBLIC_SERVICE_URL}/1`;
     const URL_MESAS_TABLE = `${PUBLIC_SERVICE_URL}/6`;
+    // Término municipal actual (Portal item 6586b7e8e95c446698bfa8c65d7ed97c)
+    const URL_TERMINO_MUNICIPAL = "https://sit.rivasciudad.es/server/rest/services/Termino_municipal_actual/FeatureServer/0";
+    // Excluye Cañada Real ("…EAL" en etiqueta) e industriales / no numéricas
+    const SECCIONES_DEFINITION_EXPRESSION = "SECCION NOT LIKE '% %' AND SECCION NOT LIKE '%EAL%' AND SECCION NOT LIKE '%eal%'";
 
     // URLs para la gestión de datos (servicio editable - requiere autenticación)
     const EDITABLE_SERVICE_URL = "https://sit.rivasciudad.es/server/rest/services/Elecciones_Rivas_Gen_Prueba/FeatureServer";
@@ -40,7 +44,8 @@ require([
         view: null,
         seccionesLayer: null,
         labelsLayer: null,
-        colegiosLayer: null
+        colegiosLayer: null,
+        terminoLayer: null
     };
 
     // Intervalos de sincronización según perfil
@@ -49,6 +54,8 @@ require([
     const COLEGIO_SYNC_MS = 4000;   // Colegio: solo en listado de mesas (no dentro del formulario)
 
     // Usuarios locales de respaldo (por si falla la red o para pruebas rápidas)
+        const AUTH_STORAGE_PREFIX = "elecciones_muni";
+
     const LOCAL_USERS = {
         "AdminEleccionesGenPrueba": { role: "admin", colegio: null },
         "JaramaEleccionesGenPrueba": { role: "colegio", colegio: "C.E.I.P. JARAMA" },
@@ -62,10 +69,32 @@ require([
     // Mesas iniciales por defecto (vacío, la única fuente es ArcGIS Server)
     const DEFAULT_MESAS = [];
 
+    function authKey(suffix) {
+        return AUTH_STORAGE_PREFIX + "_" + suffix;
+    }
+
+    function clearAuthStorage() {
+        localStorage.removeItem(authKey("user"));
+        localStorage.removeItem(authKey("arcgis_mode"));
+        localStorage.removeItem(authKey("arcgis_id_mgr"));
+        localStorage.removeItem("elecciones_user");
+        localStorage.removeItem("elecciones_arcgis_mode");
+        localStorage.removeItem("elecciones_arcgis_id_mgr");
+    }
+
+
     // ==========================================================================
     // INICIALIZACIÓN DE LA APLICACIÓN
     // ==========================================================================
     function init() {
+        if (typeof fillPartyLogoPresetSelect === "function") {
+            fillPartyLogoPresetSelect(document.getElementById("party-logo-preset-select"));
+            const ambitoHint = document.getElementById("logo-catalog-ambito-hint");
+            const folderHint = document.getElementById("logo-catalog-folder-hint");
+            if (ambitoHint && typeof ELECTION_AMBITO !== "undefined") ambitoHint.textContent = ELECTION_AMBITO;
+            if (folderHint && typeof LOGO_CATALOG_FOLDER !== "undefined") folderHint.textContent = LOGO_CATALOG_FOLDER;
+        }
+
         // 0. Restaurar credenciales y tokens de ArcGIS IdentityManager si existen
         restoreIdentityManagerSession();
 
@@ -117,8 +146,18 @@ require([
         });
     }
 
+    const PARTIES_CONFIG_CODIGO = "__PARTIES_MUNI__";
+    const PARTIES_CONFIG_CODIGO_LEGACY = "__PARTIES__";
+
     function isConfigRecordCodigo(cod) {
-        return cod === "__PARTIES__" || cod === "__CLOSED__";
+        return cod === PARTIES_CONFIG_CODIGO
+            || cod === PARTIES_CONFIG_CODIGO_LEGACY
+            || cod === "__PARTIES_GEN__"
+            || cod === "__CLOSED__";
+    }
+
+    function isPartiesConfigCodigo(cod) {
+        return cod === PARTIES_CONFIG_CODIGO;
     }
 
     function isScrutinyFormActive() {
@@ -126,7 +165,7 @@ require([
     }
 
     function initLocalDatabase() {
-        ["elecciones_mesas", "elecciones_parties_config", "elecciones_colegios_cerrados", "elecciones_censos_manuales"].forEach(k => {
+        ["elecciones_mesas", "elecciones_parties_config", "elecciones_colegios_cerrados", "elecciones_censos_manuales", "elecciones_custom_party_logos"].forEach(k => {
             try { localStorage.removeItem(k); } catch (e) {}
         });
         state.mesas = [];
@@ -140,14 +179,14 @@ require([
 
     // Intenta restaurar sesión de usuario de localStorage
     function restoreSession() {
-        const storedUser = localStorage.getItem("elecciones_user");
+        const storedUser = localStorage.getItem(authKey("user")) || localStorage.getItem("elecciones_user");
         if (storedUser) {
             try {
                 const parsed = JSON.parse(storedUser);
                 const allowedUsers = Object.keys(LOCAL_USERS).map(u => u.toLowerCase());
-                if (parsed && parsed.username && (allowedUsers.includes(parsed.username.toLowerCase()) || parsed.role)) {
+                if (parsed && parsed.username && allowedUsers.includes(parsed.username.toLowerCase())) {
                     state.currentUser = parsed;
-                    state.arcgisMode = localStorage.getItem("elecciones_arcgis_mode") === "true";
+                    state.arcgisMode = (localStorage.getItem(authKey("arcgis_mode")) || localStorage.getItem("elecciones_arcgis_mode")) === "true";
                     showLoggedInUserInterface();
                     
                     // Si estamos en modo ArcGIS, forzar sincronización de mesas tras restaurar sesión
@@ -156,12 +195,12 @@ require([
                         startPeriodicSync();
                     }
                 } else {
-                    localStorage.removeItem("elecciones_user");
-                    localStorage.removeItem("elecciones_arcgis_mode");
+                    localStorage.removeItem(authKey("user")); localStorage.removeItem("elecciones_user");
+                    localStorage.removeItem(authKey("arcgis_mode")); localStorage.removeItem("elecciones_arcgis_mode");
                 }
             } catch (e) {
-                localStorage.removeItem("elecciones_user");
-                localStorage.removeItem("elecciones_arcgis_mode");
+                localStorage.removeItem(authKey("user")); localStorage.removeItem("elecciones_user");
+                localStorage.removeItem(authKey("arcgis_mode")); localStorage.removeItem("elecciones_arcgis_mode");
             }
         }
     }
@@ -179,6 +218,7 @@ require([
             url: URL_SECCIONES,
             outFields: ["*"],
             opacity: 0.7,
+            definitionExpression: SECCIONES_DEFINITION_EXPRESSION,
             popupTemplate: {
                 title: "Sección Censal {SECCION}",
                 content: function(featureInfo) {
@@ -188,6 +228,29 @@ require([
         });
 
         state.labelsLayer = new GraphicsLayer({ id: "labelsLayer" });
+
+        // Contorno del término municipal actual de Rivas
+        state.terminoLayer = new FeatureLayer({
+            id: "terminoMunicipalLayer",
+            url: URL_TERMINO_MUNICIPAL,
+            title: "Término municipal",
+            outFields: ["*"],
+            legendEnabled: false,
+            popupEnabled: false,
+            renderer: {
+                type: "simple",
+                symbol: {
+                    type: "simple-fill",
+                    color: [0, 0, 0, 0],
+                    outline: {
+                        type: "simple-line",
+                        color: [120, 20, 20, 0.95],
+                        width: 2.25,
+                        style: "solid"
+                    }
+                }
+            }
+        });
 
         // Capa de colegios electorales (Puntos)
         state.colegiosLayer = new FeatureLayer({
@@ -200,7 +263,7 @@ require([
         // Mapa Base Gris de ArcGIS
         state.map = new Map({
             basemap: "gray-vector",
-            layers: [state.seccionesLayer, state.labelsLayer]
+            layers: [state.seccionesLayer, state.terminoLayer, state.labelsLayer]
         });
 
         state.view = new MapView({
@@ -233,17 +296,45 @@ require([
 
     // Consulta todas las geometrías de las secciones censales y las guarda para renderizar los logotipos en cliente
     let geomsCache = [];
+
+    function isValidCensusSectionFeature(feature) {
+        if (!feature || !feature.attributes) return false;
+        const attrs = feature.attributes;
+        const raw = attrs.SECCION ?? attrs.seccion ?? attrs.SECC ?? attrs.secc;
+        if (raw === undefined || raw === null) return false;
+        const text = String(raw).trim();
+        if (!text) return false;
+        // Evita etiquetas tipo "EAL" (p. ej. CAÑADA REAL) y polígonos industriales no censales
+        if (/EAL/i.test(text)) return false;
+        if (/\s/.test(text)) return false;
+        return /^\d+$/.test(text);
+    }
+
+    function filterCensusSectionFeatures(features) {
+        return (features || []).filter(isValidCensusSectionFeature);
+    }
+
+    function ensureMapOverlayOrder() {
+        if (!state.map) return;
+        if (state.terminoLayer && state.map.layers.includes(state.terminoLayer)) {
+            state.map.reorder(state.terminoLayer, state.map.layers.length - 1);
+        }
+        if (state.labelsLayer && state.map.layers.includes(state.labelsLayer)) {
+            state.map.reorder(state.labelsLayer, state.map.layers.length - 1);
+        }
+    }
+
     function queryAllGeometries() {
         if (!state.seccionesLayer) return;
         
         state.seccionesLayer.when(() => {
             const query = state.seccionesLayer.createQuery();
-            query.where = "1=1";
+            query.where = SECCIONES_DEFINITION_EXPRESSION;
             query.outFields = ["*"];
             query.returnGeometry = true;
 
             state.seccionesLayer.queryFeatures(query).then(results => {
-                geomsCache = results.features;
+                geomsCache = filterCensusSectionFeatures(results.features);
                 // Dibujar colores e iconos iniciales
                 renderMapTheme();
             }).catch(err => {
@@ -262,6 +353,7 @@ require([
         const publicSecLayer = new FeatureLayer({
             url: "https://sit.rivasciudad.es/server/rest/services/V_ELECCIONES_GENERALES2023/FeatureServer/0",
             outFields: ["*"],
+            definitionExpression: SECCIONES_DEFINITION_EXPRESSION,
             popupTemplate: {
                 title: "Sección Censal {SECCION}",
                 content: function(featureInfo) {
@@ -272,12 +364,12 @@ require([
         
         publicSecLayer.when(() => {
             const query = publicSecLayer.createQuery();
-            query.where = "1=1";
+            query.where = SECCIONES_DEFINITION_EXPRESSION;
             query.outFields = ["*"];
             query.returnGeometry = true;
             
             publicSecLayer.queryFeatures(query).then(results => {
-                geomsCache = results.features;
+                geomsCache = filterCensusSectionFeatures(results.features);
                 // Sustituir la capa protegida por la pública en el índice 0 (base)
                 state.map.remove(state.seccionesLayer);
                 state.seccionesLayer = publicSecLayer;
@@ -577,6 +669,7 @@ require([
         const btnManageParties = document.getElementById("btn-admin-manage-parties");
         if (btnManageParties) {
             btnManageParties.addEventListener("click", () => {
+                fillPartyLogoPresetSelect(document.getElementById("party-logo-preset-select"));
                 renderAdminPartiesModal();
                 document.getElementById("modal-admin-parties").classList.remove("hidden");
             });
@@ -704,44 +797,18 @@ require([
     function loginUserSuccess(username, isArcGIS) {
         if (!username) return false;
 
-        let userObj = null;
-        // 1. Buscar coincidencia exacta o case-insensitive en LOCAL_USERS
+        // Solo usuarios de la whitelist de ESTE ámbito (sin heurísticas "admin"/colegio).
         const matchKey = Object.keys(LOCAL_USERS).find(k => k.toLowerCase() === username.toLowerCase());
-        if (matchKey) {
-            userObj = LOCAL_USERS[matchKey];
-        } else {
-            // 2. Si es usuario de ArcGIS pero no está explícito en LOCAL_USERS:
-            const lowerUser = username.toLowerCase();
-            if (lowerUser.includes("admin") || lowerUser.includes("jmrojas") || lowerUser.includes("camartin")) {
-                userObj = { role: "admin", colegio: null };
-            } else {
-                // Buscar si coincide con el nombre de algún colegio de Rivas
-                for (const colName in COLEGIO_DETAILS) {
-                    const cleanColName = colName.toLowerCase().replace(/[^a-z0-9]/g, "");
-                    const cleanUser = lowerUser.replace(/[^a-z0-9]/g, "");
-                    const shortName = colName.replace(/C\.E\.I\.P\.S?\.?O?|I\.E\.S\.|CIUDAD EDUCATIVA MUNICIPAL/gi, "").trim().toLowerCase();
-                    const cleanShort = shortName.replace(/[^a-z0-9]/g, "");
-
-                    if (cleanUser.includes(cleanShort) || cleanColName.includes(cleanUser) || cleanUser.includes(cleanColName)) {
-                        userObj = { role: "colegio", colegio: colName };
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (!userObj) {
-            console.warn(`Usuario no reconocido en la lista de colegios o administradores: ${username}`);
-            // Destruir credenciales de ArcGIS
+        if (!matchKey) {
+            console.warn(`Usuario no autorizado en este ámbito (${AUTH_STORAGE_PREFIX}): ${username}`);
             IdentityManager.destroyCredentials();
             state.currentUser = null;
             state.arcgisMode = false;
-            localStorage.removeItem("elecciones_user");
-            localStorage.removeItem("elecciones_arcgis_mode");
-            localStorage.removeItem("elecciones_arcgis_id_mgr");
+            clearAuthStorage();
             return false;
         }
 
+        const userObj = LOCAL_USERS[matchKey];
         state.currentUser = {
             username: username,
             role: userObj.role,
@@ -750,8 +817,8 @@ require([
         state.arcgisMode = isArcGIS;
 
         // Persistir sesión
-        localStorage.setItem("elecciones_user", JSON.stringify(state.currentUser));
-        localStorage.setItem("elecciones_arcgis_mode", isArcGIS ? "true" : "false");
+        localStorage.setItem(authKey("user"), JSON.stringify(state.currentUser));
+        localStorage.setItem(authKey("arcgis_mode"), isArcGIS ? "true" : "false");
         saveIdentityManagerSession();
 
         showLoggedInUserInterface();
@@ -1414,84 +1481,19 @@ require([
     }
 
     // --------------------------------------------------------------------------
-    // GESTIÓN DE LOGOS PERSONALIZADOS Y CONFIGURACIÓN DE PARTIDOS
+    // CONFIGURACIÓN DE PARTIDOS (fuente de verdad: Feature __PARTIES_MUNI__ en GDB)
     // --------------------------------------------------------------------------
-    function getCustomPartyLogos() {
-        try {
-            const raw = localStorage.getItem("elecciones_custom_party_logos");
-            return raw ? JSON.parse(raw) : {};
-        } catch (e) {
-            return {};
-        }
-    }
-
-    function saveCustomPartyLogo(partyId, dataUrl) {
-        if (!partyId || !dataUrl) return;
-        try {
-            const custom = getCustomPartyLogos();
-            custom[partyId] = dataUrl;
-            localStorage.setItem("elecciones_custom_party_logos", JSON.stringify(custom));
-        } catch (e) {
-            console.warn("Error guardando logo personalizado en localStorage:", e);
-        }
-    }
-
-    function removeCustomPartyLogo(partyId) {
-        if (!partyId) return;
-        try {
-            const custom = getCustomPartyLogos();
-            delete custom[partyId];
-            localStorage.setItem("elecciones_custom_party_logos", JSON.stringify(custom));
-        } catch (e) {}
-    }
-
-    // Redimensiona imágenes locales a un tamaño óptimo (máx 128x128) para guardarlas como base64 ultraligero
-    function resizeImageToDataURL(file, maxWidth, maxHeight, callback) {
-        const reader = new FileReader();
-        reader.onload = function(evt) {
-            const img = new Image();
-            img.onload = function() {
-                let width = img.width;
-                let height = img.height;
-                if (width > maxWidth || height > maxHeight) {
-                    if (width > height) {
-                        height = Math.round((height * maxWidth) / width);
-                        width = maxWidth;
-                    } else {
-                        width = Math.round((width * maxHeight) / height);
-                        height = maxHeight;
-                    }
-                }
-                const canvas = document.createElement("canvas");
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext("2d");
-                ctx.drawImage(img, 0, 0, width, height);
-                const dataUrl = canvas.toDataURL("image/png");
-                callback(dataUrl);
-            };
-            img.onerror = function() {
-                callback("Imagenes/Logo_OITR.png");
-            };
-            img.src = evt.target.result;
-        };
-        reader.onerror = function() {
-            callback("Imagenes/Logo_OITR.png");
-        };
-        reader.readAsDataURL(file);
-    }
-
     const KNOWN_PARTIES_CATALOG = {
-        "PP": { name: "PP", color: "#1d84ce", logo: "Imagenes/PP.png" },
-        "PSOE": { name: "PSOE", color: "#ef1c27", logo: "Imagenes/PSOE.png" },
-        "VOX": { name: "VOX", color: "#63be21", logo: "Imagenes/VOX.png" },
-        "VPR": { name: "Vecinos por Rivas", color: "#00a896", logo: "Imagenes/Logo_OITR.png" },
-        "IU": { name: "IU - Más Madrid - Verdes Equo", color: "#7b1fa2", logo: "Imagenes/IU.png" },
-        "PODEMOS": { name: "Podemos", color: "#673ab7", logo: "Imagenes/UnidasPodemos.png" },
-        "MM": { name: "Más Madrid", color: "#00c39a", logo: "Imagenes/Logo_OITR.png" },
-        "CS": { name: "Ciudadanos", color: "#fa5000", logo: "Imagenes/Ciudadanos.png" },
-        "PACMA": { name: "PACMA", color: "#16a085", logo: "Imagenes/PACMA.png" },
-        "SALF": { name: "Se Acabó La Fiesta", color: "#0f172a", logo: "Imagenes/Seacabolafiesta.png" }
+        "PP": { name: "PP", color: "#1d84ce", logo: "Imagenes/logos/municipales/PP.png" },
+        "PSOE": { name: "PSOE", color: "#ef1c27", logo: "Imagenes/logos/municipales/PSOE.png" },
+        "VOX": { name: "VOX", color: "#63be21", logo: "Imagenes/logos/municipales/VOX.png" },
+        "VPR": { name: "Vecinos por Rivas", color: "#00a896", logo: "Imagenes/logos/municipales/Logo_OITR.png" },
+        "IU": { name: "IU - Más Madrid - Verdes Equo", color: "#7b1fa2", logo: "Imagenes/logos/municipales/IU.png" },
+        "PODEMOS": { name: "Podemos", color: "#673ab7", logo: "Imagenes/logos/municipales/UnidasPodemos.png" },
+        "MM": { name: "Más Madrid", color: "#00c39a", logo: "Imagenes/logos/municipales/Logo_OITR.png" },
+        "CS": { name: "Ciudadanos", color: "#fa5000", logo: "Imagenes/logos/municipales/Ciudadanos.png" },
+        "PACMA": { name: "PACMA", color: "#16a085", logo: "Imagenes/logos/municipales/PACMA.png" },
+        "SALF": { name: "Se Acabó La Fiesta", color: "#0f172a", logo: "Imagenes/logos/municipales/Seacabolafiesta.png" }
     };
 
     const AUTO_PALETTE = ["#0284c7", "#e11d48", "#16a34a", "#0d9488", "#9333ea", "#d97706", "#4f46e5", "#059669", "#dc2626", "#475569"];
@@ -2223,6 +2225,21 @@ require([
         if (!container) return;
         container.innerHTML = "";
 
+        if (PARTIES_CONFIG.length === 0) {
+            const empty = document.createElement("div");
+            empty.style.cssText = "padding:16px; border:1px dashed #cbd5e1; border-radius:8px; background:#f8fafc; color:#475569; font-size:0.9rem;";
+            empty.innerHTML = `
+                <p style="margin:0 0 10px 0;">No hay fuerzas políticas en ArcGIS (<code>${PARTIES_CONFIG_CODIGO}</code>). La lista vacía refleja la tabla.</p>
+                <button type="button" id="btn-publish-default-parties" class="btn-header" style="padding:8px 12px; font-size:0.82rem;">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Publicar catálogo inicial en ArcGIS
+                </button>
+            `;
+            container.appendChild(empty);
+            const btn = empty.querySelector("#btn-publish-default-parties");
+            if (btn) btn.addEventListener("click", handlePublishDefaultParties);
+            return;
+        }
+
         PARTIES_CONFIG.forEach(p => {
             const item = document.createElement("div");
             item.style.display = "flex";
@@ -2264,6 +2281,27 @@ require([
         });
     }
 
+    function handlePublishDefaultParties() {
+        if (!state.arcgisMode) {
+            alert("Debes iniciar sesión en modo ArcGIS para publicar el catálogo en la tabla Mesas.");
+            return;
+        }
+        if (!Array.isArray(DEFAULT_PARTIES_CONFIG) || DEFAULT_PARTIES_CONFIG.length === 0) {
+            alert("No hay catálogo inicial definido en la aplicación.");
+            return;
+        }
+        const conf = confirm(`Se publicarán ${DEFAULT_PARTIES_CONFIG.length} fuerzas políticas en el registro ${PARTIES_CONFIG_CODIGO} de ArcGIS. ¿Continuar?`);
+        if (!conf) return;
+
+        savePartiesToStorage(DEFAULT_PARTIES_CONFIG.map(p => ({ ...p })));
+        savePartiesToArcGIS(PARTIES_CONFIG);
+        generateVoteFields();
+        renderAdminPartiesModal();
+        updateGlobalMetrics();
+        renderMapTheme();
+        alert(`Catálogo inicial publicado en ${PARTIES_CONFIG_CODIGO}. Recarga la tabla Mesas en Portal para ver la fila.`);
+    }
+
     function handleAdminAddParty(e) {
         e.preventDefault();
         const idInput = document.getElementById("party-id-input");
@@ -2274,7 +2312,7 @@ require([
         const rawId = idInput.value.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
         const rawName = nameInput.value.trim();
         const color = colorInput.value;
-        const logoUrl = (presetSelect && presetSelect.value) ? presetSelect.value : "Imagenes/Logo_OITR.png";
+        const logoUrl = (presetSelect && presetSelect.value) ? presetSelect.value : "Imagenes/logos/municipales/Logo_OITR.png";
 
         if (!rawId || !rawName) {
             alert("Por favor, introduce las siglas (ID) y el nombre completo de la formación política.");
@@ -2329,8 +2367,6 @@ require([
 
         const conf = confirm(`¿Estás seguro de que deseas eliminar la fuerza política '${party.name} (${party.id})'? Se borrarán sus datos contabilizados.`);
         if (!conf) return;
-
-        removeCustomPartyLogo(partyId);
 
         const fieldToDelete = party.field;
         const updated = PARTIES_CONFIG.filter(p => p.id !== partyId);
@@ -3322,8 +3358,8 @@ require([
             }));
         });
 
-        // Garantizar que labelsLayer queda siempre en la cima
-        state.map.reorder(state.labelsLayer, state.map.layers.length - 1);
+        // Contorno municipal por encima de polígonos; etiquetas siempre arriba
+        ensureMapOverlayOrder();
 
         // Actualizar Leyenda del mapa
         renderMapLegendUI();
@@ -4409,12 +4445,16 @@ require([
     // ==========================================================================
     async function generateAndRegisterArcGISToken(username, password) {
         const tokenUrl = "https://sit.rivasciudad.es/portal/sharing/rest/generateToken";
+        // Portal exige referer estable (origen). window.location.href completo suele romper el token.
+        const referer = (window.location.protocol === "http:" || window.location.protocol === "https:")
+            ? window.location.origin
+            : "https://sit.rivasciudad.es";
         const params = new URLSearchParams();
         params.append("username", username);
         params.append("password", password);
         params.append("client", "referer");
-        params.append("referer", window.location.href);
-        params.append("expiration", "1440"); // 24 horas
+        params.append("referer", referer);
+        params.append("expiration", "120");
         params.append("f", "json");
 
         const resp = await fetch(tokenUrl, {
@@ -4425,7 +4465,9 @@ require([
 
         const data = await resp.json();
         if (data.error) {
-            throw new Error(data.error.message || (data.error.details && data.error.details[0]) || "Error al autenticar con ArcGIS Enterprise");
+            const detail = (data.error.details && data.error.details[0]) || "";
+            const code = data.error.code != null ? ` (código ${data.error.code})` : "";
+            throw new Error((data.error.message || "Error al autenticar con ArcGIS Enterprise") + code + (detail ? `: ${detail}` : ""));
         }
 
         if (!data.token) {
@@ -4473,7 +4515,7 @@ require([
         try {
             if (typeof IdentityManager !== "undefined" && IdentityManager.toJSON) {
                 const idJson = IdentityManager.toJSON();
-                localStorage.setItem("elecciones_arcgis_id_mgr", JSON.stringify(idJson));
+                localStorage.setItem(authKey("arcgis_id_mgr"), JSON.stringify(idJson));
             }
         } catch (e) {
             console.warn("No se pudo guardar la sesión de IdentityManager en localStorage:", e);
@@ -4512,7 +4554,7 @@ require([
                 }
 
                 // 3. Restaurar serialización nativa de IdentityManager
-                const idJsonStr = localStorage.getItem("elecciones_arcgis_id_mgr");
+                const idJsonStr = localStorage.getItem(authKey("arcgis_id_mgr")) || localStorage.getItem("elecciones_arcgis_id_mgr");
                 if (idJsonStr && IdentityManager.initialize) {
                     const idJson = JSON.parse(idJsonStr);
                     IdentityManager.initialize(idJson);
@@ -4531,32 +4573,31 @@ require([
     // ==========================================================================
 
     // Descarga resultados públicos desde el servidor de ArcGIS de forma anónima (para el Visor Público)
+    function parsePartiesConfigPayload(raw) {
+        if (!raw) return [];
+        try {
+            const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+            if (parsed && Array.isArray(parsed.parties_config)) return parsed.parties_config;
+            if (Array.isArray(parsed)) return parsed;
+        } catch (e) {
+            console.warn("[PARTIDOS] Error parseando catálogo de la GDB:", e);
+        }
+        return [];
+    }
+
     function applyElectoralConfigFromFeatures(features) {
         if (!features || !features.length) return;
+
+        let foundPartiesRecord = false;
+        let serverList = [];
+
         features.forEach(feat => {
             const attrs = feat.attributes || feat;
             const cod = getAttributeValue(attrs, "codigo");
             const raw = getAttributeValue(attrs, "RESULTADOS_JSON") || getAttributeValue(attrs, "resultados_json");
-            if (cod === "__PARTIES__") {
-                let serverList = [];
-                try {
-                    if (raw) {
-                        const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-                        if (parsed && Array.isArray(parsed.parties_config)) {
-                            serverList = parsed.parties_config;
-                        } else if (Array.isArray(parsed)) {
-                            serverList = parsed;
-                        }
-                    }
-                } catch (e) {
-                    console.warn("[PARTIDOS] Error leyendo __PARTIES__ de la GDB:", e);
-                }
-                savePartiesToStorage(serverList);
-                const partySig = PARTIES_CONFIG.map(p => p.id).sort().join(",");
-                if (!isScrutinyFormActive()) {
-                    generateVoteFields();
-                }
-                console.log("[PARTIDOS] Aplicados desde GDB:", serverList.length, "partidos", partySig);
+            if (isPartiesConfigCodigo(cod)) {
+                foundPartiesRecord = true;
+                serverList = parsePartiesConfigPayload(raw);
             }
             if (cod === "__CLOSED__") {
                 try {
@@ -4567,6 +4608,22 @@ require([
                 }
             }
         });
+
+        // Fuente de verdad = Feature. Sin registro o vacío ⇒ catálogo vacío en UI.
+        savePartiesToStorage(foundPartiesRecord ? serverList : []);
+
+        if (!isScrutinyFormActive()) {
+            generateVoteFields();
+        }
+        console.log(
+            "[PARTIDOS] Aplicados desde GDB:",
+            PARTIES_CONFIG.length,
+            "partidos",
+            "codigo=",
+            PARTIES_CONFIG_CODIGO,
+            "registro=",
+            foundPartiesRecord
+        );
     }
 
     function loadResultsFromServer() {
@@ -4937,7 +4994,8 @@ require([
         return attrs;
     }
 
-    // Guarda la configuración de partidos en ArcGIS Server como un registro especial "__PARTIES__"
+    // Guarda la configuración de partidos en ArcGIS Server como registro __PARTIES_MUNI__
+    // (separado de __PARTIES_GEN__ aunque compartan la misma Feature Table).
     // Solo usa campos del esquema real de la GDB. Los logos base64 se sustituyen por la ruta genérica
     // para no exceder el límite de 2000 chars de RESULTADOS_JSON.
     function savePartiesToArcGIS(partiesList) {
@@ -4957,7 +5015,7 @@ require([
 
             // Usar solo los campos que existen en la GDB (según el esquema proporcionado)
             const attrs = {
-                CODIGO: "__PARTIES__",
+                CODIGO: PARTIES_CONFIG_CODIGO,
                 SECCION: "0",
                 MESA: "CONFIG",
                 COLEGIO: "CONFIG",
@@ -4969,9 +5027,8 @@ require([
 
             const tablesLayer = new FeatureLayer({ url: URL_MESAS_TABLE_EDIT, outFields: ["*"] });
 
-            // Buscar si ya existe el registro __PARTIES__ (usar campo CODIGO en mayúsculas)
             const q = tablesLayer.createQuery();
-            q.where = "CODIGO = '__PARTIES__'";
+            q.where = `CODIGO = '${PARTIES_CONFIG_CODIGO}'`;
             q.outFields = ["OBJECTID"];
 
             tablesLayer.queryFeatures(q).then(res => {
@@ -4987,7 +5044,7 @@ require([
                     return tablesLayer.applyEdits({ addFeatures: [addGraphic] });
                 }
             }).then(result => {
-                console.log("[PARTIDOS] Config de partidos guardada en ArcGIS Server:", leanParties.length, "partidos", result);
+                console.log("[PARTIDOS] Config municipal guardada en ArcGIS:", PARTIES_CONFIG_CODIGO, leanParties.length, "partidos", result);
             }).catch(err => {
                 console.warn("[PARTIDOS] Error al guardar partidos en ArcGIS:", err);
             });

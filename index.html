@@ -23,7 +23,7 @@
     <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css">
 
     <!-- Estilos del Proyecto -->
-    <link rel="stylesheet" href="styles.css?v=2.1.6">
+    <link rel="stylesheet" href="styles.css?v=2.3.1">
 </head>
 
 <body>
@@ -34,10 +34,14 @@
         <!-- CABECERA GLOBAL DE LA APLICACIÓN -->
         <header class="main-header">
             <div class="header-brand">
-                <img src="Imagenes/Logo_OITR.png" alt="Logo Ayuntamiento Rivas-Vaciamadrid" class="brand-logo">
+                <a class="btn-back-hub" href="hub/index.html" title="Volver al HUB" aria-label="Volver al HUB">
+                    <span class="btn-back-hub-arrow" aria-hidden="true">&#8592;</span>
+                    <span>HUB</span>
+                </a>
                 <div class="brand-title">
-                    <span>ELECCIONES <span style="color: var(--primary-color);">MUNICIPALES</span></span>
-                    <span class="brand-subtitle">Rivas Vaciamadrid 2027</span>
+                    <span class="brand-context"><span class="live-pulse" aria-hidden="true"></span> En vivo</span>
+                    <span class="brand-heading">Municipales</span>
+                    <span class="brand-subtitle">Resultados en vivo de las elecciones municipales · 23 mayo 2027</span>
                 </div>
             </div>
 
@@ -248,9 +252,8 @@
 
                 <!-- Leyenda de colores del mapa -->
                 <div id="mapLegend" class="map-legend">
-                    <div class="legend-title">Top 3 Municipio</div>
                     <div id="legend-items-container">
-                        <!-- Rellenado dinámicamente con partidos configurados -->
+                        <!-- Rellenado dinámicamente con los 3 primeros partidos -->
                     </div>
                     <div class="legend-item"
                         style="margin-top: 8px; border-top: 1px dashed rgba(0,0,0,0.1); padding-top: 6px;">
@@ -1083,28 +1086,11 @@
                                 style="font-weight: 600; font-size: 0.8rem; display: block; margin-bottom: 4px;">Logotipo
                                 de la Formación</label>
                             <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <select id="party-logo-preset-select" class="portal-input" style="font-size: 0.85rem;"
+                                                                <select id="party-logo-preset-select" class="portal-input" style="font-size: 0.85rem;"
                                     required>
                                     <option value="">-- Seleccionar imagen --</option>
-                                    <option value="Imagenes/PP.png">PP (Imagenes/PP.png)</option>
-                                    <option value="Imagenes/PP2.png">PP 2 (Imagenes/PP2.png)</option>
-                                    <option value="Imagenes/PSOE.png">PSOE (Imagenes/PSOE.png)</option>
-                                    <option value="Imagenes/VOX.png">VOX (Imagenes/VOX.png)</option>
-                                    <option value="Imagenes/IU.png">IU (Imagenes/IU.png)</option>
-                                    <option value="Imagenes/sumar-logo-png_seeklogo-487418.png">Sumar
-                                        (Imagenes/sumar...)</option>
-                                    <option value="Imagenes/UnidasPodemos.png">Unidas Podemos
-                                        (Imagenes/UnidasPodemos.png)</option>
-                                    <option value="Imagenes/Ciudadanos.png">Ciudadanos (Imagenes/Ciudadanos.png)
-                                    </option>
-                                    <option value="Imagenes/PACMA.png">PACMA (Imagenes/PACMA.png)</option>
-                                    <option value="Imagenes/Seacabolafiesta.png">SALF (Imagenes/Seacabolafiesta.png)
-                                    </option>
-                                    <option value="Imagenes/Logo_OITR.png">Genérico OITR (Imagenes/Logo_OITR.png)
-                                    </option>
                                 </select>
-                                <span style="font-size: 0.72rem; color: var(--text-muted);">Sube nuevos logos a la
-                                    carpeta <code>Imagenes/</code> del proyecto.</span>
+                                <span style="font-size: 0.72rem; color: var(--text-muted);">Catálogo del ámbito <code id="logo-catalog-ambito-hint">—</code>. Añade PNG en <code id="logo-catalog-folder-hint">Imagenes/logos/…</code>.</span>
                             </div>
                         </div>
 
@@ -1149,10 +1135,11 @@
     <script src="https://js.arcgis.com/4.29/"></script>
 
     <!-- Datos de Configuración del Proyecto (Mapeo Rivas) -->
-    <script src="section_colegio_mapping.js?v=2.1.6"></script>
+    <script src="section_logo_catalog.js?v=1.0.0"></script>
+    <script src="section_colegio_mapping.js?v=2.1.7"></script>
 
     <!-- Lógica de Control y Sincronización -->
-    <script src="app.js?v=2.1.6"></script>
+    <script src="app.js?v=2.2.0"></script>
 </body>
 
 </html>
