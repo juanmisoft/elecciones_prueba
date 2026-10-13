@@ -35,8 +35,8 @@ try {
     Write-Host "  Presiona CTRL+C en esta consola para detener el servidor" -ForegroundColor Yellow
     Write-Host "==========================================================" -ForegroundColor Green
     
-    # Abre automáticamente el navegador predeterminado en el puerto asignado
-    # Start-Process "http://localhost:$port/index.html"
+    # Abre automáticamente el navegador en el HUB
+    Start-Process "http://localhost:$port/hub/index.html"
     
     while ($listener.IsListening) {
         try {

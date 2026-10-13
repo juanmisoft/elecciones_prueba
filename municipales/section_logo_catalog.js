@@ -1,6 +1,6 @@
 /* Catálogo de logotipos para administración — ámbito MUNICIPALES */
 const ELECTION_AMBITO = "municipales";
-const LOGO_CATALOG_FOLDER = "Imagenes/logos/municipales";
+const LOGO_CATALOG_FOLDER = "../Imagenes/logos/municipales";
 const LOGO_PRESETS = [
   { label: "PP", file: "PP.png" },
   { label: "PP 2", file: "PP2.png" },

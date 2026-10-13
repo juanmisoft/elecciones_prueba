@@ -77,79 +77,79 @@ const SECTION_COLEGIO_MAPPING = {
 
 const COLEGIO_DETAILS = {
   "C.E.I.P. LAS CIGUEÑAS": {
-    image: "Imagenes/las-ciguenas.png",
+    image: "../Imagenes/las-ciguenas.png",
     address: "Calle Noruega, 1, 28521 Rivas-Vaciamadrid"
   },
   "C.E.I.P. LA ESCUELA": {
-    image: "Imagenes/la-escuela.png",
+    image: "../Imagenes/la-escuela.png",
     address: "Avenida de Miguel Hernández, 1, 28523 Rivas-Vaciamadrid"
   },
   "C.E.I.P. EL OLIVAR": {
-    image: "Imagenes/el-olivar.png",
+    image: "../Imagenes/el-olivar.png",
     address: "Avenida de Covibar, 3, 28523 Rivas-Vaciamadrid"
   },
   "I.E.S. LAS LAGUNAS": {
-    image: "Imagenes/LAS_LAGUNAS.png",
+    image: "../Imagenes/LAS_LAGUNAS.png",
     address: "Avenida de Gabriel García Márquez, s/n, 28523 Rivas-Vaciamadrid"
   },
   "C.E.I.P. VICTORIA KENT": {
-    image: "Imagenes/victroria-kent.png",
+    image: "../Imagenes/victroria-kent.png",
     address: "Paseo de la Chopera, 7, 28523 Rivas-Vaciamadrid"
   },
   "C.E.I.P. JARAMA": {
-    image: "Imagenes/ceip_jarama.png",
+    image: "../Imagenes/ceip_jarama.png",
     address: "Calle del Olivo, s/n, 28522 Rivas-Vaciamadrid"
   },
   "C.E.I.P. LOS ALMENDROS": {
-    image: "Imagenes/los-almendros.png",
+    image: "../Imagenes/los-almendros.png",
     address: "Avenida de los Almendros, 198, 28522 Rivas-Vaciamadrid"
   },
   "C.E.I.P. RAFAEL ALBERTI": {
-    image: "Imagenes/rafael-alberti.png",
+    image: "../Imagenes/rafael-alberti.png",
     address: "Paseo de las Provincias, s/n, 28523 Rivas-Vaciamadrid"
   },
   "C.E.I.P. JOSE SARAMAGO": {
-    image: "Imagenes/jose-saramago.png",
+    image: "../Imagenes/jose-saramago.png",
     address: "Calle de José Saramago, 1, 28522 Rivas-Vaciamadrid"
   },
   "C.E.I.P. DULCE CHACON": {
-    image: "Imagenes/dulce-chacon.png",
+    image: "../Imagenes/dulce-chacon.png",
     address: "Calle Federica Montseny, 3, 28521 Rivas-Vaciamadrid"
   },
   "C.E.I.P. JOSE HIERRO": {
-    image: "Imagenes/JoseHierro.jpg",
+    image: "../Imagenes/JoseHierro.jpg",
     address: "Avenida de José Hierro, 86, 28521 Rivas-Vaciamadrid"
   },
   "C.E.I.P. HANS CHRISTIAN ANDERSEN": {
-    image: "Imagenes/hans-christian-andersen.png",
+    image: "../Imagenes/hans-christian-andersen.png",
     address: "Calle de Fernando Trueba, 8, 28521 Rivas-Vaciamadrid"
   },
   "C.E.I.P. JOSE ITURZAETA": {
-    image: "Imagenes/jose-iturzaeta.png",
+    image: "../Imagenes/jose-iturzaeta.png",
     address: "Calle Bernardo Atxaga, 13, 28521 Rivas-Vaciamadrid"
   },
   "C.E.I.P.S.O LA LUNA": {
-    image: "Imagenes/ceipso-la-luna.jpg",
+    image: "../Imagenes/ceipso-la-luna.jpg",
     address: "Avenida de la Tierra, 6, 28523 Rivas-Vaciamadrid"
   },
   "CIUDAD EDUCATIVA MUNICIPAL HIPATIA": {
-    image: "Imagenes/planeta-rivashipatia_JML934.jpg",
+    image: "../Imagenes/planeta-rivashipatia_JML934.jpg",
     address: "Avenida del Ocho de Marzo, 1, 28523 Rivas-Vaciamadrid"
   }
 };
 
 // Catálogo inicial municipales (ampliable desde administración; se sincroniza a GDB como __PARTIES_MUNI__)
 const DEFAULT_PARTIES_CONFIG = [
-  { id: "PP", name: "PP", color: "#1d84ce", logo: "Imagenes/logos/municipales/PP.png", field: "votos_pp" },
-  { id: "PSOE", name: "PSOE", color: "#ef1c27", logo: "Imagenes/logos/municipales/PSOE.png", field: "votos_psoe" },
-  { id: "VOX", name: "VOX", color: "#63be21", logo: "Imagenes/logos/municipales/VOX.png", field: "votos_vox" },
-  { id: "VPR", name: "Vecinos por Rivas", color: "#00a896", logo: "Imagenes/logos/municipales/Logo_OITR.png", field: "votos_vpr" },
-  { id: "IU", name: "IU - Más Madrid - Verdes Equo", color: "#7b1fa2", logo: "Imagenes/logos/municipales/IU.png", field: "votos_iu" },
-  { id: "PODEMOS", name: "Podemos", color: "#673ab7", logo: "Imagenes/logos/municipales/UnidasPodemos.png", field: "votos_podemos" },
-  { id: "MM", name: "Más Madrid", color: "#00c39a", logo: "Imagenes/logos/municipales/Logo_OITR.png", field: "votos_mm" },
-  { id: "CS", name: "Ciudadanos", color: "#fa5000", logo: "Imagenes/logos/municipales/Ciudadanos.png", field: "votos_cs" },
-  { id: "PACMA", name: "PACMA", color: "#16a085", logo: "Imagenes/logos/municipales/PACMA.png", field: "votos_pacma" },
-  { id: "SALF", name: "Se Acabó La Fiesta", color: "#0f172a", logo: "Imagenes/logos/municipales/Seacabolafiesta.png", field: "votos_salf" }
+  { id: "PP", name: "PP", color: "#1d84ce", logo: "../Imagenes/logos/municipales/PP.png", field: "votos_pp" },
+  { id: "PSOE", name: "PSOE", color: "#ef1c27", logo: "../Imagenes/logos/municipales/PSOE.png", field: "votos_psoe" },
+  { id: "VOX", name: "VOX", color: "#63be21", logo: "../Imagenes/logos/municipales/VOX.png", field: "votos_vox" },
+  { id: "VPR", name: "Vecinos por Rivas", color: "#00a896", logo: "../Imagenes/logos/municipales/Logo_OITR.png", field: "votos_vpr" },
+  { id: "IU", name: "IU - Más Madrid - Verdes Equo", color: "#7b1fa2", logo: "../Imagenes/logos/municipales/IU.png", field: "votos_iu" },
+  { id: "PODEMOS", name: "Podemos", color: "#673ab7", logo: "../Imagenes/logos/municipales/UnidasPodemos.png", field: "votos_podemos" },
+  { id: "MM", name: "Más Madrid", color: "#00c39a", logo: "../Imagenes/logos/municipales/Logo_OITR.png", field: "votos_mm" },
+  { id: "CS", name: "Ciudadanos", color: "#fa5000", logo: "../Imagenes/logos/municipales/Ciudadanos.png", field: "votos_cs" },
+  { id: "PACMA", name: "PACMA", color: "#16a085", logo: "../Imagenes/logos/municipales/PACMA.png", field: "votos_pacma" },
+  { id: "SALF", name: "Se Acabó La Fiesta", color: "#0f172a", logo: "../Imagenes/logos/municipales/Seacabolafiesta.png", field: "votos_salf" }
 ];
 
 // Vacío hasta leer/escribir el Feature __PARTIES_MUNI__. DEFAULT_PARTIES_CONFIG es solo plantilla.

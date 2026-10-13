@@ -137,7 +137,7 @@
         title: "Próximas elecciones municipales",
         dateLabel: "23 de mayo de 2027",
         ctaLabel: "Abrir visor en vivo",
-        ctaHref: "../index.html",
+        ctaHref: "../municipales/index.html",
         note: "Participación y escrutinio municipal en tiempo real (visor y portal de administración)."
       },
       years: [

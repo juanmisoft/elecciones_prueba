@@ -1484,16 +1484,16 @@ require([
     // CONFIGURACIÓN DE PARTIDOS (fuente de verdad: Feature __PARTIES_MUNI__ en GDB)
     // --------------------------------------------------------------------------
     const KNOWN_PARTIES_CATALOG = {
-        "PP": { name: "PP", color: "#1d84ce", logo: "Imagenes/logos/municipales/PP.png" },
-        "PSOE": { name: "PSOE", color: "#ef1c27", logo: "Imagenes/logos/municipales/PSOE.png" },
-        "VOX": { name: "VOX", color: "#63be21", logo: "Imagenes/logos/municipales/VOX.png" },
-        "VPR": { name: "Vecinos por Rivas", color: "#00a896", logo: "Imagenes/logos/municipales/Logo_OITR.png" },
-        "IU": { name: "IU - Más Madrid - Verdes Equo", color: "#7b1fa2", logo: "Imagenes/logos/municipales/IU.png" },
-        "PODEMOS": { name: "Podemos", color: "#673ab7", logo: "Imagenes/logos/municipales/UnidasPodemos.png" },
-        "MM": { name: "Más Madrid", color: "#00c39a", logo: "Imagenes/logos/municipales/Logo_OITR.png" },
-        "CS": { name: "Ciudadanos", color: "#fa5000", logo: "Imagenes/logos/municipales/Ciudadanos.png" },
-        "PACMA": { name: "PACMA", color: "#16a085", logo: "Imagenes/logos/municipales/PACMA.png" },
-        "SALF": { name: "Se Acabó La Fiesta", color: "#0f172a", logo: "Imagenes/logos/municipales/Seacabolafiesta.png" }
+        "PP": { name: "PP", color: "#1d84ce", logo: "../Imagenes/logos/municipales/PP.png" },
+        "PSOE": { name: "PSOE", color: "#ef1c27", logo: "../Imagenes/logos/municipales/PSOE.png" },
+        "VOX": { name: "VOX", color: "#63be21", logo: "../Imagenes/logos/municipales/VOX.png" },
+        "VPR": { name: "Vecinos por Rivas", color: "#00a896", logo: "../Imagenes/logos/municipales/Logo_OITR.png" },
+        "IU": { name: "IU - Más Madrid - Verdes Equo", color: "#7b1fa2", logo: "../Imagenes/logos/municipales/IU.png" },
+        "PODEMOS": { name: "Podemos", color: "#673ab7", logo: "../Imagenes/logos/municipales/UnidasPodemos.png" },
+        "MM": { name: "Más Madrid", color: "#00c39a", logo: "../Imagenes/logos/municipales/Logo_OITR.png" },
+        "CS": { name: "Ciudadanos", color: "#fa5000", logo: "../Imagenes/logos/municipales/Ciudadanos.png" },
+        "PACMA": { name: "PACMA", color: "#16a085", logo: "../Imagenes/logos/municipales/PACMA.png" },
+        "SALF": { name: "Se Acabó La Fiesta", color: "#0f172a", logo: "../Imagenes/logos/municipales/Seacabolafiesta.png" }
     };
 
     const AUTO_PALETTE = ["#0284c7", "#e11d48", "#16a34a", "#0d9488", "#9333ea", "#d97706", "#4f46e5", "#059669", "#dc2626", "#475569"];
@@ -1894,7 +1894,7 @@ require([
             const isAllClosed = (closed === total && total > 0) || (state.colegiosCerrados && state.colegiosCerrados.includes(colName));
             
             const details = COLEGIO_DETAILS[colName];
-            const imgUrl = details?.image ? (baseUrl + details.image) : (baseUrl + "Imagenes/Logo_OITR.png");
+            const imgUrl = details?.image ? (baseUrl + details.image) : (baseUrl + "../Imagenes/Logo_OITR.png");
             const address = details?.address || "Rivas-Vaciamadrid";
             const totalCensus = colMesas.reduce((acc, m) => acc + (m.censo || 0), 0);
 
@@ -2312,7 +2312,7 @@ require([
         const rawId = idInput.value.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '');
         const rawName = nameInput.value.trim();
         const color = colorInput.value;
-        const logoUrl = (presetSelect && presetSelect.value) ? presetSelect.value : "Imagenes/logos/municipales/Logo_OITR.png";
+        const logoUrl = (presetSelect && presetSelect.value) ? presetSelect.value : "../Imagenes/logos/municipales/Logo_OITR.png";
 
         if (!rawId || !rawName) {
             alert("Por favor, introduce las siglas (ID) y el nombre completo de la formación política.");
@@ -3046,7 +3046,7 @@ require([
             const item = document.createElement("div");
             item.className = "colegio-item";
             item.innerHTML = `
-                <img src="${details?.image || 'Imagenes/Logo_OITR.png'}" alt="Foto ${colName}" class="colegio-item-img">
+                <img src="${details?.image || '../Imagenes/Logo_OITR.png'}" alt="Foto ${colName}" class="colegio-item-img">
                 <div class="colegio-item-info">
                     <div class="colegio-item-name">${colName}</div>
                     <div class="colegio-item-sub">
@@ -3088,7 +3088,7 @@ require([
         document.getElementById("modal-colegio-address-text").textContent = details?.address || "";
         
         // Imagen
-        document.getElementById("modal-colegio-img-div").style.backgroundImage = `url('${details?.image || "Imagenes/Logo_OITR.png"}')`;
+        document.getElementById("modal-colegio-img-div").style.backgroundImage = `url('${details?.image || "../Imagenes/Logo_OITR.png"}')`;
 
         // Botón cómo llegar
         const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(colName + ", " + (details?.address || ""))}`;
@@ -3529,7 +3529,7 @@ require([
 
         // HTML de la imagen del colegio usando URL ABSOLUTA para evitar restricciones de sandbox de ArcGIS
         let imageHtml = "";
-        const imgUrl = details?.image ? (baseUrl + details.image) : (baseUrl + "Imagenes/Logo_OITR.png");
+        const imgUrl = details?.image ? (baseUrl + details.image) : (baseUrl + "../Imagenes/Logo_OITR.png");
         imageHtml = `
             <div style="width:100%; height:140px; border-radius:8px; overflow:hidden; margin-bottom:12px; position:relative; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
                 <img src="${imgUrl}" style="width:100%; height:100%; object-fit:cover;" />
@@ -3893,7 +3893,7 @@ require([
         
         printContainer.innerHTML = `
             <div class="acta-header">
-                <img src="Imagenes/Logo_OITR.png" class="acta-logo-oitr" alt="Ayuntamiento Rivas">
+                <img src="../Imagenes/Logo_OITR.png" class="acta-logo-oitr" alt="Ayuntamiento Rivas">
                 <div class="acta-header-title">
                     <h1>AYUNTAMIENTO DE RIVAS-VACIAMADRID</h1>
                     <p>OFICINA DE INFORMACIÓN TERRITORIAL (OITR) - ELECCIONES MUNICIPALES 2027</p>
@@ -4018,7 +4018,7 @@ require([
         const printContainer = document.getElementById("printableActa");
         printContainer.innerHTML = `
             <div class="acta-header">
-                <img src="Imagenes/Logo_OITR.png" class="acta-logo-oitr" alt="Ayuntamiento Rivas">
+                <img src="../Imagenes/Logo_OITR.png" class="acta-logo-oitr" alt="Ayuntamiento Rivas">
                 <div class="acta-header-title">
                     <h1>AYUNTAMIENTO DE RIVAS-VACIAMADRID</h1>
                     <p>OFICINA DE INFORMACIÓN TERRITORIAL (OITR) - ELECCIONES MUNICIPALES 2027</p>
@@ -4336,7 +4336,7 @@ require([
         const printContainer = document.getElementById("printableActa");
         printContainer.innerHTML = `
             <div class="acta-header">
-                <img src="Imagenes/Logo_OITR.png" class="acta-logo-oitr" alt="Ayuntamiento Rivas">
+                <img src="../Imagenes/Logo_OITR.png" class="acta-logo-oitr" alt="Ayuntamiento Rivas">
                 <div class="acta-header-title">
                     <h1>AYUNTAMIENTO DE RIVAS-VACIAMADRID</h1>
                     <p>OFICINA DE INFORMACIÓN TERRITORIAL (OITR) - ELECCIONES MUNICIPALES 2027</p>
@@ -5007,7 +5007,7 @@ require([
                 id: p.id,
                 name: p.name,
                 color: p.color,
-                logo: (p.logo && p.logo.startsWith("data:")) ? "Imagenes/Logo_OITR.png" : (p.logo || "Imagenes/Logo_OITR.png"),
+                logo: (p.logo && p.logo.startsWith("data:")) ? "../Imagenes/Logo_OITR.png" : (p.logo || "../Imagenes/Logo_OITR.png"),
                 field: p.field
             }));
 
