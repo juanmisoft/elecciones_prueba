@@ -1924,7 +1924,7 @@ require([
             });
             const pctMesas = sumP2Censo > 0 ? ((sumP2Votos / sumP2Censo) * 100).toFixed(2) : "0.00";
             partPercent = totalCensusAdmin > 0 ? ((sumP2Votos / totalCensusAdmin) * 100).toFixed(2) : "0.00";
-            partSub = `${sumP2Votos.toLocaleString()} votos (2º Avance · ${avance2Pool.length} de ${totalMesas} mesas · ${part2Mesas.length} con 2º) · ${pctMesas}% en mesas comunicadas`;
+            partSub = `${sumP2Votos.toLocaleString()} votos (2º Avance · ${avance2Pool.length} de ${totalMesas} mesas) · ${pctMesas}% en mesas comunicadas`;
         } else if (part1Mesas.length > 0) {
             const sumP1Votos = part1Mesas.reduce((acc, m) => acc + (m.part1_votos || 0), 0);
             const sumP1Censo = part1Mesas.reduce((acc, m) => acc + (m.censo || 0), 0);
@@ -2769,7 +2769,7 @@ require([
             pctP2Mesas = sumP2Censo > 0 ? ((sumP2Votos / sumP2Censo) * 100).toFixed(2) : "0.00";
             if (p2ValEl) p2ValEl.textContent = `${pctP2}%`;
             if (p2SubEl) {
-                p2SubEl.textContent = `${sumP2Votos.toLocaleString()} votos (${avance2MesasCount} de ${totalMesas} mesas · ${part2Mesas.length} con 2º) · ${pctP2Mesas}% en mesas comunicadas`;
+                p2SubEl.textContent = `${sumP2Votos.toLocaleString()} votos (${avance2MesasCount} de ${totalMesas} mesas) · ${pctP2Mesas}% en mesas comunicadas`;
             }
         } else {
             if (p2ValEl) p2ValEl.textContent = "--";
@@ -2819,7 +2819,7 @@ require([
             if (globalPartValEl) globalPartValEl.textContent = `${pctP2}%`;
             if (globalPartBarEl) globalPartBarEl.style.width = `${Math.min(100, parseFloat(pctP2))}%`;
             if (globalPartSubEl) {
-                globalPartSubEl.textContent = `2º Avance 18:00h (${avance2MesasCount} de ${totalMesas} mesas · ${part2Mesas.length} con 2º) · ${pctP2Mesas}% en mesas comunicadas`;
+                globalPartSubEl.textContent = `2º Avance 18:00h (${avance2MesasCount} de ${totalMesas} mesas) · ${pctP2Mesas}% en mesas comunicadas`;
             }
         } else if (part1Mesas.length > 0 && parseFloat(pctP1) > 0) {
             if (globalPartValEl) globalPartValEl.textContent = `${pctP1}%`;
