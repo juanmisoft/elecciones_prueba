@@ -1920,8 +1920,9 @@ require([
         if (closedMesas > 0) {
             let closedCensus = 0;
             state.mesas.forEach(m => { if (m.estado === "Cerrada") closedCensus += (m.censo || 0); });
-            partPercent = closedCensus > 0 ? ((totalVotosEmitidos / closedCensus) * 100).toFixed(2) : "0.00";
-            partSub = `${totalVotosEmitidos.toLocaleString()} votos (${closedMesas} de ${totalMesas} mesas cerradas)`;
+            const pctMesas = closedCensus > 0 ? ((totalVotosEmitidos / closedCensus) * 100).toFixed(2) : "0.00";
+            partPercent = totalCensusAdmin > 0 ? ((totalVotosEmitidos / totalCensusAdmin) * 100).toFixed(2) : "0.00";
+            partSub = `${totalVotosEmitidos.toLocaleString()} votos (${closedMesas} de ${totalMesas} mesas cerradas) · ${pctMesas}% en mesas comunicadas`;
         } else if (part2Mesas.length > 0) {
             // Acumulativo: part2 si hay; si no, se arrastra part1
             const avance2Pool = state.mesas.filter(m =>
@@ -2823,13 +2824,15 @@ require([
         const globalPartSubEl = document.getElementById("global-participation-sub");
 
         if (closedMesas > 0) {
-            const partPercent = closedCensus > 0 ? ((totalVotosEmitidos / closedCensus) * 100).toFixed(2) : "0.00";
+            // % principal sobre censo total; subtítulo con % en mesas ya escrutadas
+            const partPercent = totalCensus > 0 ? ((totalVotosEmitidos / totalCensus) * 100).toFixed(2) : "0.00";
+            const pctClosedMesas = closedCensus > 0 ? ((totalVotosEmitidos / closedCensus) * 100).toFixed(2) : "0.00";
             if (globalPartValEl) globalPartValEl.textContent = `${partPercent}%`;
-            if (globalPartBarEl) globalPartBarEl.style.width = `${partPercent}%`;
+            if (globalPartBarEl) globalPartBarEl.style.width = `${Math.min(100, parseFloat(partPercent))}%`;
             if (globalPartSubEl) {
                 globalPartSubEl.textContent = (closedMesas === totalMesas)
                     ? `Participación Final Oficial`
-                    : `Escrutinio (${closedMesas} de ${totalMesas} mesas cerradas)`;
+                    : `Escrutinio (${closedMesas} de ${totalMesas} mesas cerradas) · ${pctClosedMesas}% en mesas comunicadas`;
             }
         } else if (part2Mesas.length > 0 && parseFloat(pctP2) > 0) {
             if (globalPartValEl) globalPartValEl.textContent = `${pctP2}%`;
