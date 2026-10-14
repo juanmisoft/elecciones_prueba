@@ -326,15 +326,89 @@
     "IU", "PP", "PSOE", "CDR", "AIRV", "UPyD"
   ]);
 
+  // Mapeo sección → colegio (mismo criterio que el escrutinio en vivo)
+  const SECTION_COLEGIO_MAPPING = {
+    "001": "C.E.I.P. LAS CIGUEÑAS",
+    "002": "C.E.I.P. LA ESCUELA",
+    "003": "C.E.I.P. EL OLIVAR",
+    "004": "I.E.S. LAS LAGUNAS",
+    "005": "C.E.I.P. VICTORIA KENT",
+    "006": "C.E.I.P. JARAMA",
+    "007": "C.E.I.P. EL OLIVAR",
+    "008": "C.E.I.P. LOS ALMENDROS",
+    "009": "I.E.S. LAS LAGUNAS",
+    "010": "C.E.I.P. LA ESCUELA",
+    "011": "I.E.S. LAS LAGUNAS",
+    "012": "C.E.I.P. VICTORIA KENT",
+    "013": "C.E.I.P. RAFAEL ALBERTI",
+    "014": "C.E.I.P. LOS ALMENDROS",
+    "015": "I.E.S. LAS LAGUNAS",
+    "016": "C.E.I.P. LAS CIGUEÑAS",
+    "017": "C.E.I.P. JOSE SARAMAGO",
+    "018": "C.E.I.P. JARAMA",
+    "019": "C.E.I.P. JOSE SARAMAGO",
+    "020": "C.E.I.P. DULCE CHACON",
+    "021": "C.E.I.P. RAFAEL ALBERTI",
+    "022": "C.E.I.P. JOSE HIERRO",
+    "023": "C.E.I.P. HANS CHRISTIAN ANDERSEN",
+    "024": "C.E.I.P. LAS CIGUEÑAS",
+    "025": "C.E.I.P. DULCE CHACON",
+    "026": "C.E.I.P. EL OLIVAR",
+    "027": "C.E.I.P. EL OLIVAR",
+    "028": "C.E.I.P. VICTORIA KENT",
+    "029": "C.E.I.P. JOSE HIERRO",
+    "030": "C.E.I.P. JOSE ITURZAETA",
+    "031": "C.E.I.P. LAS CIGUEÑAS",
+    "032": "C.E.I.P. JOSE SARAMAGO",
+    "033": "C.E.I.P. HANS CHRISTIAN ANDERSEN",
+    "034": "C.E.I.P. JOSE ITURZAETA",
+    "035": "C.E.I.P. HANS CHRISTIAN ANDERSEN",
+    "036": "C.E.I.P. JOSE ITURZAETA",
+    "037": "C.E.I.P.S.O LA LUNA",
+    "038": "CIUDAD EDUCATIVA MUNICIPAL HIPATIA",
+    "039": "C.E.I.P. DULCE CHACON",
+    "040": "CIUDAD EDUCATIVA MUNICIPAL HIPATIA",
+    "041": "C.E.I.P. DULCE CHACON",
+    "042": "C.E.I.P. LOS ALMENDROS",
+    "043": "C.E.I.P. JOSE SARAMAGO",
+    "044": "C.E.I.P. JOSE HIERRO",
+    "045": "C.E.I.P.S.O LA LUNA",
+    "046": "C.E.I.P. JOSE HIERRO",
+    "047": "C.E.I.P. HANS CHRISTIAN ANDERSEN",
+    "048": "CIUDAD EDUCATIVA MUNICIPAL HIPATIA",
+    "049": "CIUDAD EDUCATIVA MUNICIPAL HIPATIA",
+    "050": "CIUDAD EDUCATIVA MUNICIPAL HIPATIA",
+    "051": "CIUDAD EDUCATIVA MUNICIPAL HIPATIA",
+    "052": "C.E.I.P.S.O LA LUNA",
+    "053": "C.E.I.P.S.O LA LUNA",
+    "054": "C.E.I.P. JOSE ITURZAETA",
+    "055": "C.E.I.P. HANS CHRISTIAN ANDERSEN",
+    "056": "C.E.I.P. RAFAEL ALBERTI",
+    "057": "C.E.I.P. JOSE ITURZAETA",
+    "058": "C.E.I.P. DULCE CHACON"
+  };
+
+  function normalizeSectionKey(raw) {
+    if (raw === undefined || raw === null) return "";
+    const text = String(raw).trim();
+    if (/^\d+$/.test(text)) return String(parseInt(text, 10)).padStart(3, "0");
+    return text.toUpperCase();
+  }
+
   global.HUB_CONFIG = {
     TERMINO_URL,
     CENSUS_SOURCES,
     AMBITOS,
+    SECTION_COLEGIO_MAPPING,
     getAmbito(id) {
       return AMBITOS[id] || null;
     },
     getCensusSource(id) {
       return CENSUS_SOURCES[id] || null;
+    },
+    colegioForSection(sectionRaw) {
+      const key = normalizeSectionKey(sectionRaw);
+      return SECTION_COLEGIO_MAPPING[key] || null;
     }
   };
 })(window);

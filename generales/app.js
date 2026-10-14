@@ -23,6 +23,10 @@ require([
     const URL_MESAS_TABLE = `${PUBLIC_SERVICE_URL}/6`;
     // Término municipal actual (Portal item 6586b7e8e95c446698bfa8c65d7ed97c)
     const URL_TERMINO_MUNICIPAL = "https://sit.rivasciudad.es/server/rest/services/Termino_municipal_actual/FeatureServer/0";
+    // Edificios municipales / colegios (Portal item f67389c0c4034ae59d9f0a66927c0306)
+    const URL_EDIFICIOS_REPRESENTATIVOS = "https://sit.rivasciudad.es/server/rest/services/Hosted/MAPAPROYECTO_VENTORIAL/FeatureServer/0";
+    // Por debajo de este zoom el polígono del colegio seleccionado se oculta (mapa limpio)
+    const COLEGIO_BUILDING_HIDE_ZOOM = 13;
     // Excluye Cañada Real ("…EAL" en etiqueta) e industriales / no numéricas
     const SECCIONES_DEFINITION_EXPRESSION = "SECCION NOT LIKE '% %' AND SECCION NOT LIKE '%EAL%' AND SECCION NOT LIKE '%eal%'";
 
@@ -45,7 +49,12 @@ require([
         seccionesLayer: null,
         labelsLayer: null,
         colegiosLayer: null,
-        terminoLayer: null
+        terminoLayer: null,
+        edificiosLayer: null,
+        colegioHighlightLayer: null,
+        selectedColegioHighlight: null,
+        _suppressHighlightClear: false,
+        _edificiosEducacionCache: null
     };
 
     // Intervalos de sincronización según perfil
@@ -258,10 +267,27 @@ require([
             visible: true
         });
 
+        // Edificios representativos (solo EDUCACION); invisible — se dibuja el seleccionado en highlight
+        state.edificiosLayer = new FeatureLayer({
+            id: "edificiosLayer",
+            url: URL_EDIFICIOS_REPRESENTATIVOS,
+            definitionExpression: "atributo = 'EDUCACION'",
+            outFields: ["objectid", "descrip", "atributo"],
+            visible: false,
+            listMode: "hide",
+            legendEnabled: false
+        });
+
+        state.colegioHighlightLayer = new GraphicsLayer({
+            id: "colegioHighlightLayer",
+            listMode: "hide",
+            title: "Colegio seleccionado"
+        });
+
         // Mapa Base Gris de ArcGIS
         state.map = new Map({
             basemap: "gray-vector",
-            layers: [state.seccionesLayer, state.terminoLayer, state.labelsLayer]
+            layers: [state.seccionesLayer, state.terminoLayer, state.labelsLayer, state.colegioHighlightLayer]
         });
 
         state.view = new MapView({
@@ -278,6 +304,29 @@ require([
 
         const homeWidget = new Home({ view: state.view });
         state.view.ui.add(homeWidget, "top-left");
+        homeWidget.on("go", () => clearColegioBuildingHighlight());
+
+        state.view.watch("zoom", (z) => {
+            if (state._suppressHighlightClear) return;
+            if (state.selectedColegioHighlight && typeof z === "number" && z < COLEGIO_BUILDING_HIDE_ZOOM) {
+                clearColegioBuildingHighlight();
+            }
+        });
+
+        state.view.on("click", async (event) => {
+            if (!state.colegioHighlightLayer || state.colegioHighlightLayer.graphics.length === 0) return;
+            try {
+                const response = await state.view.hitTest(event, { include: [state.colegioHighlightLayer] });
+                const hit = (response.results || []).find(r =>
+                    r.graphic && r.graphic.attributes && r.graphic.attributes.kind === "colegio-edificio"
+                );
+                if (hit && hit.graphic.attributes.colegioName) {
+                    viewColegioDetails(hit.graphic.attributes.colegioName);
+                }
+            } catch (err) {
+                console.warn("hitTest colegio edificio:", err);
+            }
+        });
 
         // Al cargar la vista del mapa, consultamos las geometrías de las secciones para agregaciones y etiquetas
         state.view.when(() => {
@@ -319,6 +368,9 @@ require([
         }
         if (state.labelsLayer && state.map.layers.includes(state.labelsLayer)) {
             state.map.reorder(state.labelsLayer, state.map.layers.length - 1);
+        }
+        if (state.colegioHighlightLayer && state.map.layers.includes(state.colegioHighlightLayer)) {
+            state.map.reorder(state.colegioHighlightLayer, state.map.layers.length - 1);
         }
     }
 
@@ -2032,13 +2084,12 @@ require([
                         <i class="fa-solid fa-folder-open" style="color: #f59e0b;"></i>
                     </button>
                 `;
-            } else {
-                actionButtons += `
-                    <button class="admin-btn-action btn-delete-mesa" data-codigo="${mesa.codigo}" title="Eliminar Mesa">
-                        <i class="fa-solid fa-trash-can" style="color: #ef4444;"></i>
-                    </button>
-                `;
             }
+            actionButtons += `
+                <button class="admin-btn-action btn-delete-mesa" data-codigo="${mesa.codigo}" title="Eliminar Mesa">
+                    <i class="fa-solid fa-trash-can" style="color: #ef4444;"></i>
+                </button>
+            `;
 
             tr.innerHTML = `
                 <td><strong>${mesa.codigo}</strong></td>
@@ -2154,7 +2205,11 @@ require([
     }
 
     function deleteMesaPrompt(codigo) {
-        const conf = confirm(`¿Está seguro de que desea ELIMINAR la Mesa ${codigo}?`);
+        const mesa = state.mesas.find(m => m.codigo === codigo);
+        const closedNote = mesa && mesa.estado === "Cerrada"
+            ? "\n\nEsta mesa está CERRADA; se eliminará igualmente del sistema y del servidor."
+            : "";
+        const conf = confirm(`¿Está seguro de que desea ELIMINAR la Mesa ${codigo}?${closedNote}`);
         if (!conf) return;
 
         state.mesas = state.mesas.filter(m => m.codigo !== codigo);
@@ -2168,15 +2223,17 @@ require([
 
     // Eliminar TODAS las mesas generadas (útil para volver a crearlas manualmente)
     async function handleAdminDeleteAllMesas() {
+        const localCount = (state.mesas || []).filter(m => m && m.codigo && !isConfigRecordCodigo(m.codigo)).length;
         const conf = confirm(
-            "ATENCIÓN: Se van a ELIMINAR todas las mesas del sistema (tanto locales como en el servidor remoto de ArcGIS).\n\n" +
-            "Esta acción vaciará completamente la tabla y no se puede deshacer. ¿Desea continuar?"
+            "ATENCIÓN: Se van a ELIMINAR todas las mesas electorales (locales y en ArcGIS).\n\n" +
+            "Los registros de configuración (fuerzas políticas, etc.) se conservan.\n\n" +
+            "Esta acción no se puede deshacer. ¿Desea continuar?"
         );
         if (!conf) return;
 
-        // Si estamos en modo ArcGIS: consultar y borrar todos los registros de la tabla del servidor en bloque
+        // Si estamos en modo ArcGIS: borrar solo mesas reales (no __PARTIES__ / __CLOSED__)
         if (state.arcgisMode) {
-            console.log("Consultando todas las mesas en el servidor ArcGIS para su eliminación masiva...");
+            console.log("Consultando mesas electorales en ArcGIS para eliminación masiva...");
             try {
                 const tablesLayer = new FeatureLayer({ 
                     url: URL_MESAS_TABLE_EDIT,
@@ -2189,23 +2246,30 @@ require([
                 query.outFields = ["*"];
                 
                 const results = await tablesLayer.queryFeatures(query);
-                if (results.features && results.features.length > 0) {
-                    console.log(`Eliminando ${results.features.length} registros del servidor ArcGIS...`);
+                const mesaFeatures = (results.features || []).filter(f => {
+                    const cod = f.attributes && (f.attributes.CODIGO || f.attributes.codigo);
+                    return cod && !isConfigRecordCodigo(cod);
+                });
+
+                if (mesaFeatures.length > 0) {
+                    console.log(`Eliminando ${mesaFeatures.length} mesas del servidor ArcGIS (se omiten registros de configuración)...`);
                     const result = await tablesLayer.applyEdits({
-                        deleteFeatures: results.features
+                        deleteFeatures: mesaFeatures
                     });
                     console.log("Servidor ArcGIS respuesta de applyEdits (delete):", result);
                     
                     const failures = (result.deleteFeatureResults || []).filter(r => r.error);
                     if (failures.length > 0) {
                         console.error("Algunos registros no se pudieron eliminar en el servidor:", failures);
-                        alert(`Atención: Falló la eliminación de ${failures.length} registro(s) en el servidor de ArcGIS.`);
+                        alert(`Atención: Falló la eliminación de ${failures.length} mesa(s) en el servidor de ArcGIS.`);
                     } else {
-                        alert(`¡Se han eliminado correctamente ${results.features.length} mesas del servidor de ArcGIS y en local!`);
+                        alert(`¡Se han eliminado correctamente ${mesaFeatures.length} mesas del servidor de ArcGIS y en local!`);
                     }
                 } else {
-                    console.log("La tabla del servidor de ArcGIS ya estaba vacía.");
-                    alert("La tabla de mesas en ArcGIS Server ya estaba vacía.");
+                    console.log("No había mesas electorales en el servidor (solo configuración o vacío).");
+                    alert(localCount > 0
+                        ? `Se han eliminado ${localCount} mesas en local. En ArcGIS no había mesas electorales.`
+                        : "No había mesas electorales que eliminar.");
                 }
             } catch (err) {
                 console.error("Error al vaciar la tabla en ArcGIS Server:", err);
@@ -2213,7 +2277,9 @@ require([
                 return;
             }
         } else {
-            alert("Todas las mesas locales han sido eliminadas.");
+            alert(localCount > 0
+                ? `Se han eliminado ${localCount} mesas locales.`
+                : "No había mesas locales que eliminar.");
         }
 
         // Vaciar localmente
@@ -2757,7 +2823,7 @@ require([
             document.getElementById("global-blancos-val").innerHTML = `0 <span style="font-size: 0.75rem; font-weight:400; color: var(--text-muted);">(0.00%)</span>`;
         }
 
-        // Renderizar proyección D'Hondt de concejales (27 escaños)
+        // Resumen de candidaturas al Congreso en Rivas
         renderCongresoSummary(partyTotals, totalVotosValidos, closedMesas);
 
         // Renderizar partidos en el sidebar
@@ -2769,15 +2835,19 @@ require([
 
 
     /**
-     * Resumen Congreso en Rivas (sin reparto de escanos municipales / D'Hondt).
+     * Resumen Congreso en Rivas (sin reparto de escaños; circunscripción Madrid).
      */
     function renderCongresoSummary(partyTotals, totalVotosValidos, closedMesas) {
         const container = document.getElementById("dhondt-results-container");
         if (!container) return;
 
-        const closedCount = Array.isArray(closedMesas) ? closedMesas.length : 0;
-        if (!closedCount || !totalVotosValidos) {
-            container.innerHTML = '<div style="font-size:0.78rem;color:#64748b;">Cuando haya mesas cerradas se mostrara el top de candidaturas al Congreso en Rivas.</div>';
+        if (!closedMesas || closedMesas === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; color: var(--text-muted); font-size: 0.82rem; padding: 20px 15px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                    <div style="font-weight: 600; color: #64748b;">Resultados en Rivas</div>
+                    <span style="font-size: 0.75rem;">Disponible al iniciar el escrutinio.</span>
+                </div>
+            `;
             return;
         }
 
@@ -2788,12 +2858,17 @@ require([
 
         const top = ranked.filter(p => p.votes > 0).slice(0, 5);
         if (!top.length) {
-            container.innerHTML = '<div style="font-size:0.78rem;color:#64748b;">Sin votos de candidaturas en mesas cerradas.</div>';
+            container.innerHTML = `
+                <div style="text-align: center; color: var(--text-muted); font-size: 0.82rem; padding: 20px 15px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                    <div style="font-weight: 600; color: #64748b;">Resultados en Rivas</div>
+                    <span style="font-size: 0.75rem;">Sin votos escrutados aún.</span>
+                </div>
+            `;
             return;
         }
 
         container.innerHTML = `
-            <div style="font-size:0.72rem;font-weight:600;color:#64748b;margin-bottom:6px;">Top candidaturas (mesas cerradas)</div>
+            <div style="font-size:0.72rem;font-weight:600;color:#64748b;margin-bottom:6px;">Resultados en Rivas</div>
             ${top.map((p, i) => {
                 const pct = totalVotosValidos > 0 ? ((p.votes / totalVotosValidos) * 100).toFixed(1) : "0.0";
                 return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:0.78rem;">
@@ -2849,22 +2924,46 @@ require([
         });
     }
 
+    function normalizeSearchText(value) {
+        return String(value || "")
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-z0-9\s]/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    function colegioMatchesSearch(colName, address, searchVal) {
+        const q = normalizeSearchText(searchVal);
+        if (!q) return true;
+        const haystack = normalizeSearchText(`${colName} ${address || ""}`);
+        // Todas las palabras deben aparecer (permite "el olivar", "covibar", "almendros"...)
+        return q.split(" ").every((token) => token && haystack.includes(token));
+    }
+
     function renderColegiosTab() {
         const container = document.getElementById("colegios-list-container");
         container.innerHTML = "";
 
-        // Obtener la lista única de colegios
-        const colegios = [...new Set(state.mesas.map(m => m.colegio))];
-        const searchVal = document.getElementById("colegio-search").value.toLowerCase().trim();
+        // Catálogo completo de colegios + los que existan en mesas
+        const colegios = [...new Set([
+            ...Object.keys(COLEGIO_DETAILS || {}),
+            ...state.mesas.map(m => m.colegio).filter(Boolean)
+        ])].sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
+
+        const searchVal = document.getElementById("colegio-search").value;
+        let shown = 0;
 
         colegios.forEach(colName => {
             const details = COLEGIO_DETAILS[colName];
             const address = details?.address || "";
 
-            // Filtrar por buscador
-            if (searchVal && !colName.toLowerCase().includes(searchVal) && !address.toLowerCase().includes(searchVal)) {
+            // Filtrar por nombre de colegio o calle/dirección
+            if (!colegioMatchesSearch(colName, address, searchVal)) {
                 return;
             }
+            shown += 1;
 
             const colMesas = state.mesas.filter(m => m.colegio === colName);
             const totalMesas = colMesas.length;
@@ -2892,18 +2991,14 @@ require([
 
             const colVotosEmitidos = colVotosValidos + colVotosNulos;
 
-            // Ganador del colegio
-            let winnerParty = null;
-            let maxVotes = -1;
-            PARTIES_CONFIG.forEach(p => {
-                if (colPartyVotes[p.id] > maxVotes) {
-                    maxVotes = colPartyVotes[p.id];
-                    winnerParty = p;
-                }
-            });
+            // Ganador / empate del colegio
+            const colLead = resolvePartyLead(colPartyVotes);
+            const winnerParty = colLead.winnerId
+                ? PARTIES_CONFIG.find(p => p.id === colLead.winnerId)
+                : null;
 
             const scrutiny = totalMesas > 0 ? ((closedMesas / totalMesas) * 100).toFixed(0) : "0";
-            
+
             // Participación del colegio: calculada sobre el censo de las mesas comunicadas
             let partRate = "0.0";
             if (closedMesas > 0) {
@@ -2925,6 +3020,24 @@ require([
                 }
             }
 
+            let winnerBadgeHtml;
+            if (closedMesas > 0 && colLead.isTie) {
+                winnerBadgeHtml = `
+                    <div class="colegio-item-winner" style="background-color: #94a3b8; color:#fff; font-size:0.65rem;" title="Empate entre ${colLead.tiedIds.join(', ')}">
+                        =
+                    </div>`;
+            } else if (closedMesas > 0 && winnerParty) {
+                winnerBadgeHtml = `
+                    <div class="colegio-item-winner" style="background-color: ${winnerParty.color};" title="Gana ${winnerParty.name}">
+                        ${winnerParty.id}
+                    </div>`;
+            } else {
+                winnerBadgeHtml = `
+                    <div class="colegio-item-winner" style="background-color: #cbd5e1; color:#64748b;" title="Sin datos de escrutinio">
+                        --
+                    </div>`;
+            }
+
             const item = document.createElement("div");
             item.className = "colegio-item";
             item.innerHTML = `
@@ -2936,15 +3049,7 @@ require([
                         <span>Participación: <strong>${partRate}%</strong></span>
                     </div>
                 </div>
-                ${closedMesas > 0 && winnerParty && maxVotes > 0 ? `
-                    <div class="colegio-item-winner" style="background-color: ${winnerParty.color};" title="Gana ${winnerParty.name}">
-                        ${winnerParty.name.substring(0, 2)}
-                    </div>
-                ` : `
-                    <div class="colegio-item-winner" style="background-color: #cbd5e1; color:#64748b;" title="Sin datos de escrutinio">
-                        --
-                    </div>
-                `}
+                ${winnerBadgeHtml}
             `;
 
             item.addEventListener("click", () => {
@@ -2953,6 +3058,10 @@ require([
 
             container.appendChild(item);
         });
+
+        if (shown === 0) {
+            container.innerHTML = `<div style="text-align:center;color:var(--text-muted);font-size:0.85rem;padding:18px 10px;">No hay colegios que coincidan con la búsqueda.</div>`;
+        }
     }
 
     function filterColegiosList(val) {
@@ -3071,10 +3180,155 @@ require([
         zoomMapToColegio(colName, secciones);
     }
 
-    function zoomMapToColegio(colName, secciones) {
-        if (!state.view || geomsCache.length === 0) return;
-        
-        // Buscar las secciones que pertenecen a este colegio electoral
+    function normalizeEdificioName(text) {
+        return String(text || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toUpperCase()
+            .replace(/\./g, " ")
+            .replace(/\bMUNICIPAL\b/g, " ")
+            .replace(/\bC\s*E\s*I\s*P\s*S\s*O\b/g, "CEIPSO")
+            .replace(/\bC\s*E\s*I\s*P\b/g, "CEIP")
+            .replace(/\bI\s*E\s*S\b/g, "IES")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    function edificioCoreName(normalized) {
+        return String(normalized || "")
+            .replace(/^(CEIPSO|CEIP|IES|EI|CEE)\s+/, "")
+            .replace(/^CIUDAD EDUCATIVA\s+/, "")
+            .trim();
+    }
+
+    function edificioMatchesColegio(descrip, colName) {
+        const a = normalizeEdificioName(descrip);
+        const b = normalizeEdificioName(colName);
+        if (!a || !b) return false;
+        if (a === b) return true;
+        if (a.includes(b) || b.includes(a)) return true;
+        const coreA = edificioCoreName(a);
+        const coreB = edificioCoreName(b);
+        return !!(coreA && coreB && (coreA === coreB || a.includes(coreB) || b.includes(coreA)));
+    }
+
+    function clearColegioBuildingHighlight() {
+        state.selectedColegioHighlight = null;
+        state._suppressHighlightClear = false;
+        if (state.colegioHighlightLayer) {
+            state.colegioHighlightLayer.removeAll();
+        }
+    }
+
+    async function loadEdificiosEducacionFeatures() {
+        if (state._edificiosEducacionCache) return state._edificiosEducacionCache;
+        if (!state.edificiosLayer || !state.view) return [];
+
+        await state.edificiosLayer.load();
+        const query = state.edificiosLayer.createQuery();
+        query.where = "atributo = 'EDUCACION' AND descrip IS NOT NULL";
+        query.outFields = ["objectid", "descrip", "atributo"];
+        query.returnGeometry = true;
+        query.outSpatialReference = state.view.spatialReference;
+
+        const result = await state.edificiosLayer.queryFeatures(query);
+        state._edificiosEducacionCache = result.features || [];
+        return state._edificiosEducacionCache;
+    }
+
+    async function showColegioBuildingHighlight(colName) {
+        clearColegioBuildingHighlight();
+        if (!colName || !state.view || !state.colegioHighlightLayer) return false;
+
+        state.selectedColegioHighlight = colName;
+
+        try {
+            const features = await loadEdificiosEducacionFeatures();
+            const matches = features.filter(f =>
+                edificioMatchesColegio(f.attributes && f.attributes.descrip, colName)
+            );
+
+            if (matches.length === 0) return false;
+
+            const symbol = {
+                type: "simple-fill",
+                color: [14, 165, 233, 0.38],
+                outline: {
+                    type: "simple-line",
+                    color: [2, 132, 199, 1],
+                    width: 2.5,
+                    style: "solid"
+                }
+            };
+
+            matches.forEach(f => {
+                state.colegioHighlightLayer.add(new Graphic({
+                    geometry: f.geometry,
+                    symbol,
+                    attributes: {
+                        kind: "colegio-edificio",
+                        colegioName: colName,
+                        descrip: f.attributes.descrip || ""
+                    }
+                }));
+            });
+
+            // Etiqueta con el nombre del colegio sobre el polígono más grande
+            let labelFeature = matches[0];
+            let bestArea = 0;
+            matches.forEach(f => {
+                const ext = f.geometry && f.geometry.extent;
+                const area = ext ? (ext.width * ext.height) : 0;
+                if (area >= bestArea) {
+                    bestArea = area;
+                    labelFeature = f;
+                }
+            });
+            let labelPoint = labelFeature.geometry.centroid;
+            if (!labelPoint) labelPoint = getFallbackCentroid(labelFeature.geometry);
+            if (labelPoint) {
+                state.colegioHighlightLayer.add(new Graphic({
+                    geometry: labelPoint,
+                    symbol: new TextSymbol({
+                        text: colName,
+                        color: "#0f172a",
+                        haloColor: "#ffffff",
+                        haloSize: 2.5,
+                        font: {
+                            size: 12,
+                            family: "Avenir Next LT Pro, Arial, sans-serif",
+                            weight: "bold"
+                        }
+                    }),
+                    attributes: {
+                        kind: "colegio-edificio",
+                        colegioName: colName
+                    }
+                }));
+            }
+
+            ensureMapOverlayOrder();
+            state._suppressHighlightClear = true;
+            await state.view.goTo(matches.map(f => f.geometry), {
+                duration: 1000,
+                padding: 48
+            }).catch(() => {});
+            setTimeout(() => { state._suppressHighlightClear = false; }, 1300);
+            return true;
+        } catch (err) {
+            console.warn("No se pudo resaltar el edificio del colegio:", err);
+            return false;
+        }
+    }
+
+    async function zoomMapToColegio(colName, secciones) {
+        if (!state.view) return;
+
+        const shown = await showColegioBuildingHighlight(colName);
+        if (shown) return;
+
+        // Fallback: zoom a las secciones censales del colegio
+        if (geomsCache.length === 0) return;
         const matchingFeatures = geomsCache.filter(f => {
             const sec = normalizeSeccion(f.attributes.SECCION || f.attributes.SECC);
             return secciones.includes(sec);
@@ -3089,6 +3343,30 @@ require([
     // ==========================================================================
     // RENDERIZADO TEMÁTICO CARTOGRÁFICO (DIBUJO DE POLÍGONOS E ICONOS)
     // ==========================================================================
+    /** Máximo de votos por partido; si hay varios con el mismo máximo → empate. */
+    function resolvePartyLead(votesMap) {
+        let maxVotes = 0;
+        const tied = [];
+        Object.keys(votesMap || {}).forEach(pId => {
+            const v = Number(votesMap[pId]) || 0;
+            if (v <= 0) return;
+            if (v > maxVotes) {
+                maxVotes = v;
+                tied.length = 0;
+                tied.push(pId);
+            } else if (v === maxVotes) {
+                tied.push(pId);
+            }
+        });
+        if (maxVotes <= 0 || tied.length === 0) {
+            return { winnerId: null, isTie: false, tiedIds: [], maxVotes: 0 };
+        }
+        if (tied.length > 1) {
+            return { winnerId: null, isTie: true, tiedIds: tied, maxVotes };
+        }
+        return { winnerId: tied[0], isTie: false, tiedIds: tied, maxVotes };
+    }
+
     function renderMapTheme() {
         if (!state.view || geomsCache.length === 0 || !state.seccionesLayer) return;
         // Usar siempre GraphicsLayer para pintar polígonos de color (más fiable que UniqueValueRenderer en capas seguras)
@@ -3115,21 +3393,16 @@ require([
             }
         });
 
-        // Ganador por sección
+        // Ganador / empate por sección (empate: varios con el máximo de votos)
         const seccionWinners = {};
+        const seccionTies = {};
         if (closedMesasCount > 0) {
             for (const sec in seccionVotes) {
-                let maxVotes = -1;
-                let winnerId = null;
-                for (const pId in seccionVotes[sec]) {
-                    const v = seccionVotes[sec][pId];
-                    if (v > maxVotes) {
-                        maxVotes = v;
-                        winnerId = pId;
-                    }
-                }
-                if (maxVotes > 0) {
-                    seccionWinners[sec] = winnerId;
+                const lead = resolvePartyLead(seccionVotes[sec]);
+                if (lead.isTie) {
+                    seccionTies[sec] = lead.tiedIds;
+                } else if (lead.winnerId) {
+                    seccionWinners[sec] = lead.winnerId;
                 }
             }
         }
@@ -3177,10 +3450,12 @@ require([
             const rawVal = feature.attributes[rendererFieldName];
             const secCode = normalizeSeccion(rawVal);
             const winnerPartyId = seccionWinners[secCode];
+            const tiedIds = seccionTies[secCode];
+            const isTie = Array.isArray(tiedIds) && tiedIds.length > 1;
 
-            // --- Color de relleno según partido ganador ---
-            let fillColor;
-            if (winnerPartyId) {
+            // --- Color: ganador / empate (gris) / sin datos (gris) ---
+            let fillColor = [180, 180, 180, 0.45];
+            if (winnerPartyId && !isTie) {
                 const party = PARTIES_CONFIG.find(p => p.id === winnerPartyId);
                 if (party) {
                     const hex = party.color.replace('#', '');
@@ -3188,11 +3463,7 @@ require([
                     const g = parseInt(hex.substring(2, 4), 16);
                     const b = parseInt(hex.substring(4, 6), 16);
                     fillColor = [r, g, b, 0.72];
-                } else {
-                    fillColor = [203, 213, 225, 0.45];
                 }
-            } else {
-                fillColor = [203, 213, 225, 0.45];
             }
 
             const polyGraphic = new Graphic({
@@ -3207,14 +3478,29 @@ require([
             });
             colorLayer.add(polyGraphic);
 
-            // --- Logo del partido ganador en el centroide (solo si hay escrutinio) ---
-            if (!winnerPartyId) return;
-            const winParty = PARTIES_CONFIG.find(p => p.id === winnerPartyId);
-            if (!winParty) return;
-
             let centroid = geom.centroid;
             if (!centroid) centroid = getFallbackCentroid(geom);
             if (!centroid) return;
+
+            // Empate: etiqueta neutra (no se asigna color de un partido)
+            if (isTie) {
+                state.labelsLayer.add(new Graphic({
+                    geometry: centroid,
+                    symbol: new TextSymbol({
+                        text: "EMPATE",
+                        color: "#334155",
+                        haloColor: "#ffffff",
+                        haloSize: "2px",
+                        font: { size: 9, family: "Outfit", weight: "bold" }
+                    })
+                }));
+                return;
+            }
+
+            // Ganador claro: logo o siglas/ID
+            if (!winnerPartyId) return;
+            const winParty = PARTIES_CONFIG.find(p => p.id === winnerPartyId);
+            if (!winParty) return;
 
             let markerSymbol;
             if (winParty.logo) {
@@ -3226,7 +3512,7 @@ require([
                 });
             } else {
                 markerSymbol = new TextSymbol({
-                    text: winParty.name.substring(0, 2),
+                    text: winParty.id,
                     color: "#ffffff",
                     haloColor: winParty.color,
                     haloSize: "2px",
@@ -5735,7 +6021,11 @@ require([
 
         editingAdminMesaCode = codigo;
         document.getElementById("modal-admin-votes-mesa-code").textContent = codigo;
-        document.getElementById("admin-edit-votes-census-val").textContent = mesa.censo;
+        const censusInput = document.getElementById("admin-edit-votes-census-input");
+        if (censusInput) {
+            censusInput.value = mesa.censo || "";
+            censusInput.oninput = () => updateAdminEditVotesAlert(mesa);
+        }
 
         const container = document.getElementById("admin-edit-votes-fields-container");
         container.innerHTML = "";
@@ -5800,7 +6090,11 @@ require([
         });
 
         document.getElementById("admin-edit-votes-total-val").textContent = sum;
-        const census = parseInt(mesa.censo, 10) || 1;
+        const censusInput = document.getElementById("admin-edit-votes-census-input");
+        let census = censusInput ? (parseInt(censusInput.value, 10) || 0) : (parseInt(mesa.censo, 10) || 0);
+        if (censusInput && census < 1) {
+            census = 0;
+        }
         const alertBox = document.getElementById("admin-edit-votes-alert-box");
         const alertIcon = document.getElementById("admin-edit-votes-alert-icon");
         const alertTitle = document.getElementById("admin-edit-votes-alert-title");
@@ -5810,14 +6104,19 @@ require([
         const nullInput = document.getElementById("admin-input-vote-nulo");
         const nullVotes = nullInput ? (parseInt(nullInput.value, 10) || 0) : 0;
 
-        if (sum > census || nullVotes > (census * 0.25)) {
+        const saveBtn = document.getElementById("btn-save-admin-edit-votes");
+        const censusInvalid = census < 1;
+        const overCensus = census > 0 && sum > census;
+        if (censusInvalid || overCensus || (census > 0 && nullVotes > (census * 0.25))) {
             alertBox.className = "alert-box critical";
             alertIcon.className = "fa-solid fa-triangle-exclamation";
             alertTitle.textContent = "Evaluación de Criticidad: ALTA (ALERTA ROJA)";
             alertBadge.className = "alert-critical-badge critical";
             alertBadge.textContent = "Nivel: Crítico (Alta)";
-            if (sum > census) {
-                alertDesc.textContent = `¡ATENCIÓN! La suma total de votos (${sum}) supera el censo electoral registrado (${census}). Modificación de alta sensibilidad.`;
+            if (censusInvalid) {
+                alertDesc.textContent = "El censo de la mesa debe ser un número entero mayor que 0.";
+            } else if (overCensus) {
+                alertDesc.textContent = `No permitido: la suma de votos (${sum}) supera el censo (${census}). Corrige los valores para poder guardar.`;
             } else {
                 alertDesc.textContent = `¡ATENCIÓN! El volumen de votos nulos (${nullVotes}) supera el 25% del censo. Verifique el acta detenidamente.`;
             }
@@ -5836,6 +6135,13 @@ require([
             alertBadge.textContent = "Nivel: Información (Bajo)";
             alertDesc.textContent = "Los datos ingresados están dentro de los márgenes normativos de censo y participación.";
         }
+        if (saveBtn) {
+            const blocked = censusInvalid || overCensus;
+            saveBtn.disabled = blocked;
+            saveBtn.title = blocked
+                ? (censusInvalid ? "Censo inválido" : "No se puede guardar: votos > censo")
+                : "";
+        }
     }
 
     function saveAdminEditVotesSubmit(e) {
@@ -5844,6 +6150,24 @@ require([
 
         const mesa = state.mesas.find(m => m.codigo === editingAdminMesaCode);
         if (!mesa) return;
+
+        const censusInput = document.getElementById("admin-edit-votes-census-input");
+        const censoMesa = censusInput ? (parseInt(censusInput.value, 10) || 0) : (parseInt(mesa.censo, 10) || 0);
+        if (censoMesa < 1) {
+            alert("El censo de la mesa debe ser un número entero mayor que 0.");
+            return;
+        }
+
+        let sumVotos = 0;
+        document.querySelectorAll(".admin-vote-input").forEach(inp => {
+            sumVotos += Math.max(0, parseInt(inp.value, 10) || 0);
+        });
+        if (sumVotos > censoMesa) {
+            alert(`No se pueden guardar los cambios: el total de votos (${sumVotos.toLocaleString()}) supera el censo de la mesa (${censoMesa.toLocaleString()}).`);
+            return;
+        }
+
+        mesa.censo = censoMesa;
 
         // Recoger votos
         PARTIES_CONFIG.forEach(p => {

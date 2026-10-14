@@ -259,7 +259,7 @@ require([
 
     const legend = document.getElementById(`${targetPrefix}Legend`);
     legend.innerHTML = "";
-    stats.ranking.slice(0, 4).forEach((p, idx) => {
+    stats.ranking.slice(0, 5).forEach((p, idx) => {
       const row = document.createElement("div");
       row.className = "legend-row";
       const pct = stats.ballots > 0 ? ((p.votes / stats.ballots) * 100).toFixed(1) : "0.0";
@@ -297,11 +297,68 @@ require([
     return (res.features || []).filter((f) => isValidSection(f.attributes[yearCfg.sectionField]));
   }
 
+  function sectionRankForFeature(attrs, yearCfg) {
+    let ballots = 0;
+    const ranked = yearCfg.parties.map((p) => {
+      const votes = num(attrs[p.field]);
+      ballots += votes;
+      return { ...p, votes };
+    }).sort((a, b) => b.votes - a.votes);
+
+    const blanks = yearCfg.blankField ? num(attrs[yearCfg.blankField]) : 0;
+    const nulls = yearCfg.nullField ? num(attrs[yearCfg.nullField]) : 0;
+    if (yearCfg.totalVotesField && attrs[yearCfg.totalVotesField] != null) {
+      ballots = num(attrs[yearCfg.totalVotesField]);
+    } else {
+      ballots += blanks + nulls;
+    }
+    return { ranked, ballots, blanks, nulls };
+  }
+
+  function buildPopupHtml(attrs, yearCfg) {
+    const sectionKey = normalizeSectionKey(attrs[yearCfg.sectionField]);
+    const colegio = (window.HUB_CONFIG.colegioForSection
+      && window.HUB_CONFIG.colegioForSection(sectionKey))
+      || "No disponible";
+    const { ranked, ballots } = sectionRankForFeature(attrs, yearCfg);
+    const top5 = ranked.filter((p) => p.votes > 0).slice(0, 5);
+    const win = top5[0] || null;
+
+    const rows = top5.length
+      ? top5.map((p, idx) => {
+          const pct = ballots > 0 ? ((p.votes / ballots) * 100).toFixed(1) : "0.0";
+          return `<li>
+            <span class="left">
+              <span>${idx + 1}.</span>
+              <span class="swatch" style="background:${p.color}"></span>
+              <span>${p.name}</span>
+            </span>
+            <span class="pct">${p.votes.toLocaleString("es-ES")} · ${pct}%</span>
+          </li>`;
+        }).join("")
+      : "<li>Sin votos contabilizados</li>";
+
+    const winLine = win
+      ? `<p class="hist-popup-meta">Ganador: <strong>${win.name}</strong> (${win.votes.toLocaleString("es-ES")} votos)</p>`
+      : `<p class="hist-popup-meta">Sin datos de ganador</p>`;
+
+    return `
+      <div class="hist-popup">
+        <p class="hist-popup-meta"><strong>Colegio:</strong> ${colegio}</p>
+        <p class="hist-popup-meta"><strong>Convocatoria:</strong> ${yearCfg.label}</p>
+        ${winLine}
+        <h5>5 fuerzas más votadas</h5>
+        <ul class="hist-popup-list">${rows}</ul>
+      </div>
+    `;
+  }
+
   function buildGraphics(features, yearCfg) {
     const polys = [];
     const labels = [];
     features.forEach((feature) => {
       const win = winnerForFeature(feature.attributes, yearCfg);
+      const sectionKey = normalizeSectionKey(feature.attributes[yearCfg.sectionField]);
       let fill = [203, 213, 225, 0.5];
       if (win) {
         const hex = win.party.color.replace("#", "");
@@ -314,17 +371,20 @@ require([
       }
       polys.push(new Graphic({
         geometry: feature.geometry,
-        attributes: feature.attributes,
+        attributes: {
+          ...feature.attributes,
+          __hubYear: yearCfg.year,
+          __hubLabel: yearCfg.label,
+          __sectionKey: sectionKey
+        },
         symbol: {
           type: "simple-fill",
           color: fill,
           outline: { type: "simple-line", color: [60, 70, 85, 0.55], width: 0.7 }
         },
         popupTemplate: {
-          title: `Sección {${yearCfg.sectionField}}`,
-          content: win
-            ? `Ganador: <b>${win.party.name}</b> (${win.votes.toLocaleString("es-ES")} votos)`
-            : "Sin datos de ganador"
+          title: `Sección ${sectionKey || feature.attributes[yearCfg.sectionField]}`,
+          content: buildPopupHtml(feature.attributes, yearCfg)
         }
       }));
 
@@ -343,6 +403,26 @@ require([
       }
     });
     return { polys, labels };
+  }
+
+  function updateSwipeCartels(labelA, labelB, compareOn) {
+    const cartelA = document.getElementById("swipeCartelA");
+    const cartelB = document.getElementById("swipeCartelB");
+    const titleA = document.getElementById("swipeCartelATitle");
+    const titleB = document.getElementById("swipeCartelBTitle");
+    if (!cartelA || !cartelB) return;
+    if (titleA) titleA.textContent = labelA || "—";
+    if (titleB) titleB.textContent = labelB || "—";
+    cartelA.classList.toggle("hidden", !compareOn);
+    cartelB.classList.toggle("hidden", !compareOn);
+    cartelA.setAttribute("aria-hidden", compareOn ? "false" : "true");
+    cartelB.setAttribute("aria-hidden", compareOn ? "false" : "true");
+  }
+
+  function isLeadingSwipeSide(event) {
+    if (!swipeWidget) return true;
+    const splitX = (Number(swipeWidget.position) / 100) * view.width;
+    return event.x <= splitX;
   }
 
   function ensureLayers() {
@@ -399,12 +479,14 @@ require([
           position: 50
         });
         view.ui.add(swipeWidget);
+        updateSwipeCartels(yearA.label, yearB.label, true);
       } else {
         colorLayerB.visible = false;
         labelsLayerB.visible = false;
         colorLayerB.removeAll();
         labelsLayerB.removeAll();
         clearSwipe();
+        updateSwipeCartels(yearA.label, "", false);
       }
 
       map.reorder(terminoLayer, map.layers.length - 1);
@@ -435,6 +517,36 @@ require([
   yearBSelect.addEventListener("change", refresh);
 
   document.getElementById("workspace").classList.add("compare-hidden");
+
+  // Popups: en modo swipe solo consultar la capa del lado clicado
+  view.popup.autoOpenEnabled = false;
+  view.on("click", async (event) => {
+    try {
+      const includeLayers = (mode === "compare" && swipeWidget)
+        ? (isLeadingSwipeSide(event) ? [colorLayerA] : [colorLayerB])
+        : [colorLayerA];
+
+      const response = await view.hitTest(event, { include: includeLayers });
+      const hit = (response.results || []).find((r) => {
+        const g = r.graphic;
+        return g && g.geometry && g.geometry.type === "polygon";
+      });
+
+      if (!hit || !hit.graphic) {
+        view.popup.close();
+        return;
+      }
+
+      const graphic = hit.graphic;
+      view.popup.open({
+        location: event.mapPoint,
+        features: [graphic],
+        fetchFeatures: false
+      });
+    } catch (err) {
+      console.warn("[histórico] Error abriendo popup:", err);
+    }
+  });
 
   view.when(() => refresh());
 });
