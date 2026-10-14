@@ -1,4 +1,4 @@
-// Portal Electoral de Escrutinio y Representación Geográfica - Rivas-Vaciamadrid
+// Portal Electoral de Escrutinio y Representación Geográfica - Rivas Vaciamadrid
 // Integración con ArcGIS Maps SDK para JavaScript (v4.29) y localStorage híbrido
 
 require([
@@ -1172,11 +1172,12 @@ require([
             btn.style.borderRadius = "12px";
             btn.style.transition = "all 0.25s ease-in-out";
             
-            let bgGradient = "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)";
-            let borderColor = "#22c55e";
-            let codeColor = "#15803d";
-            let subtextColor = "#166534";
-            let statusBadge = `<span style="background:#16a34a; color:#ffffff; padding:5px 12px; border-radius:20px; font-weight:700; font-size:0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"><i class="fa-solid fa-lock-open"></i> Abierta - Lista para recuento</span>`;
+            // Abierta = naranja; Cerrada = verde; Part1 = azul; Part2 = violeta
+            let bgGradient = "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)";
+            let borderColor = "#f59e0b";
+            let codeColor = "#b45309";
+            let subtextColor = "#92400e";
+            let statusBadge = `<span style="background:#f59e0b; color:#ffffff; padding:5px 12px; border-radius:20px; font-weight:700; font-size:0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"><i class="fa-solid fa-lock-open"></i> Abierta - Lista para recuento</span>`;
 
             if (mesa.estado === "Escrutando" || mesa.estado === "Asignada") {
                 bgGradient = "linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)";
@@ -1192,18 +1193,18 @@ require([
                 const p1Time = mesa.part1_time ? ` (a las ${mesa.part1_time})` : '';
                 statusBadge = `<span style="background:#0284c7; color:#ffffff; padding:5px 12px; border-radius:20px; font-weight:700; font-size:0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"><i class="fa-solid fa-chart-line"></i> Part. 1 Enviada${p1Time}</span>`;
             } else if (mesa.estado === "Part2_Enviada") {
-                bgGradient = "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)";
-                borderColor = "#d97706";
-                codeColor = "#b45309";
-                subtextColor = "#92400e";
+                bgGradient = "linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)";
+                borderColor = "#7c3aed";
+                codeColor = "#6d28d9";
+                subtextColor = "#5b21b6";
                 const p2Time = mesa.part2_time ? ` (a las ${mesa.part2_time})` : '';
-                statusBadge = `<span style="background:#d97706; color:#ffffff; padding:5px 12px; border-radius:20px; font-weight:700; font-size:0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"><i class="fa-solid fa-chart-line"></i> Part. 2 Enviada${p2Time}</span>`;
+                statusBadge = `<span style="background:#7c3aed; color:#ffffff; padding:5px 12px; border-radius:20px; font-weight:700; font-size:0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"><i class="fa-solid fa-chart-line"></i> Part. 2 Enviada${p2Time}</span>`;
             } else if (mesa.estado === "Cerrada") {
-                bgGradient = "linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)";
-                borderColor = "#ef4444";
-                codeColor = "#dc2626";
-                subtextColor = "#991b1b";
-                statusBadge = `<span style="background:#ef4444; color:#ffffff; padding:5px 12px; border-radius:20px; font-weight:700; font-size:0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"><i class="fa-solid fa-lock"></i> Mesa Cerrada (No seleccionable)</span>`;
+                bgGradient = "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)";
+                borderColor = "#10b981";
+                codeColor = "#047857";
+                subtextColor = "#065f46";
+                statusBadge = `<span style="background:#059669; color:#ffffff; padding:5px 12px; border-radius:20px; font-weight:700; font-size:0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"><i class="fa-solid fa-lock"></i> Mesa Cerrada (No seleccionable)</span>`;
             }
 
             btn.style.background = bgGradient;
@@ -1963,7 +1964,7 @@ require([
             
             const details = COLEGIO_DETAILS[colName];
             const imgUrl = details?.image ? (baseUrl + details.image) : (baseUrl + "../Imagenes/Logo_OITR.png");
-            const address = details?.address || "Rivas-Vaciamadrid";
+            const address = details?.address || "Rivas Vaciamadrid";
             const totalCensus = colMesas.reduce((acc, m) => acc + (m.censo || 0), 0);
 
             const card = document.createElement("div");
@@ -1973,8 +1974,8 @@ require([
             card.style.gap = "16px";
             card.style.padding = "16px";
             card.style.borderRadius = "12px";
-            card.style.background = isAllClosed ? "linear-gradient(135deg, #fef2f2 0%, #ffffff 100%)" : "linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%)";
-            card.style.border = `1.5px solid ${isAllClosed ? '#fca5a5' : '#86efac'}`;
+            card.style.background = isAllClosed ? "linear-gradient(135deg, #ecfdf5 0%, #ffffff 100%)" : "linear-gradient(135deg, #fffbeb 0%, #ffffff 100%)";
+            card.style.border = `1.5px solid ${isAllClosed ? '#6ee7b7' : '#fcd34d'}`;
             card.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)";
             card.style.marginBottom = "12px";
             card.style.flexWrap = "wrap";
@@ -1984,7 +1985,7 @@ require([
 
             if (isAllClosed) {
                 statusBadgeHtml = `
-                    <span style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color:#ffffff; padding:6px 14px; border-radius:20px; font-weight:800; font-size:0.82rem; box-shadow:0 2px 6px rgba(239,68,68,0.25); display:inline-flex; align-items:center; gap:6px; white-space:nowrap;">
+                    <span style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color:#ffffff; padding:6px 14px; border-radius:20px; font-weight:800; font-size:0.82rem; box-shadow:0 2px 6px rgba(16,185,129,0.25); display:inline-flex; align-items:center; gap:6px; white-space:nowrap;">
                         <i class="fa-solid fa-lock"></i> CERRADO (${closed}/${total} mesas)
                     </span>
                 `;
@@ -1995,7 +1996,7 @@ require([
                 `;
             } else {
                 statusBadgeHtml = `
-                    <span style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color:#ffffff; padding:6px 14px; border-radius:20px; font-weight:800; font-size:0.82rem; box-shadow:0 2px 6px rgba(16,185,129,0.25); display:inline-flex; align-items:center; gap:6px; white-space:nowrap;">
+                    <span style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color:#ffffff; padding:6px 14px; border-radius:20px; font-weight:800; font-size:0.82rem; box-shadow:0 2px 6px rgba(245,158,11,0.25); display:inline-flex; align-items:center; gap:6px; white-space:nowrap;">
                         <i class="fa-solid fa-lock-open"></i> EN PROCESO (${closed}/${total} mesas)
                     </span>
                 `;
@@ -2039,12 +2040,87 @@ require([
         });
     }
 
+    function isMesaOccupied(mesa) {
+        return mesa && (mesa.estado === "Escrutando" || mesa.estado === "Asignada");
+    }
+
+    // Estado “real” de la mesa (sin sustituir por Escrutando cuando hay usuario dentro)
+    function resolveMesaBaseEstado(mesa) {
+        if (!mesa) return "Abierta";
+        if (!isMesaOccupied(mesa)) return mesa.estado || "Abierta";
+        if (mesa.estadoPrevio && mesa.estadoPrevio !== "Escrutando" && mesa.estadoPrevio !== "Asignada") {
+            return mesa.estadoPrevio;
+        }
+        if (mesa.part2_votos > 0 || mesa.part2_time) return "Part2_Enviada";
+        if (mesa.part1_votos > 0 || mesa.part1_time) return "Part1_Enviada";
+        return "Abierta";
+    }
+
+    function buildAdminStatusBadgeHtml(mesa) {
+        const baseEstado = resolveMesaBaseEstado(mesa);
+        let badge = `<span class="status-badge-inline status-open"><i class="fa-solid fa-lock-open"></i> Abierta</span>`;
+        if (baseEstado === "Cerrada") {
+            badge = `<span class="status-badge-inline status-closed"><i class="fa-solid fa-lock"></i> Cerrada</span>`;
+        } else if (baseEstado === "Part1_Enviada") {
+            badge = `<span class="status-badge-inline status-part1"><i class="fa-solid fa-chart-line"></i> Part. 1 Enviada</span>`;
+        } else if (baseEstado === "Part2_Enviada") {
+            badge = `<span class="status-badge-inline status-part2"><i class="fa-solid fa-chart-line"></i> Part. 2 Enviada</span>`;
+        }
+
+        const editingIcon = isMesaOccupied(mesa)
+            ? `<i class="fa-solid fa-pen-to-square fa-beat admin-mesa-editing-icon" title="Usuario editando esta mesa"></i>`
+            : "";
+
+        return `<span class="admin-mesas-status-cell">${badge}${editingIcon}</span>`;
+    }
+
     function renderAdminMesasTable() {
         const tbody = document.getElementById("admin-mesas-table-body");
+        if (!tbody) return;
         tbody.innerHTML = "";
 
+        const colFilterEl = document.getElementById("admin-filter-colegio");
+        const estFilterEl = document.getElementById("admin-filter-estado");
+        const prevCol = colFilterEl ? colFilterEl.value : "";
+        const prevEst = estFilterEl ? estFilterEl.value : "";
+
+        if (colFilterEl) {
+            const colegios = [...new Set(state.mesas.map(m => m.colegio).filter(Boolean))]
+                .sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
+            colFilterEl.innerHTML = `<option value="">Todos los colegios</option>` +
+                colegios.map(c => `<option value="${c.replace(/"/g, "&quot;")}">${c}</option>`).join("");
+            if (prevCol && colegios.includes(prevCol)) colFilterEl.value = prevCol;
+            colFilterEl.onchange = () => renderAdminMesasTable();
+        }
+        if (estFilterEl) {
+            estFilterEl.onchange = () => renderAdminMesasTable();
+            if (prevEst) estFilterEl.value = prevEst;
+        }
+
+        const clearFilterBtn = document.getElementById("admin-filter-clear");
+        if (clearFilterBtn) {
+            clearFilterBtn.onclick = () => {
+                if (colFilterEl) colFilterEl.value = "";
+                if (estFilterEl) estFilterEl.value = "";
+                renderAdminMesasTable();
+            };
+            const hasFilters = !!(prevCol || prevEst);
+            clearFilterBtn.disabled = !hasFilters;
+            clearFilterBtn.style.opacity = hasFilters ? "1" : "0.55";
+        }
+
+        const filterColegio = colFilterEl ? colFilterEl.value : "";
+        const filterEstado = estFilterEl ? estFilterEl.value : "";
+
         // Ordenar mesas: 1º por Colegio, 2º por Sección, 3º por Mesa
-        const sortedMesas = [...state.mesas].sort((a, b) => {
+        const sortedMesas = [...state.mesas]
+            .filter(mesa => {
+                if (filterColegio && mesa.colegio !== filterColegio) return false;
+                if (filterEstado === "__editing__") return isMesaOccupied(mesa);
+                if (filterEstado && resolveMesaBaseEstado(mesa) !== filterEstado) return false;
+                return true;
+            })
+            .sort((a, b) => {
             const colComp = (a.colegio || "").localeCompare(b.colegio || "", 'es', { sensitivity: 'base' });
             if (colComp !== 0) return colComp;
 
@@ -2056,17 +2132,8 @@ require([
 
         sortedMesas.forEach(mesa => {
             const tr = document.createElement("tr");
-
-            let statusBadgeHtml = `<span class="status-badge-inline status-open">Abierta</span>`;
-            if (mesa.estado === "Cerrada") {
-                statusBadgeHtml = `<span class="status-badge-inline status-closed"><i class="fa-solid fa-lock"></i> Cerrada</span>`;
-            } else if (mesa.estado === "Escrutando" || mesa.estado === "Asignada") {
-                statusBadgeHtml = `<span class="status-badge-inline" style="background:#f3e8ff; color:#7e22ce; border:1px solid #d8b4fe; font-weight:700;"><i class="fa-solid fa-pen-to-square fa-beat"></i> Escrutando</span>`;
-            } else if (mesa.estado === "Part1_Enviada") {
-                statusBadgeHtml = `<span class="status-badge-inline" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc;"><i class="fa-solid fa-chart-line"></i> Part. 1 Enviada</span>`;
-            } else if (mesa.estado === "Part2_Enviada") {
-                statusBadgeHtml = `<span class="status-badge-inline" style="background:#fef3c7; color:#b45309; border:1px solid #fde68a;"><i class="fa-solid fa-chart-line"></i> Part. 2 Enviada</span>`;
-            }
+            const statusBadgeHtml = buildAdminStatusBadgeHtml(mesa);
+            const baseEstado = resolveMesaBaseEstado(mesa);
 
             let actionButtons = `
                 <button class="admin-btn-action btn-edit-admin-votes" data-codigo="${mesa.codigo}" title="Editar Votos (Admin)">
@@ -2077,7 +2144,7 @@ require([
                 </button>
             `;
             
-            if (mesa.estado === "Cerrada") {
+            if (baseEstado === "Cerrada" && !isMesaOccupied(mesa)) {
                 actionButtons += `
                     <button class="admin-btn-action btn-view-acta" data-codigo="${mesa.codigo}" title="Ver Acta Escrutada">
                         <i class="fa-solid fa-file-signature" style="color: var(--primary-color);"></i>
@@ -2545,7 +2612,7 @@ require([
     function handleAdminDemoFill() {
         const conf = confirm(
             "¿Desea rellenar el censo municipal completo generando 3 mesas por sección (A, B, C) con votos aleatorios ponderados realistas?\n\n" +
-            "Esto simulará el 100% de las mesas de Rivas-Vaciamadrid y pintará el mapa completo."
+            "Esto simulará el 100% de las mesas de Rivas Vaciamadrid y pintará el mapa completo."
         );
         if (!conf) return;
 
@@ -2571,7 +2638,7 @@ require([
                 // Simular participación entre el 60% y el 82%
                 const totalVotantes = Math.round(censoMesa * (0.6 + Math.random() * 0.22));
                 
-                // Pesos ponderados realistas para Rivas-Vaciamadrid
+                // Pesos ponderados realistas para Rivas Vaciamadrid
                 const weights = { PP: 0.30, PSOE: 0.28, VOX: 0.12, SUMAR: 0.10, UP: 0.08, Cs: 0.02, PACMA: 0.02, SALF: 0.03 };
                 let remaining = totalVotantes;
                 const votosPartido = {};
@@ -2859,7 +2926,7 @@ require([
     }
 
     /**
-     * Aplica la Ley D'Hondt para repartir 27 concejales municipales (Rivas-Vaciamadrid)
+     * Aplica la Ley D'Hondt para repartir 27 concejales municipales (Rivas Vaciamadrid)
      * excluyendo a las candidaturas que no alcanzan la barrera electoral del 5% (LOREG).
      */
     function calculateDHondtSeats(partyVotes, totalVotosValidos, totalSeats = 27, thresholdPct = 5) {
@@ -3863,7 +3930,7 @@ require([
                 
                 <div style="font-size:11px; color:#475569; margin-bottom:12px; display:flex; align-items:flex-start; gap:8px; border-bottom:1px solid #e2e8f0; padding-bottom:8px; flex-wrap:wrap;">
                     <i class="fa-solid fa-location-dot" style="color:var(--primary-color); margin-top:3px;"></i>
-                    <span style="flex:1; line-height:1.4;">${details?.address || "Rivas-Vaciamadrid, Madrid"}</span>
+                    <span style="flex:1; line-height:1.4;">${details?.address || "Rivas Vaciamadrid, Madrid"}</span>
                     <a href="${mapsUrl}" target="_blank" style="color:var(--primary-color); text-decoration:none; font-weight:600; display:inline-flex; align-items:center; gap:4px; margin-left:auto;">
                         <i class="fa-solid fa-route"></i> Llegar
                     </a>
@@ -4211,7 +4278,7 @@ require([
             <div class="acta-header">
                 <img src="../Imagenes/Logo_OITR.png" class="acta-logo-oitr" alt="Ayuntamiento Rivas">
                 <div class="acta-header-title">
-                    <h1>AYUNTAMIENTO DE RIVAS-VACIAMADRID</h1>
+                    <h1>AYUNTAMIENTO DE Rivas Vaciamadrid</h1>
                     <p>OFICINA DE INFORMACIÓN TERRITORIAL (OITR) - ELECCIONES MUNICIPALES 2027</p>
                 </div>
             </div>
@@ -4277,7 +4344,7 @@ require([
 
             <div class="acta-footer" style="margin-top: 30px;">
                 Documento oficial generado e informatizado de forma segura.<br>
-                Elecciones Municipales Rivas Vaciamadrid 2027 - Fecha de escrutinio oficial: ${new Date().toLocaleDateString('es-ES')} - Rivas-Vaciamadrid, Madrid.
+                Elecciones Municipales Rivas Vaciamadrid 2027 - Fecha de escrutinio oficial: ${new Date().toLocaleDateString('es-ES')} - Rivas Vaciamadrid, Madrid.
             </div>
         `;
     }
@@ -4336,7 +4403,7 @@ require([
             <div class="acta-header">
                 <img src="../Imagenes/Logo_OITR.png" class="acta-logo-oitr" alt="Ayuntamiento Rivas">
                 <div class="acta-header-title">
-                    <h1>AYUNTAMIENTO DE RIVAS-VACIAMADRID</h1>
+                    <h1>AYUNTAMIENTO DE Rivas Vaciamadrid</h1>
                     <p>OFICINA DE INFORMACIÓN TERRITORIAL (OITR) - ELECCIONES MUNICIPALES 2027</p>
                 </div>
             </div>
@@ -4391,7 +4458,7 @@ require([
 
             <div class="acta-footer" style="margin-top: 30px;">
                 Documento oficial generado e informatizado de forma segura.<br>
-                Elecciones Municipales Rivas Vaciamadrid 2027 - Fecha: ${new Date().toLocaleDateString('es-ES')} - Rivas-Vaciamadrid, Madrid.
+                Elecciones Municipales Rivas Vaciamadrid 2027 - Fecha: ${new Date().toLocaleDateString('es-ES')} - Rivas Vaciamadrid, Madrid.
             </div>
         `;
 
@@ -4654,7 +4721,7 @@ require([
             <div class="acta-header">
                 <img src="../Imagenes/Logo_OITR.png" class="acta-logo-oitr" alt="Ayuntamiento Rivas">
                 <div class="acta-header-title">
-                    <h1>AYUNTAMIENTO DE RIVAS-VACIAMADRID</h1>
+                    <h1>AYUNTAMIENTO DE Rivas Vaciamadrid</h1>
                     <p>OFICINA DE INFORMACIÓN TERRITORIAL (OITR) - ELECCIONES MUNICIPALES 2027</p>
                 </div>
             </div>
@@ -4748,7 +4815,7 @@ require([
             </table>
 
             <div class="acta-footer" style="margin-top:30px; border-top:1px solid #ccc; padding-top:10px; font-size:9px; text-align:center;">
-                Informe Informativo Consolidado - Ayuntamiento de Rivas-Vaciamadrid<br>
+                Informe Informativo Consolidado - Ayuntamiento de Rivas Vaciamadrid<br>
                 Plataforma de Escrutinio y Visualización de Resultados Electorales en Tiempo Real.
             </div>
         `;
@@ -5837,7 +5904,7 @@ require([
                             <i class="fa-solid fa-circle-xmark"></i> No encontrado
                         </div>
                         <p style="font-size: 0.82rem; color: #475569; margin: 0;">
-                            No se ha encontrado ninguna inscripción en Rivas-Vaciamadrid para el DNI/NIE <strong>${rawQuery}</strong> en el Censo Definitivo.
+                            No se ha encontrado ninguna inscripción en Rivas Vaciamadrid para el DNI/NIE <strong>${rawQuery}</strong> en el Censo Definitivo.
                         </p>
                     </div>`;
                 return;

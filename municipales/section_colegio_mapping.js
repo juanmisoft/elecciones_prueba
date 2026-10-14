@@ -1,4 +1,4 @@
-// Mapeo unificado de Secciones Censales a Colegios Electorales en Rivas-Vaciamadrid
+// Mapeo unificado de Secciones Censales a Colegios Electorales en Rivas Vaciamadrid
 const CENSUS_2023 = {
   "001": 1983, "002": 979, "003": 894, "004": 1536, "005": 1197,
   "006": 1527, "007": 1202, "008": 915, "009": 1321, "010": 980,
@@ -78,63 +78,63 @@ const SECTION_COLEGIO_MAPPING = {
 const COLEGIO_DETAILS = {
   "C.E.I.P. LAS CIGUEÑAS": {
     image: "../Imagenes/las-ciguenas.png",
-    address: "Calle Noruega, 1, 28521 Rivas-Vaciamadrid"
+    address: "Calle Noruega, 1, 28521 Rivas Vaciamadrid"
   },
   "C.E.I.P. LA ESCUELA": {
     image: "../Imagenes/la-escuela.png",
-    address: "Avenida de Miguel Hernández, 1, 28523 Rivas-Vaciamadrid"
+    address: "Avenida de Miguel Hernández, 1, 28523 Rivas Vaciamadrid"
   },
   "C.E.I.P. EL OLIVAR": {
     image: "../Imagenes/el-olivar.png",
-    address: "Avenida de Covibar, 3, 28523 Rivas-Vaciamadrid"
+    address: "Avenida de Covibar, 3, 28523 Rivas Vaciamadrid"
   },
   "I.E.S. LAS LAGUNAS": {
     image: "../Imagenes/LAS_LAGUNAS.png",
-    address: "Avenida de Gabriel García Márquez, s/n, 28523 Rivas-Vaciamadrid"
+    address: "Avenida de Gabriel García Márquez, s/n, 28523 Rivas Vaciamadrid"
   },
   "C.E.I.P. VICTORIA KENT": {
     image: "../Imagenes/victroria-kent.png",
-    address: "Paseo de la Chopera, 7, 28523 Rivas-Vaciamadrid"
+    address: "Paseo de la Chopera, 7, 28523 Rivas Vaciamadrid"
   },
   "C.E.I.P. JARAMA": {
     image: "../Imagenes/ceip_jarama.png",
-    address: "Calle del Olivo, s/n, 28522 Rivas-Vaciamadrid"
+    address: "Calle del Olivo, s/n, 28522 Rivas Vaciamadrid"
   },
   "C.E.I.P. LOS ALMENDROS": {
     image: "../Imagenes/los-almendros.png",
-    address: "Avenida de los Almendros, 198, 28522 Rivas-Vaciamadrid"
+    address: "Avenida de los Almendros, 198, 28522 Rivas Vaciamadrid"
   },
   "C.E.I.P. RAFAEL ALBERTI": {
     image: "../Imagenes/rafael-alberti.png",
-    address: "Paseo de las Provincias, s/n, 28523 Rivas-Vaciamadrid"
+    address: "Paseo de las Provincias, s/n, 28523 Rivas Vaciamadrid"
   },
   "C.E.I.P. JOSE SARAMAGO": {
     image: "../Imagenes/jose-saramago.png",
-    address: "Calle de José Saramago, 1, 28522 Rivas-Vaciamadrid"
+    address: "Calle de José Saramago, 1, 28522 Rivas Vaciamadrid"
   },
   "C.E.I.P. DULCE CHACON": {
     image: "../Imagenes/dulce-chacon.png",
-    address: "Calle Federica Montseny, 3, 28521 Rivas-Vaciamadrid"
+    address: "Calle Federica Montseny, 3, 28521 Rivas Vaciamadrid"
   },
   "C.E.I.P. JOSE HIERRO": {
     image: "../Imagenes/JoseHierro.jpg",
-    address: "Avenida de José Hierro, 86, 28521 Rivas-Vaciamadrid"
+    address: "Avenida de José Hierro, 86, 28521 Rivas Vaciamadrid"
   },
   "C.E.I.P. HANS CHRISTIAN ANDERSEN": {
     image: "../Imagenes/hans-christian-andersen.png",
-    address: "Calle de Fernando Trueba, 8, 28521 Rivas-Vaciamadrid"
+    address: "Calle de Fernando Trueba, 8, 28521 Rivas Vaciamadrid"
   },
   "C.E.I.P. JOSE ITURZAETA": {
     image: "../Imagenes/jose-iturzaeta.png",
-    address: "Calle Bernardo Atxaga, 13, 28521 Rivas-Vaciamadrid"
+    address: "Calle Bernardo Atxaga, 13, 28521 Rivas Vaciamadrid"
   },
   "C.E.I.P.S.O LA LUNA": {
     image: "../Imagenes/ceipso-la-luna.jpg",
-    address: "Avenida de la Tierra, 6, 28523 Rivas-Vaciamadrid"
+    address: "Avenida de la Tierra, 6, 28523 Rivas Vaciamadrid"
   },
   "CIUDAD EDUCATIVA MUNICIPAL HIPATIA": {
     image: "../Imagenes/planeta-rivashipatia_JML934.jpg",
-    address: "Avenida del Ocho de Marzo, 1, 28523 Rivas-Vaciamadrid"
+    address: "Avenida del Ocho de Marzo, 1, 28523 Rivas Vaciamadrid"
   }
 };
 

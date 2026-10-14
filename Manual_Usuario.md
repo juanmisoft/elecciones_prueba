@@ -1,6 +1,6 @@
 # Manual de Usuario: Sistema de Escrutinio y Visor Electoral
 
-Este manual detalla de forma sencilla y directa cómo utilizar la aplicación electoral de Rivas-Vaciamadrid. El documento está dividido en tres secciones según el perfil del usuario: la **Vista Pública (Visor)**, el **Portal de Representantes de Colegio** y el **Panel de Administración**.
+Este manual detalla de forma sencilla y directa cómo utilizar la aplicación electoral de Rivas Vaciamadrid. El documento está dividido en tres secciones según el perfil del usuario: la **Vista Pública (Visor)**, el **Portal de Representantes de Colegio** y el **Panel de Administración**.
 
 ---
 

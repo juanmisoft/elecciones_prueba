@@ -243,7 +243,7 @@
             <!-- Contenedor del Visor Cartográfico de ArcGIS -->
             <div class="dashboard-map-container">
                 <div class="map-overlay-title">
-                    <h3 id="map-current-title">Mapa Electoral de Rivas-Vaciamadrid</h3>
+                    <h3 id="map-current-title">Mapa Electoral de Rivas Vaciamadrid</h3>
                 </div>
 
                 <!-- Mapa Div -->
@@ -330,7 +330,7 @@
                 <div class="portal-welcome">
                     <div class="welcome-info">
                         <h2 id="portal-colegio-name">C.E.I.P. JARAMA</h2>
-                        <p id="portal-colegio-address">Avenida de Covibar, 1, Rivas-Vaciamadrid</p>
+                        <p id="portal-colegio-address">Avenida de Covibar, 1, Rivas Vaciamadrid</p>
                     </div>
                     <button id="btn-portal-logout" class="btn-header btn-secondary">
                         <i class="fa-solid fa-map"></i> Volver al visor público
@@ -659,6 +659,30 @@
                         <!-- Listado Completo de Mesas -->
                         <div class="portal-card" style="margin-top: 24px;">
                             <div class="card-title" style="border: none; margin-bottom: 10px;">Listado General de Mesas
+                            </div>
+                            <div class="admin-mesas-filters">
+                                <div class="admin-mesas-filter-field">
+                                    <label for="admin-filter-colegio">Colegio</label>
+                                    <select id="admin-filter-colegio" class="portal-input">
+                                        <option value="">Todos los colegios</option>
+                                    </select>
+                                </div>
+                                <div class="admin-mesas-filter-field">
+                                    <label for="admin-filter-estado">Estado</label>
+                                    <select id="admin-filter-estado" class="portal-input">
+                                        <option value="">Todos los estados</option>
+                                        <option value="Abierta">Abierta</option>
+                                        <option value="Part1_Enviada">Part. 1 Enviada</option>
+                                        <option value="Part2_Enviada">Part. 2 Enviada</option>
+                                        <option value="Cerrada">Cerrada</option>
+                                        <option value="__editing__">En edición</option>
+                                    </select>
+                                </div>
+                                <div class="admin-mesas-filter-actions">
+                                    <button type="button" id="admin-filter-clear" class="btn-header btn-secondary" title="Borrar filtros">
+                                        <i class="fa-solid fa-filter-circle-xmark"></i> Borrar filtros
+                                    </button>
+                                </div>
                             </div>
                             <div style="overflow-x: auto;">
                                 <table class="admin-table">

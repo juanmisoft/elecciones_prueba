@@ -548,7 +548,7 @@ require([
           const details = COLEGIO_DETAILS[colName];
           const localImg = details?.image;
           const onlineUrl = details?.webUrl;
-          const address = details?.address || "Rivas-Vaciamadrid, Madrid";
+          const address = details?.address || "Rivas Vaciamadrid, Madrid";
           const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(colName + ", " + address)}`;
 
           let imageHtml = "";
@@ -1190,7 +1190,7 @@ require([
     document.getElementById("modalSchoolName").textContent = colegio.name;
     
     const details = COLEGIO_DETAILS[colegio.name];
-    const address = details?.address || "Rivas-Vaciamadrid, Madrid";
+    const address = details?.address || "Rivas Vaciamadrid, Madrid";
     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(colegio.name + ", " + address)}`;
     
     document.getElementById("modalSchoolAddress").innerHTML = `

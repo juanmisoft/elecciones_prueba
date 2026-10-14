@@ -1,10 +1,10 @@
-# Visor Electoral y Portal de Escrutinio (Rivas-Vaciamadrid)
+# Visor Electoral y Portal de Escrutinio (Rivas Vaciamadrid)
 
 Aplicación web frontend pura desarrollada para la gestión del escrutinio en tiempo real, actas firmadas y visualización interactiva de resultados electorales. Integrada con el **ArcGIS Maps SDK for JavaScript** y servicios de entidades seguras de **ArcGIS Enterprise (Feature Server)**.
 
 ## 🚀 Características Principales
 
-*   **Mapa Electoral Interactivo:** Representación dinámica por secciones censales de Rivas-Vaciamadrid. Los polígonos cambian de color en tiempo real con el color de la fuerza política ganadora en cada sección.
+*   **Mapa Electoral Interactivo:** Representación dinámica por secciones censales de Rivas Vaciamadrid. Los polígonos cambian de color en tiempo real con el color de la fuerza política ganadora en cada sección.
 *   **Leyenda Inteligente (Top 3):** Leyenda dinámica en el mapa que calcula y muestra en tiempo real las 3 fuerzas más votadas en el municipio, detallando votos acumulados y porcentaje.
 *   **Portal de Representantes de Colegio:**
     *   Asignación y registro de mesas electorales.

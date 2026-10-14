@@ -1195,13 +1195,27 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .status-open {
-    background-color: rgba(245, 158, 11, 0.1);
+    background-color: rgba(245, 158, 11, 0.12);
     color: #d97706;
+    border: 1px solid #fcd34d;
 }
 
 .status-closed {
-    background-color: rgba(16, 185, 129, 0.1);
+    background-color: rgba(16, 185, 129, 0.12);
     color: #059669;
+    border: 1px solid #6ee7b7;
+}
+
+.status-part1 {
+    background-color: rgba(2, 132, 199, 0.12);
+    color: #0369a1;
+    border: 1px solid #7dd3fc;
+}
+
+.status-part2 {
+    background-color: rgba(124, 58, 237, 0.12);
+    color: #6d28d9;
+    border: 1px solid #c4b5fd;
 }
 
 .admin-table {
@@ -1236,6 +1250,54 @@ h1, h2, h3, h4, h5, h6 {
     font-weight: 700;
     font-size: 0.75rem;
     white-space: nowrap;
+}
+
+.admin-mesas-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 14px;
+    align-items: flex-end;
+}
+
+.admin-mesas-filter-field {
+    flex: 1 1 200px;
+    min-width: 180px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.admin-mesas-filter-field label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.admin-mesas-filter-actions {
+    display: flex;
+    align-items: flex-end;
+    padding-bottom: 1px;
+}
+
+.admin-mesas-filter-actions .btn-header {
+    white-space: nowrap;
+    font-size: 0.8rem;
+    padding: 8px 12px;
+}
+
+.admin-mesas-status-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.admin-mesa-editing-icon {
+    color: #16a34a;
+    font-size: 0.95rem;
+    flex-shrink: 0;
 }
 
 .admin-btn-action {
