@@ -3710,11 +3710,11 @@ require([
         // 2. Ordenar por votos descendente
         const sorted = [...PARTIES_CONFIG].sort((a, b) => (partyVotes[b.id] || 0) - (partyVotes[a.id] || 0));
         
-        // 3. Tomar el Top 3
-        const top3 = sorted.slice(0, 3);
+        // 3. Tomar el Top 5
+        const top5 = sorted.slice(0, 5);
         
-        // 4. Renderizar el Top 3 con sus colores, votos y porcentaje
-        top3.forEach((p, index) => {
+        // 4. Renderizar el Top 5 con sus colores, votos y porcentaje
+        top5.forEach((p, index) => {
             const votes = partyVotes[p.id] || 0;
             const pct = totalValidos > 0 ? ((votes / totalValidos) * 100).toFixed(1) : "0.0";
             
