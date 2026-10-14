@@ -3495,7 +3495,8 @@ require([
             const isTie = Array.isArray(tiedIds) && tiedIds.length > 1;
 
             // --- Color: ganador / empate (gris) / sin datos (gris) ---
-            let fillColor = [180, 180, 180, 0.45];
+            // Opacidad alta para que el color del partido coincida con leyenda/admin (el basemap no lo blanquee)
+            let fillColor = [180, 180, 180, 0.5];
             if (winnerPartyId && !isTie) {
                 const party = PARTIES_CONFIG.find(p => p.id === winnerPartyId);
                 if (party) {
@@ -3503,7 +3504,7 @@ require([
                     const r = parseInt(hex.substring(0, 2), 16);
                     const g = parseInt(hex.substring(2, 4), 16);
                     const b = parseInt(hex.substring(4, 6), 16);
-                    fillColor = [r, g, b, 0.72];
+                    fillColor = [r, g, b, 0.92];
                 }
             }
 
