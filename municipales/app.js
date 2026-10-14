@@ -4283,7 +4283,7 @@ require([
                 </div>
             </div>
 
-            <div style="font-size:14px; font-weight:800; border-bottom:2px solid #000; padding-bottom:5px; margin-bottom:15px; text-transform:uppercase;">
+            <div class="acta-doc-title">
                 Acta de Escrutinio y Transmisión de Resultados Electorales - Elecciones Municipales 2027
             </div>
 
@@ -4408,7 +4408,7 @@ require([
                 </div>
             </div>
 
-            <div style="font-size:14px; font-weight:800; border-bottom:2px solid #000; padding-bottom:5px; margin-bottom:15px; text-transform:uppercase;">
+            <div class="acta-doc-title">
                 Acta de Cierre Agregado de Centro de Votación - Elecciones Municipales 2027
             </div>
 
@@ -4726,9 +4726,9 @@ require([
                 </div>
             </div>
 
-            <div style="font-size:14px; font-weight:800; border-bottom:2px solid #000; padding-bottom:5px; margin-bottom:15px; text-transform:uppercase; display:flex; justify-content:space-between; align-items:center;">
+            <div class="acta-doc-title acta-doc-title-row">
                 <span>Informe Consolidado de Escrutinio Municipal</span>
-                <span style="font-size:10px; font-weight:400; color:#555;">Generado: ${new Date().toLocaleDateString('es-ES')} ${new Date().toLocaleTimeString('es-ES')}</span>
+                <span style="font-size:10px; font-weight:400; color:#555; white-space:nowrap;">Generado: ${new Date().toLocaleDateString('es-ES')} ${new Date().toLocaleTimeString('es-ES')}</span>
             </div>
 
             <div class="acta-title-section">Métricas Globales del Municipio</div>
