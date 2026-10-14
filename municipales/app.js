@@ -4284,7 +4284,7 @@ require([
             </div>
 
             <div class="acta-doc-title">
-                Acta de Escrutinio y Transmisión de Resultados Electorales - Elecciones Municipales 2027
+                Acta de Escrutinio y Transmisión de Resultados Electorales - Municipales 2027
             </div>
 
             <div class="acta-metadata-grid">
@@ -4409,7 +4409,7 @@ require([
             </div>
 
             <div class="acta-doc-title">
-                Acta de Cierre Agregado de Centro de Votación - Elecciones Municipales 2027
+                Acta de Cierre Agregado de Centro de Votación - Municipales 2027
             </div>
 
             <div class="acta-metadata-grid" style="grid-template-columns: 3fr 1fr;">

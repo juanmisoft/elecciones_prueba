@@ -4178,7 +4178,7 @@ require([
             </div>
 
             <div class="acta-doc-title">
-                Acta de Escrutinio y Transmisión de Resultados Electorales - Elecciones Generales 2026
+                Acta de Escrutinio y Transmisión de Resultados Electorales - Generales 2026
             </div>
 
             <div class="acta-metadata-grid">
@@ -4303,7 +4303,7 @@ require([
             </div>
 
             <div class="acta-doc-title">
-                Acta de Cierre Agregado de Centro de Votación - Elecciones Generales 2026
+                Acta de Cierre Agregado de Centro de Votación - Generales 2026
             </div>
 
             <div class="acta-metadata-grid" style="grid-template-columns: 3fr 1fr;">
