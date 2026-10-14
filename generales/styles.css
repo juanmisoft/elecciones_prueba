@@ -485,12 +485,48 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .card-title {
+    font-family: var(--font-heading);
     font-size: 1.05rem;
     font-weight: 700;
     color: var(--text-primary);
     margin-bottom: 14px;
     padding-bottom: 8px;
     border-bottom: 1px solid #f1f5f9;
+}
+
+/* Métricas Generales: tipografía de títulos + placeholders centrados */
+#general-stats-pane .stat-label {
+    font-family: var(--font-heading);
+}
+
+#general-stats-pane .ambito-info-card {
+    text-align: center;
+}
+
+#general-stats-pane .ambito-info-card .stats-card-header {
+    justify-content: center;
+    font-family: var(--font-heading);
+}
+
+#general-stats-pane .ambito-info-card p {
+    font-family: var(--font-heading);
+}
+
+#general-stats-pane .metrics-placeholder {
+    text-align: center;
+    font-family: var(--font-heading);
+}
+
+#general-stats-pane .metrics-placeholder-title {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    color: #1e293b;
+}
+
+#general-stats-pane .metrics-placeholder-sub {
+    font-family: var(--font-heading);
+    font-size: 0.75rem;
+    color: #64748b;
 }
 
 .party-results-list {

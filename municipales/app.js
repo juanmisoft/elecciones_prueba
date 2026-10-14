@@ -1894,9 +1894,11 @@ require([
 
         document.getElementById("admin-metric-votos-total").textContent = totalVotosValidos.toLocaleString();
         
-        // Cálculo de participación dinámica en Administración (Ponderada sobre mesas comunicadas)
+        // Participación en admin: % principal sobre censo total; subtítulo con % de mesas comunicadas
         let partPercent = "0.00";
         let partSub = "Pendiente de avances";
+        let totalCensusAdmin = 0;
+        state.mesas.forEach(m => { totalCensusAdmin += (m.censo || 0); });
 
         const part2Mesas = state.mesas.filter(m => (m.part2_votos || 0) > 0 || m.estado === "Part2_Enviada" || m.estado === "Cerrada");
         const part1Mesas = state.mesas.filter(m => (m.part1_votos || 0) > 0 || m.estado === "Part1_Enviada" || m.estado === "Part2_Enviada" || m.estado === "Cerrada");
@@ -1909,13 +1911,15 @@ require([
         } else if (part2Mesas.length > 0) {
             const sumP2Votos = part2Mesas.reduce((acc, m) => acc + (m.part2_votos || 0), 0);
             const sumP2Censo = part2Mesas.reduce((acc, m) => acc + (m.censo || 0), 0);
-            partPercent = sumP2Censo > 0 ? ((sumP2Votos / sumP2Censo) * 100).toFixed(2) : "0.00";
-            partSub = `${sumP2Votos.toLocaleString()} votos (2º Avance 18:00h · ${part2Mesas.length} de ${totalMesas} mesas)`;
+            const pctMesas = sumP2Censo > 0 ? ((sumP2Votos / sumP2Censo) * 100).toFixed(2) : "0.00";
+            partPercent = totalCensusAdmin > 0 ? ((sumP2Votos / totalCensusAdmin) * 100).toFixed(2) : "0.00";
+            partSub = `${sumP2Votos.toLocaleString()} votos (2º Avance · ${part2Mesas.length} de ${totalMesas} mesas) · ${pctMesas}% en mesas comunicadas`;
         } else if (part1Mesas.length > 0) {
             const sumP1Votos = part1Mesas.reduce((acc, m) => acc + (m.part1_votos || 0), 0);
             const sumP1Censo = part1Mesas.reduce((acc, m) => acc + (m.censo || 0), 0);
-            partPercent = sumP1Censo > 0 ? ((sumP1Votos / sumP1Censo) * 100).toFixed(2) : "0.00";
-            partSub = `${sumP1Votos.toLocaleString()} votos (1º Avance 14:00h · ${part1Mesas.length} de ${totalMesas} mesas)`;
+            const pctMesas = sumP1Censo > 0 ? ((sumP1Votos / sumP1Censo) * 100).toFixed(2) : "0.00";
+            partPercent = totalCensusAdmin > 0 ? ((sumP1Votos / totalCensusAdmin) * 100).toFixed(2) : "0.00";
+            partSub = `${sumP1Votos.toLocaleString()} votos (1º Avance · ${part1Mesas.length} de ${totalMesas} mesas) · ${pctMesas}% en mesas comunicadas`;
         }
 
         const adminPartEl = document.getElementById("admin-metric-participation");
@@ -2690,11 +2694,12 @@ require([
         });
         document.getElementById("global-census-val").textContent = totalCensus.toLocaleString();
 
-        // 1. CÁLCULO DE AVANCE 1 (14:00h) - Ponderado sobre mesas comunicadas
+        // 1. CÁLCULO DE AVANCE 1 (14:00h) — % principal sobre censo total; subtítulo sobre mesas comunicadas
         const part1Mesas = state.mesas.filter(m => (m.part1_votos || 0) > 0 || m.estado === "Part1_Enviada" || m.estado === "Part2_Enviada" || m.estado === "Cerrada");
         const p1ValEl = document.getElementById("global-part1-val");
         const p1SubEl = document.getElementById("global-part1-sub");
         let pctP1 = "0.00";
+        let pctP1Mesas = "0.00";
         let sumP1Votos = 0;
         let sumP1Censo = 0;
 
@@ -2708,19 +2713,23 @@ require([
                 sumP1Censo += (m.censo || 0);
             });
 
-            pctP1 = sumP1Censo > 0 ? ((sumP1Votos / sumP1Censo) * 100).toFixed(2) : "0.00";
+            pctP1 = totalCensus > 0 ? ((sumP1Votos / totalCensus) * 100).toFixed(2) : "0.00";
+            pctP1Mesas = sumP1Censo > 0 ? ((sumP1Votos / sumP1Censo) * 100).toFixed(2) : "0.00";
             if (p1ValEl) p1ValEl.textContent = `${pctP1}%`;
-            if (p1SubEl) p1SubEl.textContent = `${sumP1Votos.toLocaleString()} votos (${part1Mesas.length} de ${totalMesas} mesas)`;
+            if (p1SubEl) {
+                p1SubEl.textContent = `${sumP1Votos.toLocaleString()} votos (${part1Mesas.length} de ${totalMesas} mesas) · ${pctP1Mesas}% en mesas comunicadas`;
+            }
         } else {
             if (p1ValEl) p1ValEl.textContent = "--";
             if (p1SubEl) p1SubEl.textContent = "Pendiente (14:00h)";
         }
 
-        // 2. CÁLCULO DE AVANCE 2 (18:00h) - Ponderado sobre mesas comunicadas
+        // 2. CÁLCULO DE AVANCE 2 (18:00h) — % principal sobre censo total; subtítulo sobre mesas comunicadas
         const part2Mesas = state.mesas.filter(m => (m.part2_votos || 0) > 0 || m.estado === "Part2_Enviada" || m.estado === "Cerrada");
         const p2ValEl = document.getElementById("global-part2-val");
         const p2SubEl = document.getElementById("global-part2-sub");
         let pctP2 = "0.00";
+        let pctP2Mesas = "0.00";
         let sumP2Votos = 0;
         let sumP2Censo = 0;
 
@@ -2734,9 +2743,12 @@ require([
                 sumP2Censo += (m.censo || 0);
             });
 
-            pctP2 = sumP2Censo > 0 ? ((sumP2Votos / sumP2Censo) * 100).toFixed(2) : "0.00";
+            pctP2 = totalCensus > 0 ? ((sumP2Votos / totalCensus) * 100).toFixed(2) : "0.00";
+            pctP2Mesas = sumP2Censo > 0 ? ((sumP2Votos / sumP2Censo) * 100).toFixed(2) : "0.00";
             if (p2ValEl) p2ValEl.textContent = `${pctP2}%`;
-            if (p2SubEl) p2SubEl.textContent = `${sumP2Votos.toLocaleString()} votos (${part2Mesas.length} de ${totalMesas} mesas)`;
+            if (p2SubEl) {
+                p2SubEl.textContent = `${sumP2Votos.toLocaleString()} votos (${part2Mesas.length} de ${totalMesas} mesas) · ${pctP2Mesas}% en mesas comunicadas`;
+            }
         } else {
             if (p2ValEl) p2ValEl.textContent = "--";
             if (p2SubEl) p2SubEl.textContent = "Pendiente (18:00h)";
@@ -2783,12 +2795,16 @@ require([
             }
         } else if (part2Mesas.length > 0 && parseFloat(pctP2) > 0) {
             if (globalPartValEl) globalPartValEl.textContent = `${pctP2}%`;
-            if (globalPartBarEl) globalPartBarEl.style.width = `${pctP2}%`;
-            if (globalPartSubEl) globalPartSubEl.textContent = `2º Avance 18:00h (${part2Mesas.length} de ${totalMesas} mesas)`;
+            if (globalPartBarEl) globalPartBarEl.style.width = `${Math.min(100, parseFloat(pctP2))}%`;
+            if (globalPartSubEl) {
+                globalPartSubEl.textContent = `2º Avance 18:00h (${part2Mesas.length} de ${totalMesas} mesas) · ${pctP2Mesas}% en mesas comunicadas`;
+            }
         } else if (part1Mesas.length > 0 && parseFloat(pctP1) > 0) {
             if (globalPartValEl) globalPartValEl.textContent = `${pctP1}%`;
-            if (globalPartBarEl) globalPartBarEl.style.width = `${pctP1}%`;
-            if (globalPartSubEl) globalPartSubEl.textContent = `1º Avance 14:00h (${part1Mesas.length} de ${totalMesas} mesas)`;
+            if (globalPartBarEl) globalPartBarEl.style.width = `${Math.min(100, parseFloat(pctP1))}%`;
+            if (globalPartSubEl) {
+                globalPartSubEl.textContent = `1º Avance 14:00h (${part1Mesas.length} de ${totalMesas} mesas) · ${pctP1Mesas}% en mesas comunicadas`;
+            }
         } else {
             if (globalPartValEl) globalPartValEl.textContent = `0.00%`;
             if (globalPartBarEl) globalPartBarEl.style.width = `0%`;
@@ -2881,10 +2897,10 @@ require([
 
         if (!closedMesas || closedMesas === 0) {
             container.innerHTML = `
-                <div style="text-align: center; color: var(--text-muted); font-size: 0.82rem; padding: 20px 15px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                <div class="metrics-placeholder" style="color: var(--text-muted); font-size: 0.82rem; padding: 20px 15px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
                     <i class="fa-solid fa-chair" style="font-size: 1.4rem; margin-bottom: 6px; color: #cbd5e1;"></i>
-                    <div style="font-weight: 600; color: #64748b;">Reparto de concejales</div>
-                    <span style="font-size: 0.75rem;">Disponible al iniciar el escrutinio.</span>
+                    <div class="metrics-placeholder-title">Reparto de concejales</div>
+                    <span class="metrics-placeholder-sub">Disponible al iniciar el escrutinio.</span>
                 </div>
             `;
             return;
@@ -2903,10 +2919,10 @@ require([
 
         if (!sortedParties || sortedParties.length === 0) {
             container.innerHTML = `
-                <div style="text-align: center; color: var(--text-muted); font-size: 0.82rem; padding: 20px 15px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                <div class="metrics-placeholder" style="color: var(--text-muted); font-size: 0.82rem; padding: 20px 15px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
                     <i class="fa-solid fa-chair" style="font-size: 1.4rem; margin-bottom: 6px; color: #cbd5e1;"></i>
-                    <div style="font-weight: 600; color: #64748b;">Reparto de concejales</div>
-                    <span style="font-size: 0.75rem;">Disponible al iniciar el escrutinio.</span>
+                    <div class="metrics-placeholder-title">Reparto de concejales</div>
+                    <span class="metrics-placeholder-sub">Disponible al iniciar el escrutinio.</span>
                 </div>
             `;
             return;
@@ -2997,10 +3013,10 @@ require([
 
         if (!closedMesas || closedMesas === 0) {
             container.innerHTML = `
-                <div style="text-align: center; color: var(--text-muted); font-size: 0.82rem; padding: 25px 15px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                <div class="metrics-placeholder" style="color: var(--text-muted); font-size: 0.82rem; padding: 25px 15px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
                     <i class="fa-solid fa-hourglass-half" style="font-size: 1.5rem; margin-bottom: 8px; color: var(--primary-color);"></i>
-                    <div style="font-weight: 700; color: #1e293b; margin-bottom: 4px;">Jornada de votación en curso</div>
-                    <span style="font-size: 0.75rem; color: #64748b;">El recuento oficial de papeletas comenzará al cierre de los colegios a partir de las 20:00h.</span>
+                    <div class="metrics-placeholder-title" style="margin-bottom: 4px;">Jornada de votación en curso</div>
+                    <span class="metrics-placeholder-sub">El recuento oficial de papeletas comenzará al cierre de los colegios a partir de las 20:00h.</span>
                 </div>
             `;
             return;
