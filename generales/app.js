@@ -54,7 +54,8 @@ require([
         colegioHighlightLayer: null,
         selectedColegioHighlight: null,
         _suppressHighlightClear: false,
-        _edificiosEducacionCache: null
+        _edificiosEducacionCache: null,
+        mesaLockHeartbeat: null // Refuerza "Escrutando" mientras el usuario sigue dentro de la mesa
     };
 
     // Intervalos de sincronización según perfil
@@ -138,9 +139,9 @@ require([
         window.appState = state;
         window.appConfig = { PARTIES_CONFIG, SECTION_COLEGIO_MAPPING, COLEGIO_DETAILS };
 
-        // 10. Liberar la mesa si el usuario cierra la pestaña o el navegador sin salir formalmente.
-        //     pagehide es más fiable que beforeunload en móviles y navegadores modernos.
-        window.addEventListener("pagehide", () => {
+        // 10. Liberar la mesa solo al cerrar/navegar de verdad (no al pasar a bfcache / hibernar pestaña).
+        window.addEventListener("pagehide", (event) => {
+            if (event.persisted) return;
             if (state.selectedMesa && (state.selectedMesa.estado === "Escrutando" || state.selectedMesa.estado === "Asignada")) {
                 releaseMesaViaBeacon(state.selectedMesa);
             }
@@ -150,6 +151,42 @@ require([
                 releaseMesaViaBeacon(state.selectedMesa);
             }
         });
+    }
+
+    function stopMesaLockHeartbeat() {
+        if (state.mesaLockHeartbeat) {
+            clearInterval(state.mesaLockHeartbeat);
+            state.mesaLockHeartbeat = null;
+        }
+    }
+
+    // Mientras el formulario de mesa está abierto, el candado debe seguir siendo Escrutando
+    // (aunque se hayan transmitido avances) para que admin vea el icono verde.
+    function startMesaLockHeartbeat() {
+        stopMesaLockHeartbeat();
+        state.mesaLockHeartbeat = setInterval(() => {
+            if (!state.selectedMesa || !state.arcgisMode) return;
+            const mesa = state.mesas.find(m => m.codigo === state.selectedMesa.codigo);
+            if (!mesa || mesa.estado === "Cerrada") return;
+            if (mesa.estado !== "Escrutando" && mesa.estado !== "Asignada") {
+                if (!mesa.estadoPrevio || mesa.estadoPrevio === "Escrutando" || mesa.estadoPrevio === "Asignada") {
+                    mesa.estadoPrevio = mesa.estado || "Abierta";
+                }
+                mesa.estado = "Escrutando";
+            }
+            sendMesaUpdateToServer(mesa).catch(() => {});
+        }, 20000);
+    }
+
+    // Si el usuario sigue dentro de la mesa, conserva el candado y guarda el estado base en estadoPrevio
+    function markAvanceEstadoPreservingLock(mesa, baseEstado) {
+        if (!mesa || mesa.estado === "Cerrada") return;
+        if (state.selectedMesa && state.selectedMesa.codigo === mesa.codigo) {
+            mesa.estadoPrevio = baseEstado;
+            mesa.estado = "Escrutando";
+        } else {
+            mesa.estado = baseEstado;
+        }
     }
 
     const PARTIES_CONFIG_CODIGO = "__PARTIES_GEN__";
@@ -585,6 +622,7 @@ require([
         // Botones de Escrutinio en Colegio
         document.getElementById("btn-portal-logout").addEventListener("click", logoutUser);
         document.getElementById("btn-change-mesa").addEventListener("click", async () => {
+            stopMesaLockHeartbeat();
             if (state.selectedMesa) {
                 if (state.selectedMesa.estado === "Escrutando" || state.selectedMesa.estado === "Asignada") {
                     await releaseMesaOnExit(state.selectedMesa);
@@ -1011,6 +1049,7 @@ require([
 
     async function logoutUser() {
         console.log("Iniciando cierre de sesión efectivo y limpieza de almacenamiento local...");
+        stopMesaLockHeartbeat();
 
         // Feedback visual en botones de salida
         const btnPortalLogout = document.getElementById("btn-portal-logout");
@@ -1382,6 +1421,7 @@ require([
         state.selectedMesa = mesa;
         // Dentro de una mesa no hay sync periódico (evita borrar campos en edición)
         startPeriodicSync();
+        startMesaLockHeartbeat();
         // Siempre recargar partidos y regenerar el formulario al abrir una mesa
         loadPartiesFromStorage();
         generateVoteFields(true);
@@ -6021,7 +6061,8 @@ require([
         targetMesa.part1_votos = numVotantes;
         targetMesa.part1_time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         if (targetMesa.estado !== "Cerrada" && targetMesa.estado !== "Part2_Enviada") {
-            targetMesa.estado = "Part1_Enviada";
+            // Mantener candado Escrutando si el usuario sigue dentro de la mesa
+            markAvanceEstadoPreservingLock(targetMesa, "Part1_Enviada");
         }
 
         const btn = document.getElementById("btn-submit-part1");
@@ -6091,7 +6132,8 @@ require([
         targetMesa.part2_votos = numVotantes;
         targetMesa.part2_time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         if (targetMesa.estado !== "Cerrada") {
-            targetMesa.estado = "Part2_Enviada";
+            // Mantener candado Escrutando si el usuario sigue dentro de la mesa
+            markAvanceEstadoPreservingLock(targetMesa, "Part2_Enviada");
         }
 
         const btn = document.getElementById("btn-submit-part2");
