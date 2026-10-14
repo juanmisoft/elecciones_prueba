@@ -132,7 +132,7 @@
       short: "Ayuntamiento",
       accent: "#0f5c4c",
       accentSoft: "#d8f3ec",
-      blurb: "Elecciones al Ayuntamiento de Rivas-Vaciamadrid.",
+      blurb: "Elecciones al Ayuntamiento de Rivas Vaciamadrid.",
       nextEvent: {
         title: "Próximas elecciones municipales",
         dateLabel: "23 de mayo de 2027",
