@@ -1909,11 +1909,22 @@ require([
             partPercent = closedCensus > 0 ? ((totalVotosEmitidos / closedCensus) * 100).toFixed(2) : "0.00";
             partSub = `${totalVotosEmitidos.toLocaleString()} votos (${closedMesas} de ${totalMesas} mesas cerradas)`;
         } else if (part2Mesas.length > 0) {
-            const sumP2Votos = part2Mesas.reduce((acc, m) => acc + (m.part2_votos || 0), 0);
-            const sumP2Censo = part2Mesas.reduce((acc, m) => acc + (m.censo || 0), 0);
+            // Acumulativo: part2 si hay; si no, se arrastra part1
+            const avance2Pool = state.mesas.filter(m =>
+                (m.part2_votos || 0) > 0 || m.estado === "Part2_Enviada" || m.estado === "Cerrada" ||
+                (m.part1_votos || 0) > 0 || m.estado === "Part1_Enviada"
+            );
+            let sumP2Votos = 0;
+            let sumP2Censo = 0;
+            avance2Pool.forEach(m => {
+                const v2 = m.part2_votos || 0;
+                const v1 = m.part1_votos || 0;
+                sumP2Votos += (v2 > 0 ? v2 : v1);
+                sumP2Censo += (m.censo || 0);
+            });
             const pctMesas = sumP2Censo > 0 ? ((sumP2Votos / sumP2Censo) * 100).toFixed(2) : "0.00";
             partPercent = totalCensusAdmin > 0 ? ((sumP2Votos / totalCensusAdmin) * 100).toFixed(2) : "0.00";
-            partSub = `${sumP2Votos.toLocaleString()} votos (2º Avance · ${part2Mesas.length} de ${totalMesas} mesas) · ${pctMesas}% en mesas comunicadas`;
+            partSub = `${sumP2Votos.toLocaleString()} votos (2º Avance · ${avance2Pool.length} de ${totalMesas} mesas · ${part2Mesas.length} con 2º) · ${pctMesas}% en mesas comunicadas`;
         } else if (part1Mesas.length > 0) {
             const sumP1Votos = part1Mesas.reduce((acc, m) => acc + (m.part1_votos || 0), 0);
             const sumP1Censo = part1Mesas.reduce((acc, m) => acc + (m.censo || 0), 0);
@@ -2724,7 +2735,7 @@ require([
             if (p1SubEl) p1SubEl.textContent = "Pendiente (14:00h)";
         }
 
-        // 2. CÁLCULO DE AVANCE 2 (18:00h) — % principal sobre censo total; subtítulo sobre mesas comunicadas
+        // 2. CÁLCULO DE AVANCE 2 (18:00h) — acumulativo: part2 si existe, si no se mantiene part1
         const part2Mesas = state.mesas.filter(m => (m.part2_votos || 0) > 0 || m.estado === "Part2_Enviada" || m.estado === "Cerrada");
         const p2ValEl = document.getElementById("global-part2-val");
         const p2SubEl = document.getElementById("global-part2-sub");
@@ -2732,14 +2743,25 @@ require([
         let pctP2Mesas = "0.00";
         let sumP2Votos = 0;
         let sumP2Censo = 0;
+        let avance2MesasCount = 0;
 
         if (part2Mesas.length > 0) {
-            part2Mesas.forEach(m => {
-                let v = m.part2_votos || 0;
-                if (!v && (m.estado === "Part2_Enviada" || m.estado === "Cerrada")) {
-                    v = PARTIES_CONFIG.reduce((s, p) => s + (m[p.field] || 0), 0) + (m.votos_blancos || 0) + (m.votos_nulos || 0);
+            // Unión: mesas con 2º avance + mesas que solo tienen 1º (arrastran el avance anterior)
+            const avance2Pool = state.mesas.filter(m =>
+                (m.part2_votos || 0) > 0 || m.estado === "Part2_Enviada" || m.estado === "Cerrada" ||
+                (m.part1_votos || 0) > 0 || m.estado === "Part1_Enviada"
+            );
+            avance2MesasCount = avance2Pool.length;
+            avance2Pool.forEach(m => {
+                let v2 = m.part2_votos || 0;
+                if (!v2 && (m.estado === "Part2_Enviada" || m.estado === "Cerrada")) {
+                    v2 = PARTIES_CONFIG.reduce((s, p) => s + (m[p.field] || 0), 0) + (m.votos_blancos || 0) + (m.votos_nulos || 0);
                 }
-                sumP2Votos += v;
+                let v1 = m.part1_votos || 0;
+                if (!v1 && m.estado === "Part1_Enviada") {
+                    v1 = PARTIES_CONFIG.reduce((s, p) => s + (m[p.field] || 0), 0) + (m.votos_blancos || 0) + (m.votos_nulos || 0);
+                }
+                sumP2Votos += (v2 > 0 ? v2 : v1);
                 sumP2Censo += (m.censo || 0);
             });
 
@@ -2747,7 +2769,7 @@ require([
             pctP2Mesas = sumP2Censo > 0 ? ((sumP2Votos / sumP2Censo) * 100).toFixed(2) : "0.00";
             if (p2ValEl) p2ValEl.textContent = `${pctP2}%`;
             if (p2SubEl) {
-                p2SubEl.textContent = `${sumP2Votos.toLocaleString()} votos (${part2Mesas.length} de ${totalMesas} mesas) · ${pctP2Mesas}% en mesas comunicadas`;
+                p2SubEl.textContent = `${sumP2Votos.toLocaleString()} votos (${avance2MesasCount} de ${totalMesas} mesas · ${part2Mesas.length} con 2º) · ${pctP2Mesas}% en mesas comunicadas`;
             }
         } else {
             if (p2ValEl) p2ValEl.textContent = "--";
@@ -2797,7 +2819,7 @@ require([
             if (globalPartValEl) globalPartValEl.textContent = `${pctP2}%`;
             if (globalPartBarEl) globalPartBarEl.style.width = `${Math.min(100, parseFloat(pctP2))}%`;
             if (globalPartSubEl) {
-                globalPartSubEl.textContent = `2º Avance 18:00h (${part2Mesas.length} de ${totalMesas} mesas) · ${pctP2Mesas}% en mesas comunicadas`;
+                globalPartSubEl.textContent = `2º Avance 18:00h (${avance2MesasCount} de ${totalMesas} mesas · ${part2Mesas.length} con 2º) · ${pctP2Mesas}% en mesas comunicadas`;
             }
         } else if (part1Mesas.length > 0 && parseFloat(pctP1) > 0) {
             if (globalPartValEl) globalPartValEl.textContent = `${pctP1}%`;
