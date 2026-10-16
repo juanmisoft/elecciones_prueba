@@ -46,17 +46,20 @@ require([
 
   const yearASelect = document.getElementById("yearA");
   const yearBSelect = document.getElementById("yearB");
-  const yearsSorted = [...ambito.years].sort((a, b) => b.year - a.year);
+  const yearKey = (y) => (y && (y.id || String(y.year))) || "";
+  const yearsSorted = [...ambito.years].sort((a, b) => {
+    if (b.year !== a.year) return b.year - a.year;
+    return String(a.label).localeCompare(String(b.label), "es");
+  });
 
   yearsSorted.forEach((y) => {
-    const optA = new Option(y.label, String(y.year));
-    const optB = new Option(y.label, String(y.year));
-    yearASelect.add(optA);
-    yearBSelect.add(optB);
+    const key = yearKey(y);
+    yearASelect.add(new Option(y.label, key));
+    yearBSelect.add(new Option(y.label, key));
   });
 
   if (yearsSorted.length > 1) {
-    yearBSelect.value = String(yearsSorted[1].year);
+    yearBSelect.value = yearKey(yearsSorted[1]);
   }
 
   let mode = "single"; // single | compare
@@ -131,8 +134,81 @@ require([
     return Number.isFinite(n) ? n : 0;
   }
 
-  function getYearConfig(year) {
-    return ambito.years.find((y) => String(y.year) === String(year));
+  function getYearConfig(key) {
+    return ambito.years.find((y) => yearKey(y) === String(key) || String(y.year) === String(key));
+  }
+
+  function buildOutFields(yearCfg) {
+    const fields = new Set([yearCfg.sectionField]);
+    if (yearCfg.blankField) fields.add(yearCfg.blankField);
+    if (yearCfg.nullField) fields.add(yearCfg.nullField);
+    if (yearCfg.totalVotesField) fields.add(yearCfg.totalVotesField);
+    if (yearCfg.electorsField) fields.add(yearCfg.electorsField);
+    if (yearCfg.colegioField) fields.add(yearCfg.colegioField);
+    (yearCfg.parties || []).forEach((p) => fields.add(p.field));
+    return [...fields].filter(Boolean);
+  }
+
+  function aggregateFeaturesBySection(features, yearCfg) {
+    const bySec = {};
+    features.forEach((f) => {
+      const attrs = f.attributes || {};
+      const key = normalizeSectionKey(attrs[yearCfg.sectionField]);
+      if (!key) return;
+      if (!bySec[key]) {
+        bySec[key] = { attributes: { [yearCfg.sectionField]: key }, geometry: f.geometry || null };
+        (yearCfg.parties || []).forEach((p) => { bySec[key].attributes[p.field] = 0; });
+        if (yearCfg.blankField) bySec[key].attributes[yearCfg.blankField] = 0;
+        if (yearCfg.nullField) bySec[key].attributes[yearCfg.nullField] = 0;
+        if (yearCfg.totalVotesField) bySec[key].attributes[yearCfg.totalVotesField] = 0;
+        if (yearCfg.electorsField) bySec[key].attributes[yearCfg.electorsField] = 0;
+      }
+      const dest = bySec[key].attributes;
+      (yearCfg.parties || []).forEach((p) => { dest[p.field] += num(attrs[p.field]); });
+      if (yearCfg.blankField) dest[yearCfg.blankField] += num(attrs[yearCfg.blankField]);
+      if (yearCfg.nullField) dest[yearCfg.nullField] += num(attrs[yearCfg.nullField]);
+      if (yearCfg.totalVotesField) dest[yearCfg.totalVotesField] += num(attrs[yearCfg.totalVotesField]);
+      if (yearCfg.electorsField) dest[yearCfg.electorsField] += num(attrs[yearCfg.electorsField]);
+      if (!bySec[key].geometry && f.geometry) bySec[key].geometry = f.geometry;
+    });
+    return Object.values(bySec);
+  }
+
+  async function queryLayerFeatures(url, outFields, returnGeometry, usePost, whereClause) {
+    const where = whereClause || "1=1";
+    if (usePost) {
+      const body = new URLSearchParams({
+        where,
+        outFields: outFields.join(","),
+        returnGeometry: returnGeometry ? "true" : "false",
+        f: "json"
+      });
+      const resp = await fetch(`${url}/query`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body
+      });
+      const data = await resp.json();
+      if (data.error) {
+        throw new Error(data.error.message || "Error consultando la tabla histórica");
+      }
+      return (data.features || []).map((f) => ({
+        attributes: f.attributes || {},
+        geometry: f.geometry || null
+      }));
+    }
+
+    const layer = new FeatureLayer({ url, outFields });
+    await layer.load();
+    const query = layer.createQuery();
+    query.where = where;
+    query.outFields = outFields;
+    query.returnGeometry = !!returnGeometry;
+    const res = await layer.queryFeatures(query);
+    return (res.features || []).map((f) => ({
+      attributes: f.attributes || {},
+      geometry: f.geometry || null
+    }));
   }
 
   const censusCache = {};
@@ -218,6 +294,17 @@ require([
       }
     });
 
+    // Censo municipal fijo (cuando no hay electores por sección en la capa)
+    let censusFixed = false;
+    if (!hasElectors && yearCfg.censusTotal != null && Number(yearCfg.censusTotal) > 0) {
+      electors = Number(yearCfg.censusTotal);
+      hasElectors = true;
+      censusFixed = true;
+    }
+
+    // Votos válidos = candidaturas + blancos (criterio Interior / medios). Los nulos no entran en % de partido.
+    const validBallots = Math.max(0, ballots - nulls);
+
     const participation = hasElectors && electors > 0 ? (ballots / electors) * 100 : null;
     const blankPct = ballots > 0 ? (blanks / ballots) * 100 : null;
     const nullPct = ballots > 0 ? (nulls / ballots) * 100 : null;
@@ -227,42 +314,64 @@ require([
       .sort((a, b) => b.votes - a.votes);
 
     return {
-      totals, blanks, nulls, electors, ballots, hasElectors, participation, blankPct, nullPct, ranking,
+      totals, blanks, nulls, electors, ballots, validBallots, hasElectors, participation, blankPct, nullPct, ranking,
       censusFromJoin,
+      censusFixed,
       censusLabel: censusJoin && censusJoin.source ? censusJoin.source.label : null,
       matchedSections
     };
   }
 
-  function renderMetrics(targetPrefix, stats, yearLabel) {
+  function renderMetrics(targetPrefix, stats, yearCfg) {
+    const yearLabel = yearCfg && yearCfg.label;
     const partEl = document.getElementById(`${targetPrefix}Participation`);
     const blankEl = document.getElementById(`${targetPrefix}Blank`);
     const nullEl = document.getElementById(`${targetPrefix}Null`);
     const yearEl = document.getElementById(`${targetPrefix}YearLabel`);
     if (yearEl) yearEl.textContent = yearLabel || "";
 
+    const card = document.getElementById(`metrics${targetPrefix.toUpperCase()}`);
+    const caption = card && card.querySelector(".summary-caption");
+    if (caption) {
+      if (yearCfg && yearCfg.attributesOverride) {
+        caption.textContent = "Escrutinio oficial MIR (mesas)";
+      } else {
+        caption.textContent = targetPrefix === "b"
+          ? "Resumen del año a comparar"
+          : "Resumen del año seleccionado";
+      }
+    }
+
     partEl.textContent = stats.participation == null ? "n/d" : `${stats.participation.toFixed(1)}%`;
-    blankEl.textContent = stats.blankPct == null ? "n/d" : `${stats.blankPct.toFixed(2)}%`;
-    nullEl.textContent = stats.nullPct == null ? "n/d" : `${stats.nullPct.toFixed(2)}%`;
+    blankEl.textContent = stats.blankPct == null
+      ? "n/d"
+      : `${Number(stats.blanks || 0).toLocaleString("es-ES")} (${stats.blankPct.toFixed(2)}%)`;
+    nullEl.textContent = stats.nullPct == null
+      ? "n/d"
+      : `${Number(stats.nulls || 0).toLocaleString("es-ES")} (${stats.nullPct.toFixed(2)}%)`;
 
     const hint = document.getElementById(`${targetPrefix}PartHint`);
     if (hint) {
       if (stats.hasElectors) {
         const joinNote = stats.censusFromJoin && stats.censusLabel
           ? ` · vía ${stats.censusLabel}`
-          : "";
-        hint.textContent = `${stats.ballots.toLocaleString("es-ES")} votos / ${stats.electors.toLocaleString("es-ES")} electores${joinNote}`;
+          : (stats.censusFixed ? " · censo municipal" : "");
+        const mirNote = yearCfg && yearCfg.attributesOverride ? " · MIR oficial" : "";
+        hint.textContent = `${stats.ballots.toLocaleString("es-ES")} votos / ${stats.electors.toLocaleString("es-ES")} electores${joinNote}${mirNote}`;
       } else {
-        hint.textContent = "Sin censo publicado para esta convocatoria";
+        hint.textContent = yearCfg && yearCfg.attributesOverride
+          ? "Escrutinio oficial MIR (sin censo en capa)"
+          : "Sin censo publicado para esta convocatoria";
       }
     }
 
     const legend = document.getElementById(`${targetPrefix}Legend`);
     legend.innerHTML = "";
+    const pctBase = stats.validBallots > 0 ? stats.validBallots : stats.ballots;
     stats.ranking.slice(0, 5).forEach((p, idx) => {
       const row = document.createElement("div");
       row.className = "legend-row";
-      const pct = stats.ballots > 0 ? ((p.votes / stats.ballots) * 100).toFixed(1) : "0.0";
+      const pct = pctBase > 0 ? ((p.votes / pctBase) * 100).toFixed(2) : "0.00";
       row.innerHTML = `
         <div class="left">
           <span>${idx + 1}.</span>
@@ -286,52 +395,133 @@ require([
     return { type: "point", x: x / c, y: y / c, spatialReference: geometry.spatialReference };
   }
 
+  const attributesOverrideCache = {};
+
+  async function loadAttributesOverride(yearCfg) {
+    const path = yearCfg && yearCfg.attributesOverride;
+    if (!path) return null;
+    if (attributesOverrideCache[path]) return attributesOverrideCache[path];
+    const resp = await fetch(path);
+    if (!resp.ok) throw new Error(`No se pudo cargar override ${path}: ${resp.status}`);
+    const data = await resp.json();
+    const bySection = data.bySection || data;
+    attributesOverrideCache[path] = bySection;
+    return bySection;
+  }
+
+  function applyAttributesOverride(features, yearCfg, bySection) {
+    if (!bySection) return features;
+    return features.map((f) => {
+      const key = normalizeSectionKey(f.attributes[yearCfg.sectionField]);
+      const ov = key ? bySection[key] : null;
+      if (!ov) return f;
+      return {
+        attributes: { ...f.attributes, ...ov },
+        geometry: f.geometry
+      };
+    });
+  }
+
   async function queryYearFeatures(yearCfg) {
-    const layer = new FeatureLayer({ url: yearCfg.url, outFields: ["*"] });
-    await layer.load();
-    const query = layer.createQuery();
-    query.where = "1=1";
-    query.outFields = ["*"];
-    query.returnGeometry = true;
-    const res = await layer.queryFeatures(query);
-    return (res.features || []).filter((f) => isValidSection(f.attributes[yearCfg.sectionField]));
+    const outFields = buildOutFields(yearCfg);
+    const needsGeomJoin = !!(yearCfg.geometrySource && yearCfg.geometrySource.url);
+    let features = await queryLayerFeatures(
+      yearCfg.url,
+      outFields,
+      !needsGeomJoin,
+      !!yearCfg.queryViaPost,
+      yearCfg.where || "1=1"
+    );
+
+    features = features.filter((f) => {
+      const raw = f.attributes[yearCfg.sectionField];
+      // OBJECTID u otros identificadores numéricos de polígono (p.ej. municipales 2007)
+      if (yearCfg.sectionField === "OBJECTID") return raw != null && raw !== "";
+      return isValidSection(raw);
+    });
+
+    if (yearCfg.aggregateBySection) {
+      features = aggregateFeaturesBySection(features, yearCfg);
+    }
+
+    if (needsGeomJoin) {
+      const geomSectionField = yearCfg.geometrySource.sectionField || "SECCION";
+      const geomFeats = await queryLayerFeatures(
+        yearCfg.geometrySource.url,
+        [geomSectionField],
+        true,
+        false
+      );
+      const geomBySec = {};
+      geomFeats.forEach((g) => {
+        const key = normalizeSectionKey(g.attributes[geomSectionField]);
+        if (key && g.geometry && !geomBySec[key]) geomBySec[key] = g.geometry;
+      });
+      features = features
+        .map((f) => {
+          const key = normalizeSectionKey(f.attributes[yearCfg.sectionField]);
+          return {
+            attributes: f.attributes,
+            geometry: geomBySec[key] || null
+          };
+        })
+        .filter((f) => !!f.geometry);
+    }
+
+    if (yearCfg.attributesOverride) {
+      const bySection = await loadAttributesOverride(yearCfg);
+      const before = features.length;
+      features = applyAttributesOverride(features, yearCfg, bySection);
+      let matched = 0;
+      features.forEach((f) => {
+        const key = normalizeSectionKey(f.attributes[yearCfg.sectionField]);
+        if (key && bySection[key]) matched += 1;
+      });
+      console.info(`[Hub] Override ${yearCfg.attributesOverride}: ${matched}/${before} secciones corregidas`);
+    }
+
+    return features.filter((f) => !!f.geometry);
   }
 
   function sectionRankForFeature(attrs, yearCfg) {
-    let ballots = 0;
+    let partySum = 0;
     const ranked = yearCfg.parties.map((p) => {
       const votes = num(attrs[p.field]);
-      ballots += votes;
+      partySum += votes;
       return { ...p, votes };
     }).sort((a, b) => b.votes - a.votes);
 
     const blanks = yearCfg.blankField ? num(attrs[yearCfg.blankField]) : 0;
     const nulls = yearCfg.nullField ? num(attrs[yearCfg.nullField]) : 0;
+    let ballots = partySum + blanks + nulls;
     if (yearCfg.totalVotesField && attrs[yearCfg.totalVotesField] != null) {
       ballots = num(attrs[yearCfg.totalVotesField]);
-    } else {
-      ballots += blanks + nulls;
     }
-    return { ranked, ballots, blanks, nulls };
+    const validBallots = Math.max(0, ballots - nulls);
+    return { ranked, ballots, validBallots, blanks, nulls };
   }
 
   function buildPopupHtml(attrs, yearCfg) {
     const sectionKey = normalizeSectionKey(attrs[yearCfg.sectionField]);
-    const colegio = (window.HUB_CONFIG.colegioForSection
-      && window.HUB_CONFIG.colegioForSection(sectionKey))
+    const colegioFromAttr = yearCfg.colegioField ? (attrs[yearCfg.colegioField] || "") : "";
+    const colegio = colegioFromAttr
+      || (window.HUB_CONFIG.colegioForSection && window.HUB_CONFIG.colegioForSection(sectionKey))
       || "No disponible";
-    const { ranked, ballots } = sectionRankForFeature(attrs, yearCfg);
+    const { ranked, validBallots, ballots } = sectionRankForFeature(attrs, yearCfg);
     const top5 = ranked.filter((p) => p.votes > 0).slice(0, 5);
     const win = top5[0] || null;
+    const pctBase = validBallots > 0 ? validBallots : ballots;
+
+    const partyLabel = (p) => p.fullName || p.name;
 
     const rows = top5.length
       ? top5.map((p, idx) => {
-          const pct = ballots > 0 ? ((p.votes / ballots) * 100).toFixed(1) : "0.0";
+          const pct = pctBase > 0 ? ((p.votes / pctBase) * 100).toFixed(2) : "0.00";
           return `<li>
             <span class="left">
               <span>${idx + 1}.</span>
               <span class="swatch" style="background:${p.color}"></span>
-              <span>${p.name}</span>
+              <span class="party-name" title="${partyLabel(p)}">${partyLabel(p)}</span>
             </span>
             <span class="pct">${p.votes.toLocaleString("es-ES")} · ${pct}%</span>
           </li>`;
@@ -339,12 +529,17 @@ require([
       : "<li>Sin votos contabilizados</li>";
 
     const winLine = win
-      ? `<p class="hist-popup-meta">Ganador: <strong>${win.name}</strong> (${win.votes.toLocaleString("es-ES")} votos)</p>`
+      ? `<p class="hist-popup-meta">Ganador: <strong>${partyLabel(win)}</strong> (${win.votes.toLocaleString("es-ES")} votos)</p>`
       : `<p class="hist-popup-meta">Sin datos de ganador</p>`;
+
+    const sectionLine = yearCfg.colegioField
+      ? ""
+      : `<p class="hist-popup-meta"><strong>Sección:</strong> ${sectionKey || "—"}</p>`;
 
     return `
       <div class="hist-popup">
         <p class="hist-popup-meta"><strong>Colegio:</strong> ${colegio}</p>
+        ${sectionLine}
         <p class="hist-popup-meta"><strong>Convocatoria:</strong> ${yearCfg.label}</p>
         ${winLine}
         <h5>5 fuerzas más votadas</h5>
@@ -455,7 +650,10 @@ require([
       labelsLayerA.removeAll();
       colorLayerA.addMany(builtA.polys);
       labelsLayerA.addMany(builtA.labels);
-      renderMetrics("a", partyVotesTotal(featsA, yearA, censusA), yearA.label);
+      if (yearA.attributesOverride) {
+        console.info(`[Hub] Municipales override MIR aplicado (${featsA.length} secciones). Blancos/nulos oficiales.`);
+      }
+      renderMetrics("a", partyVotesTotal(featsA, yearA, censusA), yearA);
 
       if (mode === "compare") {
         const yearB = getYearConfig(yearBSelect.value);
@@ -468,7 +666,7 @@ require([
         labelsLayerB.addMany(builtB.labels);
         colorLayerB.visible = true;
         labelsLayerB.visible = true;
-        renderMetrics("b", partyVotesTotal(featsB, yearB, censusB), yearB.label);
+        renderMetrics("b", partyVotesTotal(featsB, yearB, censusB), yearB);
 
         clearSwipe();
         swipeWidget = new Swipe({

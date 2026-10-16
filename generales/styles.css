@@ -1317,6 +1317,59 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ==========================================================================
+   AVISO DE PROCESO ADMIN (crear / borrar / simular mesas)
+   ========================================================================== */
+
+.admin-busy-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(5px);
+    padding: 1.25rem;
+}
+
+.admin-busy-overlay.hidden {
+    display: none;
+}
+
+.admin-busy-card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 1.75rem 1.5rem;
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+    border: 1px solid #e2e8f0;
+}
+
+.admin-busy-spinner {
+    font-size: 2rem;
+    color: #0369a1;
+    margin-bottom: 0.85rem;
+}
+
+.admin-busy-message {
+    margin: 0 0 0.45rem;
+    font-family: var(--font-heading, inherit);
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.35;
+}
+
+.admin-busy-hint {
+    margin: 0;
+    font-size: 0.82rem;
+    color: #64748b;
+    line-height: 1.4;
+}
+
+/* ==========================================================================
    VENTANAS MODALES (POPUP WINDOWS)
    ========================================================================== */
 

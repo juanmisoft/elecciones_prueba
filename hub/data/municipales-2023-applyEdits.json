@@ -1,0 +1,827 @@
+[
+  {
+    "attributes": {
+      "OBJECTID": 36,
+      "IU_EQUO_MASMADRID": 267,
+      "PSOE": 191,
+      "PP": 274,
+      "PODEMOS": 47,
+      "VOX": 102,
+      "VXR": 44,
+      "CIUDADANOS": 9,
+      "CONTIGO": 5,
+      "BLANCO": 8,
+      "NULO": 10
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 1,
+      "IU_EQUO_MASMADRID": 357,
+      "PSOE": 170,
+      "PP": 102,
+      "PODEMOS": 65,
+      "VOX": 33,
+      "VXR": 11,
+      "CIUDADANOS": 5,
+      "CONTIGO": 2,
+      "BLANCO": 11,
+      "NULO": 6
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 49,
+      "IU_EQUO_MASMADRID": 268,
+      "PSOE": 152,
+      "PP": 103,
+      "PODEMOS": 35,
+      "VOX": 31,
+      "VXR": 23,
+      "CIUDADANOS": 7,
+      "CONTIGO": 10,
+      "BLANCO": 6,
+      "NULO": 10
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 50,
+      "IU_EQUO_MASMADRID": 408,
+      "PSOE": 216,
+      "PP": 236,
+      "PODEMOS": 64,
+      "VOX": 70,
+      "VXR": 46,
+      "CIUDADANOS": 12,
+      "CONTIGO": 9,
+      "BLANCO": 10,
+      "NULO": 16
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 47,
+      "IU_EQUO_MASMADRID": 250,
+      "PSOE": 163,
+      "PP": 336,
+      "PODEMOS": 34,
+      "VOX": 87,
+      "VXR": 44,
+      "CIUDADANOS": 14,
+      "CONTIGO": 5,
+      "BLANCO": 8,
+      "NULO": 4
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 43,
+      "IU_EQUO_MASMADRID": 334,
+      "PSOE": 185,
+      "PP": 465,
+      "PODEMOS": 54,
+      "VOX": 99,
+      "VXR": 34,
+      "CIUDADANOS": 16,
+      "CONTIGO": 12,
+      "BLANCO": 15,
+      "NULO": 16
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 3,
+      "IU_EQUO_MASMADRID": 381,
+      "PSOE": 213,
+      "PP": 132,
+      "PODEMOS": 61,
+      "VOX": 56,
+      "VXR": 32,
+      "CIUDADANOS": 5,
+      "CONTIGO": 4,
+      "BLANCO": 5,
+      "NULO": 10
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 35,
+      "IU_EQUO_MASMADRID": 217,
+      "PSOE": 134,
+      "PP": 220,
+      "PODEMOS": 33,
+      "VOX": 62,
+      "VXR": 31,
+      "CIUDADANOS": 5,
+      "CONTIGO": 8,
+      "BLANCO": 8,
+      "NULO": 3
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 2,
+      "IU_EQUO_MASMADRID": 339,
+      "PSOE": 204,
+      "PP": 226,
+      "PODEMOS": 62,
+      "VOX": 68,
+      "VXR": 75,
+      "CIUDADANOS": 11,
+      "CONTIGO": 9,
+      "BLANCO": 7,
+      "NULO": 12
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 52,
+      "IU_EQUO_MASMADRID": 368,
+      "PSOE": 160,
+      "PP": 95,
+      "PODEMOS": 55,
+      "VOX": 31,
+      "VXR": 15,
+      "CIUDADANOS": 11,
+      "CONTIGO": 4,
+      "BLANCO": 6,
+      "NULO": 2
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 4,
+      "IU_EQUO_MASMADRID": 244,
+      "PSOE": 134,
+      "PP": 93,
+      "PODEMOS": 23,
+      "VOX": 30,
+      "VXR": 23,
+      "CIUDADANOS": 5,
+      "CONTIGO": 4,
+      "BLANCO": 3,
+      "NULO": 7
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 45,
+      "IU_EQUO_MASMADRID": 229,
+      "PSOE": 165,
+      "PP": 284,
+      "PODEMOS": 23,
+      "VOX": 100,
+      "VXR": 41,
+      "CIUDADANOS": 20,
+      "CONTIGO": 5,
+      "BLANCO": 14,
+      "NULO": 12
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 17,
+      "IU_EQUO_MASMADRID": 316,
+      "PSOE": 184,
+      "PP": 385,
+      "PODEMOS": 39,
+      "VOX": 94,
+      "VXR": 43,
+      "CIUDADANOS": 16,
+      "CONTIGO": 6,
+      "BLANCO": 12,
+      "NULO": 8
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 19,
+      "IU_EQUO_MASMADRID": 324,
+      "PSOE": 190,
+      "PP": 377,
+      "PODEMOS": 38,
+      "VOX": 96,
+      "VXR": 37,
+      "CIUDADANOS": 27,
+      "CONTIGO": 9,
+      "BLANCO": 9,
+      "NULO": 9
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 51,
+      "IU_EQUO_MASMADRID": 335,
+      "PSOE": 239,
+      "PP": 218,
+      "PODEMOS": 62,
+      "VOX": 63,
+      "VXR": 63,
+      "CIUDADANOS": 8,
+      "CONTIGO": 4,
+      "BLANCO": 15,
+      "NULO": 10
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 37,
+      "IU_EQUO_MASMADRID": 319,
+      "PSOE": 191,
+      "PP": 504,
+      "PODEMOS": 39,
+      "VOX": 147,
+      "VXR": 82,
+      "CIUDADANOS": 36,
+      "CONTIGO": 5,
+      "BLANCO": 10,
+      "NULO": 19
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 42,
+      "IU_EQUO_MASMADRID": 338,
+      "PSOE": 249,
+      "PP": 630,
+      "PODEMOS": 43,
+      "VOX": 130,
+      "VXR": 65,
+      "CIUDADANOS": 23,
+      "CONTIGO": 11,
+      "BLANCO": 14,
+      "NULO": 21
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 14,
+      "IU_EQUO_MASMADRID": 108,
+      "PSOE": 108,
+      "PP": 227,
+      "PODEMOS": 22,
+      "VOX": 82,
+      "VXR": 17,
+      "CIUDADANOS": 18,
+      "CONTIGO": 5,
+      "BLANCO": 8,
+      "NULO": 5
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 32,
+      "IU_EQUO_MASMADRID": 252,
+      "PSOE": 154,
+      "PP": 231,
+      "PODEMOS": 29,
+      "VOX": 66,
+      "VXR": 58,
+      "CIUDADANOS": 12,
+      "CONTIGO": 9,
+      "BLANCO": 10,
+      "NULO": 12
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 39,
+      "IU_EQUO_MASMADRID": 282,
+      "PSOE": 151,
+      "PP": 229,
+      "PODEMOS": 38,
+      "VOX": 74,
+      "VXR": 47,
+      "CIUDADANOS": 20,
+      "CONTIGO": 3,
+      "BLANCO": 8,
+      "NULO": 9
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 48,
+      "IU_EQUO_MASMADRID": 516,
+      "PSOE": 300,
+      "PP": 339,
+      "PODEMOS": 91,
+      "VOX": 115,
+      "VXR": 93,
+      "CIUDADANOS": 20,
+      "CONTIGO": 4,
+      "BLANCO": 15,
+      "NULO": 15
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 41,
+      "IU_EQUO_MASMADRID": 176,
+      "PSOE": 125,
+      "PP": 224,
+      "PODEMOS": 37,
+      "VOX": 74,
+      "VXR": 50,
+      "CIUDADANOS": 6,
+      "CONTIGO": 2,
+      "BLANCO": 8,
+      "NULO": 7
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 15,
+      "IU_EQUO_MASMADRID": 258,
+      "PSOE": 210,
+      "PP": 444,
+      "PODEMOS": 53,
+      "VOX": 96,
+      "VXR": 46,
+      "CIUDADANOS": 21,
+      "CONTIGO": 21,
+      "BLANCO": 23,
+      "NULO": 9
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 22,
+      "IU_EQUO_MASMADRID": 254,
+      "PSOE": 195,
+      "PP": 326,
+      "PODEMOS": 22,
+      "VOX": 108,
+      "VXR": 49,
+      "CIUDADANOS": 18,
+      "CONTIGO": 9,
+      "BLANCO": 20,
+      "NULO": 12
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 38,
+      "IU_EQUO_MASMADRID": 271,
+      "PSOE": 183,
+      "PP": 329,
+      "PODEMOS": 26,
+      "VOX": 115,
+      "VXR": 59,
+      "CIUDADANOS": 16,
+      "CONTIGO": 6,
+      "BLANCO": 4,
+      "NULO": 17
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 6,
+      "IU_EQUO_MASMADRID": 295,
+      "PSOE": 184,
+      "PP": 117,
+      "PODEMOS": 48,
+      "VOX": 69,
+      "VXR": 39,
+      "CIUDADANOS": 8,
+      "CONTIGO": 0,
+      "BLANCO": 10,
+      "NULO": 7
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 5,
+      "IU_EQUO_MASMADRID": 206,
+      "PSOE": 141,
+      "PP": 95,
+      "PODEMOS": 26,
+      "VOX": 44,
+      "VXR": 16,
+      "CIUDADANOS": 3,
+      "CONTIGO": 0,
+      "BLANCO": 9,
+      "NULO": 7
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 46,
+      "IU_EQUO_MASMADRID": 95,
+      "PSOE": 88,
+      "PP": 253,
+      "PODEMOS": 18,
+      "VOX": 76,
+      "VXR": 9,
+      "CIUDADANOS": 10,
+      "CONTIGO": 3,
+      "BLANCO": 0,
+      "NULO": 4
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 8,
+      "IU_EQUO_MASMADRID": 276,
+      "PSOE": 172,
+      "PP": 317,
+      "PODEMOS": 36,
+      "VOX": 106,
+      "VXR": 63,
+      "CIUDADANOS": 16,
+      "CONTIGO": 11,
+      "BLANCO": 14,
+      "NULO": 9
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 9,
+      "IU_EQUO_MASMADRID": 279,
+      "PSOE": 222,
+      "PP": 606,
+      "PODEMOS": 36,
+      "VOX": 141,
+      "VXR": 73,
+      "CIUDADANOS": 27,
+      "CONTIGO": 11,
+      "BLANCO": 17,
+      "NULO": 12
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 10,
+      "IU_EQUO_MASMADRID": 194,
+      "PSOE": 102,
+      "PP": 304,
+      "PODEMOS": 25,
+      "VOX": 92,
+      "VXR": 39,
+      "CIUDADANOS": 12,
+      "CONTIGO": 6,
+      "BLANCO": 13,
+      "NULO": 3
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 13,
+      "IU_EQUO_MASMADRID": 288,
+      "PSOE": 194,
+      "PP": 481,
+      "PODEMOS": 33,
+      "VOX": 114,
+      "VXR": 61,
+      "CIUDADANOS": 21,
+      "CONTIGO": 7,
+      "BLANCO": 19,
+      "NULO": 9
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 40,
+      "IU_EQUO_MASMADRID": 364,
+      "PSOE": 236,
+      "PP": 462,
+      "PODEMOS": 39,
+      "VOX": 100,
+      "VXR": 61,
+      "CIUDADANOS": 10,
+      "CONTIGO": 6,
+      "BLANCO": 20,
+      "NULO": 11
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 54,
+      "IU_EQUO_MASMADRID": 245,
+      "PSOE": 166,
+      "PP": 475,
+      "PODEMOS": 29,
+      "VOX": 97,
+      "VXR": 53,
+      "CIUDADANOS": 22,
+      "CONTIGO": 3,
+      "BLANCO": 9,
+      "NULO": 6
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 55,
+      "IU_EQUO_MASMADRID": 265,
+      "PSOE": 162,
+      "PP": 427,
+      "PODEMOS": 28,
+      "VOX": 95,
+      "VXR": 56,
+      "CIUDADANOS": 23,
+      "CONTIGO": 5,
+      "BLANCO": 10,
+      "NULO": 7
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 7,
+      "IU_EQUO_MASMADRID": 477,
+      "PSOE": 284,
+      "PP": 711,
+      "PODEMOS": 56,
+      "VOX": 147,
+      "VXR": 74,
+      "CIUDADANOS": 36,
+      "CONTIGO": 10,
+      "BLANCO": 17,
+      "NULO": 14
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 21,
+      "IU_EQUO_MASMADRID": 385,
+      "PSOE": 150,
+      "PP": 224,
+      "PODEMOS": 48,
+      "VOX": 64,
+      "VXR": 57,
+      "CIUDADANOS": 16,
+      "CONTIGO": 8,
+      "BLANCO": 18,
+      "NULO": 16
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 26,
+      "IU_EQUO_MASMADRID": 323,
+      "PSOE": 106,
+      "PP": 230,
+      "PODEMOS": 47,
+      "VOX": 77,
+      "VXR": 44,
+      "CIUDADANOS": 17,
+      "CONTIGO": 14,
+      "BLANCO": 14,
+      "NULO": 6
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 18,
+      "IU_EQUO_MASMADRID": 440,
+      "PSOE": 265,
+      "PP": 452,
+      "PODEMOS": 47,
+      "VOX": 138,
+      "VXR": 82,
+      "CIUDADANOS": 23,
+      "CONTIGO": 4,
+      "BLANCO": 10,
+      "NULO": 12
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 28,
+      "IU_EQUO_MASMADRID": 213,
+      "PSOE": 99,
+      "PP": 229,
+      "PODEMOS": 30,
+      "VOX": 47,
+      "VXR": 45,
+      "CIUDADANOS": 14,
+      "CONTIGO": 2,
+      "BLANCO": 14,
+      "NULO": 2
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 20,
+      "IU_EQUO_MASMADRID": 282,
+      "PSOE": 156,
+      "PP": 330,
+      "PODEMOS": 37,
+      "VOX": 96,
+      "VXR": 58,
+      "CIUDADANOS": 25,
+      "CONTIGO": 1,
+      "BLANCO": 14,
+      "NULO": 10
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 23,
+      "IU_EQUO_MASMADRID": 161,
+      "PSOE": 126,
+      "PP": 339,
+      "PODEMOS": 24,
+      "VOX": 86,
+      "VXR": 39,
+      "CIUDADANOS": 17,
+      "CONTIGO": 10,
+      "BLANCO": 6,
+      "NULO": 4
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 24,
+      "IU_EQUO_MASMADRID": 217,
+      "PSOE": 144,
+      "PP": 318,
+      "PODEMOS": 30,
+      "VOX": 69,
+      "VXR": 40,
+      "CIUDADANOS": 13,
+      "CONTIGO": 2,
+      "BLANCO": 12,
+      "NULO": 4
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 34,
+      "IU_EQUO_MASMADRID": 259,
+      "PSOE": 151,
+      "PP": 252,
+      "PODEMOS": 37,
+      "VOX": 88,
+      "VXR": 38,
+      "CIUDADANOS": 12,
+      "CONTIGO": 7,
+      "BLANCO": 5,
+      "NULO": 12
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 30,
+      "IU_EQUO_MASMADRID": 323,
+      "PSOE": 117,
+      "PP": 179,
+      "PODEMOS": 43,
+      "VOX": 75,
+      "VXR": 41,
+      "CIUDADANOS": 13,
+      "CONTIGO": 9,
+      "BLANCO": 12,
+      "NULO": 5
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 25,
+      "IU_EQUO_MASMADRID": 319,
+      "PSOE": 188,
+      "PP": 385,
+      "PODEMOS": 33,
+      "VOX": 99,
+      "VXR": 54,
+      "CIUDADANOS": 25,
+      "CONTIGO": 5,
+      "BLANCO": 16,
+      "NULO": 8
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 53,
+      "IU_EQUO_MASMADRID": 321,
+      "PSOE": 171,
+      "PP": 372,
+      "PODEMOS": 33,
+      "VOX": 83,
+      "VXR": 64,
+      "CIUDADANOS": 27,
+      "CONTIGO": 13,
+      "BLANCO": 9,
+      "NULO": 8
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 27,
+      "IU_EQUO_MASMADRID": 284,
+      "PSOE": 125,
+      "PP": 149,
+      "PODEMOS": 48,
+      "VOX": 42,
+      "VXR": 32,
+      "CIUDADANOS": 6,
+      "CONTIGO": 6,
+      "BLANCO": 3,
+      "NULO": 12
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 33,
+      "IU_EQUO_MASMADRID": 288,
+      "PSOE": 110,
+      "PP": 232,
+      "PODEMOS": 37,
+      "VOX": 66,
+      "VXR": 51,
+      "CIUDADANOS": 13,
+      "CONTIGO": 13,
+      "BLANCO": 6,
+      "NULO": 13
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 29,
+      "IU_EQUO_MASMADRID": 188,
+      "PSOE": 95,
+      "PP": 178,
+      "PODEMOS": 25,
+      "VOX": 40,
+      "VXR": 11,
+      "CIUDADANOS": 8,
+      "CONTIGO": 5,
+      "BLANCO": 4,
+      "NULO": 8
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 44,
+      "IU_EQUO_MASMADRID": 425,
+      "PSOE": 180,
+      "PP": 416,
+      "PODEMOS": 39,
+      "VOX": 85,
+      "VXR": 113,
+      "CIUDADANOS": 19,
+      "CONTIGO": 20,
+      "BLANCO": 8,
+      "NULO": 10
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 31,
+      "IU_EQUO_MASMADRID": 256,
+      "PSOE": 109,
+      "PP": 332,
+      "PODEMOS": 41,
+      "VOX": 76,
+      "VXR": 49,
+      "CIUDADANOS": 10,
+      "CONTIGO": 3,
+      "BLANCO": 10,
+      "NULO": 7
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 16,
+      "IU_EQUO_MASMADRID": 303,
+      "PSOE": 76,
+      "PP": 174,
+      "PODEMOS": 20,
+      "VOX": 74,
+      "VXR": 42,
+      "CIUDADANOS": 4,
+      "CONTIGO": 1,
+      "BLANCO": 7,
+      "NULO": 10
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 11,
+      "IU_EQUO_MASMADRID": 276,
+      "PSOE": 130,
+      "PP": 271,
+      "PODEMOS": 46,
+      "VOX": 69,
+      "VXR": 44,
+      "CIUDADANOS": 15,
+      "CONTIGO": 2,
+      "BLANCO": 12,
+      "NULO": 10
+    }
+  },
+  {
+    "attributes": {
+      "OBJECTID": 12,
+      "IU_EQUO_MASMADRID": 243,
+      "PSOE": 170,
+      "PP": 439,
+      "PODEMOS": 33,
+      "VOX": 93,
+      "VXR": 49,
+      "CIUDADANOS": 19,
+      "CONTIGO": 5,
+      "BLANCO": 21,
+      "NULO": 6
+    }
+  }
+]

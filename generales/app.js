@@ -722,13 +722,20 @@ require([
             addMesaColSelect.addEventListener("change", (e) => {
                 updateMesaSeccionDropdown(e.target.value, addMesaSecSelect);
                 updateAddMesaPreview();
+                prefillingAddMesaFromEstructura();
             });
         }
         if (addMesaSecSelect) {
-            addMesaSecSelect.addEventListener("change", updateAddMesaPreview);
+            addMesaSecSelect.addEventListener("change", () => {
+                updateAddMesaPreview();
+                prefillingAddMesaFromEstructura();
+            });
         }
         if (addMesaLetSelect) {
-            addMesaLetSelect.addEventListener("change", updateAddMesaPreview);
+            addMesaLetSelect.addEventListener("change", () => {
+                updateAddMesaPreview();
+                prefillingAddMesaFromEstructura();
+            });
         }
 
         document.getElementById("btn-admin-add-mesa").addEventListener("click", () => {
@@ -745,11 +752,16 @@ require([
             }
             updateMesaSeccionDropdown(firstColName, document.getElementById("add-mesa-seccion"));
             updateAddMesaPreview();
-            
+            prefillingAddMesaFromEstructura();
+
             document.getElementById("modal-admin-add-mesa").classList.remove("hidden");
         });
 
         document.getElementById("btn-admin-reset-db").addEventListener("click", handleAdminResetDB);
+        const btnCreateOfficial = document.getElementById("btn-admin-create-official-mesas");
+        if (btnCreateOfficial) {
+            btnCreateOfficial.addEventListener("click", () => handleAdminCreateOfficialMesas(false));
+        }
         document.getElementById("btn-admin-demo-fill").addEventListener("click", handleAdminDemoFill);
         document.getElementById("btn-admin-delete-demo-mesas").addEventListener("click", handleAdminDeleteAllMesas);
 
@@ -1249,7 +1261,7 @@ require([
 
             btn.innerHTML = `
                 <span class="mesa-btn-code" style="font-size:1.6rem; font-weight:800; color:${codeColor}; font-family: var(--font-heading);">${mesa.codigo}</span>
-                <span class="mesa-btn-census" style="font-size:0.82rem; font-weight:600; color:${subtextColor};">Sección ${mesa.seccion} | Censo: ${mesa.censo.toLocaleString()} electores</span>
+                <span class="mesa-btn-census" style="font-size:0.82rem; font-weight:600; color:${subtextColor};">Sección ${mesa.seccion} | Apellidos ${formatMesaApellidos(mesa)} | Censo: ${mesa.censo.toLocaleString()} electores</span>
                 <div style="margin-top:4px;">${statusBadge}</div>
             `;
 
@@ -2219,6 +2231,7 @@ require([
                 <td>${mesa.colegio}</td>
                 <td>${mesa.seccion}</td>
                 <td>${mesa.mesa}</td>
+                <td>${formatMesaApellidos(mesa)}</td>
                 <td>${mesa.censo}</td>
                 <td>${statusBadgeHtml}</td>
                 <td style="text-align: right; white-space: nowrap;">${actionButtons}</td>
@@ -2277,13 +2290,86 @@ require([
         updateGlobalMetrics();
     }
 
+    function getOfficialMesasEstructura() {
+        if (typeof MESAS_ESTRUCTURA_OFICIAL !== "undefined" && Array.isArray(MESAS_ESTRUCTURA_OFICIAL)) {
+            return MESAS_ESTRUCTURA_OFICIAL;
+        }
+        return [];
+    }
+
+    function formatMesaApellidos(mesa) {
+        const li = (mesa && mesa.li ? String(mesa.li) : "").trim().toUpperCase();
+        const lf = (mesa && mesa.lf ? String(mesa.lf) : "").trim().toUpperCase();
+        if (li && lf) return `${li}–${lf}`;
+        if (li || lf) return li || lf;
+        return "—";
+    }
+
+    function findEstructuraMesa(seccion, letra) {
+        const sec = String(seccion || "").padStart(3, "0");
+        const mes = String(letra || "").trim().toUpperCase();
+        return getOfficialMesasEstructura().find((r) => r.seccion === sec && r.mesa === mes) || null;
+    }
+
+    function prefillingAddMesaFromEstructura() {
+        const sec = (document.getElementById("add-mesa-seccion") || {}).value;
+        const letMesa = (document.getElementById("add-mesa-letra") || {}).value;
+        const row = findEstructuraMesa(sec, letMesa);
+        if (!row) return;
+        const liEl = document.getElementById("add-mesa-li");
+        const lfEl = document.getElementById("add-mesa-lf");
+        const censusEl = document.getElementById("add-mesa-census");
+        const colEl = document.getElementById("add-mesa-colegio");
+        if (liEl) liEl.value = row.li || "";
+        if (lfEl) lfEl.value = row.lf || "";
+        if (censusEl) censusEl.value = row.censo || "";
+        if (colEl && row.colegio) {
+            const opt = Array.from(colEl.options).find((o) => o.value === row.colegio);
+            if (opt) colEl.value = row.colegio;
+        }
+    }
+
+    function buildEmptyMesaFromEstructura(row, existingMesa) {
+        const seccion = String(row.seccion || "").padStart(3, "0");
+        const letra = String(row.mesa || "").trim().toUpperCase();
+        const mesaObj = {
+            codigo: seccion + letra,
+            seccion,
+            mesa: letra,
+            li: String(row.li || "").trim().toUpperCase(),
+            lf: String(row.lf || "").trim().toUpperCase(),
+            colegio: row.colegio || SECTION_COLEGIO_MAPPING[seccion] || "Colegio Electoral",
+            votos_blancos: 0,
+            votos_nulos: 0,
+            miembros: "",
+            estado: "Abierta",
+            firma_presi: "",
+            firma_vocal1: "",
+            firma_vocal2: "",
+            censo: parseInt(row.censo, 10) || 0,
+            objectid: existingMesa ? existingMesa.objectid : null,
+            part1_votos: 0,
+            part1_time: "",
+            part2_votos: 0,
+            part2_time: ""
+        };
+        PARTIES_CONFIG.forEach((p) => { mesaObj[p.field] = 0; });
+        return mesaObj;
+    }
+
     // Agregar nueva mesa
     function handleAdminAddMesa() {
         const col = document.getElementById("add-mesa-colegio").value;
         const sec = document.getElementById("add-mesa-seccion").value.trim();
         const letMesa = document.getElementById("add-mesa-letra").value.trim().toUpperCase();
+        const li = (document.getElementById("add-mesa-li").value || "").trim().toUpperCase().slice(0, 1);
+        const lf = (document.getElementById("add-mesa-lf").value || "").trim().toUpperCase().slice(0, 1);
         const census = parseInt(document.getElementById("add-mesa-census").value, 10);
 
+        if (!li || !lf) {
+            alert("Indica el tramo de apellidos (LI y LF), por ejemplo A y K.");
+            return;
+        }
         if (isNaN(census) || census <= 0) {
             alert("Introduce una cifra de censo válida mayor a 0.");
             return;
@@ -2302,6 +2388,8 @@ require([
             codigo: cod,
             seccion: sec,
             mesa: letMesa,
+            li,
+            lf,
             colegio: col,
             votos_blancos: 0,
             votos_nulos: 0,
@@ -2320,7 +2408,7 @@ require([
         saveLocalDatabase();
         sendMesaAddToServer(nuevaMesa);
 
-        alert(`¡Mesa ${cod} configurada con éxito!\nColegio: ${col}\nCenso registrado: ${census} electores`);
+        alert(`¡Mesa ${cod} configurada con éxito!\nColegio: ${col}\nApellidos: ${li}–${lf}\nCenso: ${census} electores`);
         document.getElementById("modal-admin-add-mesa").classList.add("hidden");
         renderAdminPortal();
         updateGlobalMetrics();
@@ -2345,6 +2433,20 @@ require([
     }
 
     // Eliminar TODAS las mesas generadas (útil para volver a crearlas manualmente)
+    function showAdminBusy(message) {
+        const overlay = document.getElementById("admin-busy-overlay");
+        const msgEl = document.getElementById("admin-busy-message");
+        if (msgEl) msgEl.textContent = message || "Procesando…";
+        if (overlay) overlay.classList.remove("hidden");
+        document.body.style.cursor = "wait";
+    }
+
+    function hideAdminBusy() {
+        const overlay = document.getElementById("admin-busy-overlay");
+        if (overlay) overlay.classList.add("hidden");
+        document.body.style.cursor = "";
+    }
+
     async function handleAdminDeleteAllMesas() {
         const localCount = (state.mesas || []).filter(m => m && m.codigo && !isConfigRecordCodigo(m.codigo)).length;
         const conf = confirm(
@@ -2354,20 +2456,22 @@ require([
         );
         if (!conf) return;
 
-        // Si estamos en modo ArcGIS: borrar solo mesas reales (no __PARTIES__ / __CLOSED__)
-        if (state.arcgisMode) {
-            console.log("Consultando mesas electorales en ArcGIS para eliminación masiva...");
-            try {
-                const tablesLayer = new FeatureLayer({ 
+        showAdminBusy("Eliminando mesas en ArcGIS… Esto puede tardar unos segundos.");
+
+        try {
+            // Si estamos en modo ArcGIS: borrar solo mesas reales (no __PARTIES__ / __CLOSED__)
+            if (state.arcgisMode) {
+                console.log("Consultando mesas electorales en ArcGIS para eliminación masiva...");
+                const tablesLayer = new FeatureLayer({
                     url: URL_MESAS_TABLE_EDIT,
                     outFields: ["*"]
                 });
-                
+
                 await tablesLayer.load();
                 const query = tablesLayer.createQuery();
                 query.where = "1=1";
                 query.outFields = ["*"];
-                
+
                 const results = await tablesLayer.queryFeatures(query);
                 const mesaFeatures = (results.features || []).filter(f => {
                     const cod = f.attributes && (f.attributes.CODIGO || f.attributes.codigo);
@@ -2376,11 +2480,12 @@ require([
 
                 if (mesaFeatures.length > 0) {
                     console.log(`Eliminando ${mesaFeatures.length} mesas del servidor ArcGIS (se omiten registros de configuración)...`);
+                    showAdminBusy(`Eliminando ${mesaFeatures.length} mesas en la GDB…`);
                     const result = await tablesLayer.applyEdits({
                         deleteFeatures: mesaFeatures
                     });
                     console.log("Servidor ArcGIS respuesta de applyEdits (delete):", result);
-                    
+
                     const failures = (result.deleteFeatureResults || []).filter(r => r.error);
                     if (failures.length > 0) {
                         console.error("Algunos registros no se pudieron eliminar en el servidor:", failures);
@@ -2394,26 +2499,27 @@ require([
                         ? `Se han eliminado ${localCount} mesas en local. En ArcGIS no había mesas electorales.`
                         : "No había mesas electorales que eliminar.");
                 }
-            } catch (err) {
-                console.error("Error al vaciar la tabla en ArcGIS Server:", err);
-                alert("Error al conectar con ArcGIS Server para eliminar las mesas: " + (err.message || err));
-                return;
+            } else {
+                alert(localCount > 0
+                    ? `Se han eliminado ${localCount} mesas locales.`
+                    : "No había mesas locales que eliminar.");
             }
-        } else {
-            alert(localCount > 0
-                ? `Se han eliminado ${localCount} mesas locales.`
-                : "No había mesas locales que eliminar.");
-        }
 
-        // Vaciar localmente
-        state.mesas = [];
-        state.colegiosCerrados = [];
-        saveLocalDatabase();
-        saveClosedSchoolsToArcGIS([]);
-        
-        renderAdminPortal();
-        updateGlobalMetrics();
-        renderMapTheme();
+            // Vaciar localmente
+            state.mesas = [];
+            state.colegiosCerrados = [];
+            saveLocalDatabase();
+            saveClosedSchoolsToArcGIS([]);
+
+            renderAdminPortal();
+            updateGlobalMetrics();
+            renderMapTheme();
+        } catch (err) {
+            console.error("Error al vaciar la tabla en ArcGIS Server:", err);
+            alert("Error al conectar con ArcGIS Server para eliminar las mesas: " + (err.message || err));
+        } finally {
+            hideAdminBusy();
+        }
     }
 
     // ==========================================================================
@@ -2664,97 +2770,15 @@ require([
         }
     }
 
-    // Llenar datos de prueba automáticamente
-    function handleAdminDemoFill() {
-        const conf = confirm(
-            "¿Desea rellenar el censo municipal completo generando 3 mesas por sección (A, B, C) con votos aleatorios ponderados realistas?\n\n" +
-            "Esto simulará el 100% de las mesas de Rivas Vaciamadrid y pintará el mapa completo."
-        );
-        if (!conf) return;
-
-        console.log("Generando simulación municipal...");
-
-        const simulatedMesas = [];
-        const sectionsList = Object.keys(SECTION_COLEGIO_MAPPING); // Las 66 secciones de Rivas
-
-        sectionsList.forEach(secCode => {
-            const colName = SECTION_COLEGIO_MAPPING[secCode];
-            const secCensus = CENSUS_2023[secCode] || 1500;
-            
-            // Dividir censo entre las 3 mesas A, B y C
-            const baseCenso = Math.floor(secCensus / 3);
-            const censos = [baseCenso, baseCenso, secCensus - (baseCenso * 2)];
-            const letras = ["A", "B", "C"];
-
-            for (let i = 0; i < 3; i++) {
-                const letra = letras[i];
-                const codMesa = secCode + letra;
-                const censoMesa = censos[i];
-                
-                // Simular participación entre el 60% y el 82%
-                const totalVotantes = Math.round(censoMesa * (0.6 + Math.random() * 0.22));
-                
-                // Pesos ponderados realistas para Rivas Vaciamadrid
-                const weights = { PP: 0.30, PSOE: 0.28, VOX: 0.12, SUMAR: 0.10, UP: 0.08, Cs: 0.02, PACMA: 0.02, SALF: 0.03 };
-                let remaining = totalVotantes;
-                const votosPartido = {};
-                
-                PARTIES_CONFIG.forEach(p => {
-                    const share = weights[p.id];
-                    const votos = Math.round(totalVotantes * (share + (Math.random() * 0.06 - 0.03)));
-                    votosPartido[p.field] = Math.max(0, votos);
-                    remaining -= votosPartido[p.field];
-                });
-
-                // Votos blancos y nulos
-                const votos_blancos = Math.max(0, Math.round(remaining * 0.6));
-                const votos_nulos = Math.max(0, remaining - votos_blancos);
-
-                // Miembros de mesa ficticios
-                const miembros = JSON.stringify({
-                    presi: `Presidente/a Mesa ${codMesa}`,
-                    vocal1: `Vocal 1 Mesa ${codMesa}`,
-                    vocal2: `Vocal 2 Mesa ${codMesa}`
-                });
-
-                // Buscar si la mesa ya existía en state.mesas para conservar su objectid en ArcGIS mode
-                const existingMesa = state.mesas.find(m => m.codigo === codMesa);
-                const objId = existingMesa ? existingMesa.objectid : null;
-
-                const mesaObj = {
-                    codigo: codMesa,
-                    seccion: secCode,
-                    mesa: letra,
-                    colegio: colName,
-                    votos_blancos: votos_blancos,
-                    votos_nulos: votos_nulos,
-                    miembros: miembros,
-                    estado: "Cerrada", // Todas cerradas para el render completo
-                    firma_presi: "10,10 15,12 25,20|30,10 25,25",
-                    firma_vocal1: "20,20 40,25 50,40|45,20 35,45",
-                    firma_vocal2: "5,5 50,5 50,50|25,5 25,50",
-                    censo: censoMesa,
-                    objectid: objId
-                };
-
-                PARTIES_CONFIG.forEach(p => {
-                    mesaObj[p.field] = votosPartido[p.field];
-                });
-
-                simulatedMesas.push(mesaObj);
-            }
-        });
-
-        // Actualizar el estado en memoria
-        state.mesas = simulatedMesas;
+    function applyMesasBatchToServer(mesasList, successMsg, busyLabel) {
         localStorage.removeItem("elecciones_mesas_vacias");
         saveLocalDatabase();
         rebuildDynamicMappings();
+        showAdminBusy(busyLabel || `Guardando ${mesasList.length} mesas en ArcGIS…`);
 
-        // Si estamos en ArcGIS mode: subir los cambios en bloque
         if (state.arcgisMode) {
-            console.log("Subiendo lote de simulación a ArcGIS Server...");
-            
+            console.log("Subiendo lote de mesas a ArcGIS Server...", mesasList.length);
+
             const tablesLayer = new FeatureLayer({
                 url: URL_MESAS_TABLE_EDIT
             });
@@ -2762,10 +2786,10 @@ require([
             const addGraphics = [];
             const updateGraphics = [];
 
-            simulatedMesas.forEach(m => {
+            mesasList.forEach((m) => {
                 const attrs = buildFeatureAttributesFromMesa(m);
 
-                if (m.objectid !== null) {
+                if (m.objectid !== null && m.objectid !== undefined) {
                     attrs.objectid = m.objectid;
                     attrs.OBJECTID = m.objectid;
                     updateGraphics.push(new Graphic({ attributes: attrs }));
@@ -2774,32 +2798,118 @@ require([
                 }
             });
 
-            console.log(`Lanzando applyEdits. Adiciones: ${addGraphics.length}, Actualizaciones: ${updateGraphics.length}`);
-            
-            tablesLayer.applyEdits({
-                addFeatures: addGraphics,
-                updateFeatures: updateGraphics
-            }).then(result => {
-                console.log("Simulación en bloque completada en el servidor de ArcGIS:", result);
-                alert("¡Simulación municipal completa aplicada en ArcGIS Server con éxito! El mapa se cargará en breves instantes.");
-                
-                // Recargar todo desde el servidor para obtener los ObjectIDs correctos
+            const edits = {};
+            if (addGraphics.length) edits.addFeatures = addGraphics;
+            if (updateGraphics.length) edits.updateFeatures = updateGraphics;
+
+            tablesLayer.applyEdits(edits).then((result) => {
+                console.log("Lote de mesas aplicado:", result);
+                showAdminBusy("Sincronizando datos con el servidor…");
                 syncDataWithArcGISServer();
-            }).catch(err => {
-                console.error("Error al aplicar la simulación en bloque en ArcGIS Server:", err);
-                alert("Error al guardar en ArcGIS Server. Se aplicó en memoria local para la previsualización actual.");
-                
+                hideAdminBusy();
+                alert(successMsg || `Se han cargado ${mesasList.length} mesas.`);
+                renderAdminPortal();
+                updateGlobalMetrics();
+                renderMapTheme();
+            }).catch((err) => {
+                console.error("Error subiendo lote de mesas:", err);
+                hideAdminBusy();
+                alert("Las mesas se guardaron en local, pero falló la subida a ArcGIS. Revise la consola.");
                 renderAdminPortal();
                 updateGlobalMetrics();
                 renderMapTheme();
             });
-
-        } else {
-            alert("Simulación de todo el municipio (198 mesas) inyectada en local con éxito.");
-            renderAdminPortal();
-            updateGlobalMetrics();
-            renderMapTheme();
+            return;
         }
+
+        hideAdminBusy();
+        alert(successMsg || `Se han cargado ${mesasList.length} mesas.`);
+        renderAdminPortal();
+        updateGlobalMetrics();
+        renderMapTheme();
+    }
+
+    // Crear las 114 mesas oficiales (estructura MESAS NOV 2027): abiertas, censo real, LI/LF
+    function handleAdminCreateOfficialMesas(simulateVotes) {
+        const estructura = getOfficialMesasEstructura();
+        if (!estructura.length) {
+            alert("No está cargada la estructura oficial de mesas (mesas_estructura_oficial.js).");
+            return;
+        }
+
+        const modeLabel = simulateVotes
+            ? "simular resultados en las mesas oficiales (cerradas, con votos aleatorios)"
+            : "crear las mesas oficiales (abiertas, sin votos, censo y tramos LI–LF oficiales)";
+        const conf = confirm(
+            `¿Desea ${modeLabel}?\n\n` +
+            `Estructura: ${estructura.length} mesas · ${new Set(estructura.map((r) => r.seccion)).size} secciones · ` +
+            `${estructura.reduce((a, r) => a + (r.censo || 0), 0).toLocaleString()} electores.\n\n` +
+            "Se sustituirán las mesas electorales actuales (se conservan objectid si ya existían)."
+        );
+        if (!conf) return;
+
+        showAdminBusy(simulateVotes
+            ? "Generando simulación de mesas oficiales…"
+            : "Preparando mesas oficiales…");
+
+        // Dejar que el overlay pinte antes del trabajo síncrono / red
+        setTimeout(() => {
+            console.log(simulateVotes ? "Simulación sobre estructura oficial..." : "Creando mesas oficiales...");
+
+            const weights = { PP: 0.30, PSOE: 0.28, VOX: 0.12, SUMAR: 0.10, UP: 0.08, Cs: 0.02, PACMA: 0.02, SALF: 0.03 };
+            const built = estructura.map((row) => {
+                const existing = state.mesas.find((m) => m.codigo === (String(row.seccion).padStart(3, "0") + String(row.mesa).toUpperCase()));
+                const mesaObj = buildEmptyMesaFromEstructura(row, existing);
+
+                if (!simulateVotes) return mesaObj;
+
+                const censoMesa = mesaObj.censo || 0;
+                const totalVotantes = Math.round(censoMesa * (0.6 + Math.random() * 0.22));
+                let remaining = totalVotantes;
+                const votosPartido = {};
+                PARTIES_CONFIG.forEach((p) => {
+                    const share = weights[p.id] || (1 / Math.max(PARTIES_CONFIG.length, 1));
+                    const votos = Math.round(totalVotantes * (share + (Math.random() * 0.06 - 0.03)));
+                    votosPartido[p.field] = Math.max(0, votos);
+                    remaining -= votosPartido[p.field];
+                });
+                mesaObj.votos_blancos = Math.max(0, Math.round(remaining * 0.6));
+                mesaObj.votos_nulos = Math.max(0, remaining - mesaObj.votos_blancos);
+                PARTIES_CONFIG.forEach((p) => { mesaObj[p.field] = votosPartido[p.field] || 0; });
+                mesaObj.estado = "Cerrada";
+                mesaObj.miembros = JSON.stringify({
+                    presi: `Presidente/a Mesa ${mesaObj.codigo}`,
+                    vocal1: `Vocal 1 Mesa ${mesaObj.codigo}`,
+                    vocal2: `Vocal 2 Mesa ${mesaObj.codigo}`,
+                    li: mesaObj.li,
+                    lf: mesaObj.lf,
+                    censo: mesaObj.censo
+                });
+                mesaObj.firma_presi = "10,10 15,12 25,20|30,10 25,25";
+                mesaObj.firma_vocal1 = "20,20 40,25 50,40|45,20 35,45";
+                mesaObj.firma_vocal2 = "5,5 50,5 50,50|25,5 25,50";
+                return mesaObj;
+            });
+
+            // Conservar registros de configuración (__PARTIES_GEN__, etc.)
+            const configRows = (state.mesas || []).filter((m) => m && isConfigRecordCodigo(m.codigo));
+            state.mesas = configRows.concat(built);
+
+            applyMesasBatchToServer(
+                built,
+                simulateVotes
+                    ? `Simulación lista: ${built.length} mesas oficiales con resultados de prueba.`
+                    : `Mesas oficiales creadas: ${built.length} mesas abiertas con censo y tramos LI–LF.`,
+                simulateVotes
+                    ? `Subiendo simulación (${built.length} mesas) a la GDB…`
+                    : `Creando ${built.length} mesas oficiales en la GDB…`
+            );
+        }, 50);
+    }
+
+    // Llenar datos de prueba automáticamente (usa la estructura oficial)
+    function handleAdminDemoFill() {
+        handleAdminCreateOfficialMesas(true);
     }
 
     // ==========================================================================
@@ -5184,10 +5294,32 @@ require([
 
         const objId = getAttributeValue(attrs, "objectid") || getAttributeValue(attrs, "OBJECTID") || getAttributeValue(attrs, "FID");
 
+        let liVal = getAttributeValue(attrs, "li") || getAttributeValue(attrs, "LI") || "";
+        let lfVal = getAttributeValue(attrs, "lf") || getAttributeValue(attrs, "LF") || "";
+        if (mObj) {
+            if (!liVal && mObj.li) liVal = mObj.li;
+            if (!lfVal && mObj.lf) lfVal = mObj.lf;
+        }
+        if ((!liVal || !lfVal) && existingMesa) {
+            if (!liVal && existingMesa.li) liVal = existingMesa.li;
+            if (!lfVal && existingMesa.lf) lfVal = existingMesa.lf;
+        }
+        // Completar desde estructura oficial si falta el tramo
+        if (!liVal || !lfVal) {
+            const mesaLetra = getAttributeValue(attrs, "mesa") || (cod ? cod.slice(-1) : "");
+            const rowOficial = findEstructuraMesa(seccion, mesaLetra);
+            if (rowOficial) {
+                if (!liVal) liVal = rowOficial.li;
+                if (!lfVal) lfVal = rowOficial.lf;
+            }
+        }
+
         const mesaObj = {
             codigo: cod,
             seccion: seccion,
             mesa: getAttributeValue(attrs, "mesa") || (cod ? cod.slice(-1) : "U"),
+            li: String(liVal || "").trim().toUpperCase(),
+            lf: String(lfVal || "").trim().toUpperCase(),
             colegio: colegio,
             censo: censoVal,
             estado: estadoActual,
@@ -5269,13 +5401,26 @@ require([
             presi: "", 
             vocal1: "", 
             vocal2: "", 
-            censo: targetMesa.censo
+            censo: targetMesa.censo,
+            li: targetMesa.li || "",
+            lf: targetMesa.lf || ""
         };
         if (typeof targetMesa.miembros === "object" && targetMesa.miembros !== null) {
-            miembrosObj = { ...targetMesa.miembros, censo: targetMesa.censo };
+            miembrosObj = {
+                ...targetMesa.miembros,
+                censo: targetMesa.censo,
+                li: targetMesa.li || targetMesa.miembros.li || "",
+                lf: targetMesa.lf || targetMesa.miembros.lf || ""
+            };
         } else if (typeof targetMesa.miembros === "string" && targetMesa.miembros.trim().startsWith("{")) {
             try {
-                miembrosObj = { ...JSON.parse(targetMesa.miembros), censo: targetMesa.censo };
+                const parsed = JSON.parse(targetMesa.miembros);
+                miembrosObj = {
+                    ...parsed,
+                    censo: targetMesa.censo,
+                    li: targetMesa.li || parsed.li || "",
+                    lf: targetMesa.lf || parsed.lf || ""
+                };
             } catch (e) {}
         }
         const miembrosStr = JSON.stringify(miembrosObj);
@@ -5656,135 +5801,91 @@ require([
         alert(`La Mesa ${codigo} ha sido reabierta correctamente.`);
     }
 
-    let censusMap = null;
-    let censusLoading = false;
-
-    function loadCensusData() {
-        if (censusMap) return Promise.resolve(censusMap);
-        if (censusLoading) {
-            return new Promise((resolve) => {
-                const checkInterval = setInterval(() => {
-                    if (censusMap) {
-                        clearInterval(checkInterval);
-                        resolve(censusMap);
-                    }
-                }, 100);
-            });
-        }
-        censusLoading = true;
-        const statusDiv = document.getElementById("dni-search-status");
-        if (statusDiv) statusDiv.classList.remove("hidden");
-
-        return fetch("SI_E2812301sssmCERyCERE (CENSO DEFINITIVO).txt")
-            .then(res => res.arrayBuffer())
-            .then(buf => {
-                const decoder = new TextDecoder("iso-8859-1");
-                const text = decoder.decode(buf);
-                const lines = text.split(/\r?\n/);
-                const map = new window.Map();
-
-                for (let i = 1; i < lines.length; i++) {
-                    const line = lines[i].trim();
-                    if (!line) continue;
-
-                    const cols = line.split(";").map(c => c.replace(/^"|"$/g, "").trim());
-                    if (cols.length > 27) {
-                        const ident = cols[27]; // IDENT (DNI/NIE)
-                        if (ident) {
-                            const cleanDni = ident.toUpperCase().replace(/[^A-Z0-9]/g, "");
-                            map.set(cleanDni, {
-                                dni: ident,
-                                nombre: cols[13] || "",
-                                ape1: cols[14] || "",
-                                ape2: cols[15] || "",
-                                colegio: cols[6] || "",
-                                dirMesa: cols[9] || "",
-                                distrito: cols[3] || "",
-                                seccion: cols[4] || "",
-                                mesa: cols[5] || ""
-                            });
-                        }
-                    }
-                }
-                censusMap = map;
-                censusLoading = false;
-                if (statusDiv) statusDiv.classList.add("hidden");
-                return censusMap;
-            })
-            .catch(err => {
-                console.error("Error al cargar el censo:", err);
-                censusLoading = false;
-                if (statusDiv) {
-                    statusDiv.innerHTML = `<span style="color:#ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> No se pudo cargar el censo.</span>`;
-                }
-                return null;
-            });
-    }
+    // Hosted Table (Portal item ad27250c9ef547b88503c4a72a5ea8cb)
+    const CENSO_TABLE_URL =
+        "https://sit.rivasciudad.es/server/rest/services/Hosted/CENSO_GENERALES_2026_NUEVO/FeatureServer/0";
+    const CENSO_OUT_FIELDS = "ident,nlocal,dirmesa1,dirmesa2,dirmesa3,secc,mesa,dist";
 
     function calculateDniLetter(numStr) {
         const letters = "TRWAGMYFPDXBNJZSQVHLCKE";
-        const cleanDigits = numStr.replace(/[^0-9]/g, "");
+        const cleanDigits = String(numStr || "").replace(/[^0-9]/g, "");
         if (!cleanDigits) return "";
         const num = parseInt(cleanDigits, 10);
         if (isNaN(num)) return "";
         return letters[num % 23];
     }
 
-    function findInCensus(rawQuery, cMap) {
-        const q = rawQuery.toUpperCase().replace(/[^A-Z0-9]/g, "");
-        if (!q || !cMap) return null;
+    function buildIdentCandidates(rawQuery) {
+        const q = String(rawQuery || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+        if (!q) return [];
+        const candidates = [q];
 
-        // 1. Coincidencia exacta (ej. 51017266T o 02324267W)
-        if (cMap.has(q)) return cMap.get(q);
-
-        // 2. Si el usuario introdujo solo números (se le olvidó la letra)
-        const isNumeric = /^[0-9]+$/.test(q);
-        if (isNumeric) {
+        if (/^[0-9]+$/.test(q)) {
             const letter = calculateDniLetter(q);
             if (letter) {
-                // Probar número + letra calculada (ej. 51017266T)
-                const withLetter = q + letter;
-                if (cMap.has(withLetter)) return cMap.get(withLetter);
-
-                // Probar rellenando ceros a la izquierda hasta 8 dígitos + letra (ej. 02324267W)
-                const paddedDigits = q.padStart(8, '0');
-                const paddedLetter = calculateDniLetter(paddedDigits);
-                const paddedWithLetter = paddedDigits + paddedLetter;
-                if (cMap.has(paddedWithLetter)) return cMap.get(paddedWithLetter);
+                candidates.push(q + letter);
+                const paddedDigits = q.padStart(8, "0");
+                candidates.push(paddedDigits + calculateDniLetter(paddedDigits));
             }
         }
 
-        // 3. Si introdujo número con letra pero omitió el cero inicial (ej. 2324267W en lugar de 02324267W)
         const matchDigitsLetter = q.match(/^([0-9]+)([A-Z])$/);
         if (matchDigitsLetter) {
-            const digits = matchDigitsLetter[1];
-            const letter = matchDigitsLetter[2];
-            const padded = digits.padStart(8, '0') + letter;
-            if (cMap.has(padded)) return cMap.get(padded);
+            candidates.push(matchDigitsLetter[1].padStart(8, "0") + matchDigitsLetter[2]);
         }
 
-        // 4. Si introdujo un NIE con letra pero le falta cero inicial (ej. X234567W en lugar de X0234567W)
         const matchNie = q.match(/^([A-Z])([0-9]+)([A-Z])$/);
         if (matchNie) {
-            const prefix = matchNie[1];
-            const digits = matchNie[2];
-            const letter = matchNie[3];
-            const paddedNie = prefix + digits.padStart(7, '0') + letter;
-            if (cMap.has(paddedNie)) return cMap.get(paddedNie);
+            candidates.push(matchNie[1] + matchNie[2].padStart(7, "0") + matchNie[3]);
         }
 
-        // 5. Búsqueda por escaneo de dígitos limpios (ignorando ceros a la izquierda y letras)
-        const qCleanDigits = q.replace(/[^0-9]/g, "").replace(/^0+/, "");
-        if (qCleanDigits.length >= 6) {
-            for (const item of cMap.values()) {
-                const itemDigits = item.dni.replace(/[^0-9]/g, "").replace(/^0+/, "");
-                if (itemDigits === qCleanDigits) {
-                    return item;
+        return [...new Set(candidates.filter(Boolean))];
+    }
+
+    function mapCensusAttrs(attrs) {
+        if (!attrs) return null;
+        const ident = String(attrs.ident || attrs.IDENT || "").trim();
+        const seccRaw = String(attrs.secc ?? attrs.SECC ?? "").trim();
+        const dirMesa = [attrs.dirmesa1, attrs.dirmesa2, attrs.dirmesa3, attrs.DIRMESA1, attrs.DIRMESA2, attrs.DIRMESA3]
+            .map((v) => String(v || "").trim())
+            .filter(Boolean)
+            .join(", ");
+        return {
+            dni: ident,
+            colegio: String(attrs.nlocal || attrs.NLOCAL || "").trim(),
+            dirMesa,
+            distrito: String(attrs.dist ?? attrs.DIST ?? "").trim(),
+            seccion: seccRaw ? seccRaw.padStart(3, "0") : "",
+            mesa: String(attrs.mesa || attrs.MESA || "").trim()
+        };
+    }
+
+    function queryCensusByDni(rawQuery) {
+        const candidates = buildIdentCandidates(rawQuery);
+        if (!candidates.length) return Promise.resolve(null);
+
+        const escaped = candidates.map((c) => `'${String(c).replace(/'/g, "''")}'`);
+        const where = `ident IN (${escaped.join(",")})`;
+        const params = new URLSearchParams({
+            where,
+            outFields: CENSO_OUT_FIELDS,
+            returnGeometry: "false",
+            resultRecordCount: "1",
+            f: "json"
+        });
+
+        return fetch(`${CENSO_TABLE_URL}/query?${params.toString()}`)
+            .then((res) => {
+                if (!res.ok) throw new Error(`HTTP ${res.status} al consultar el censo`);
+                return res.json();
+            })
+            .then((data) => {
+                if (data && data.error) {
+                    throw new Error(data.error.message || "Error de consulta ArcGIS");
                 }
-            }
-        }
-
-        return null;
+                const feat = (data.features || [])[0];
+                return feat ? mapCensusAttrs(feat.attributes) : null;
+            });
     }
 
     function getColegioOfficialAddress(colName, rawDir) {
@@ -5830,16 +5931,7 @@ require([
                 <i class="fa-solid fa-spinner fa-spin"></i> Consultando censo electoral...
             </div>`;
 
-        loadCensusData().then(cMap => {
-            if (!cMap) {
-                container.innerHTML = `
-                    <div style="text-align: center; color: #ef4444; padding: 20px;">
-                        Error al consultar el censo. Inténtalo de nuevo.
-                    </div>`;
-                return;
-            }
-
-            const result = findInCensus(rawQuery, cMap);
+        queryCensusByDni(rawQuery).then((result) => {
             if (!result) {
                 container.innerHTML = `
                     <div class="stat-card" style="border-left: 4px solid #ef4444; background: #fff5f5; padding: 16px; margin-top: 10px;">
@@ -5853,24 +5945,20 @@ require([
                 return;
             }
 
-            const fullName = `${result.nombre} ${result.ape1} ${result.ape2}`.trim();
             const officialAddress = getColegioOfficialAddress(result.colegio, result.dirMesa);
             const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(result.colegio + ", " + officialAddress)}`;
+            const distritoLabel = result.distrito ? String(result.distrito) : "—";
             
             container.innerHTML = `
                 <div class="stat-card" style="border-left: 5px solid var(--primary-color); background: #ffffff; padding: 20px; box-shadow: var(--shadow-md); margin-top: 10px; border-radius: 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
                         <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--primary-color); letter-spacing: 0.5px;">
-                            <i class="fa-solid fa-user-check"></i> Elector Empadronado
+                            <i class="fa-solid fa-user-check"></i> Elector empadronado
                         </span>
                         <span style="font-size: 0.72rem; background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 12px; font-weight: 600;">
                             <i class="fa-solid fa-clock"></i> 09:00h - 20:00h
                         </span>
                     </div>
-                    
-                    <h4 style="font-size: 1.2rem; margin: 0 0 14px 0; color: var(--text-primary); font-family: var(--font-heading); font-weight: 800;">
-                        ${fullName}
-                    </h4>
 
                     <!-- Bloque 1: Colegio Electoral -->
                     <div style="background: #f8fafc; padding: 12px 14px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 12px;">
@@ -5886,19 +5974,26 @@ require([
                         </div>
                     </div>
 
-                    <!-- Bloque 2: Mesa y Sección Igualadas y Destacadas -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+                    <!-- Bloque 2: Mesa, Sección y Distrito -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px;">
                         <div style="background: #fff1f2; border: 1px solid #fecdd3; padding: 12px; border-radius: 8px; text-align: center;">
-                            <div style="font-size: 0.75rem; color: #9f1239; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Mesa Electoral</div>
+                            <div style="font-size: 0.75rem; color: #9f1239; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Mesa</div>
                             <div style="font-size: 1.45rem; font-weight: 800; color: var(--primary-color); font-family: var(--font-heading); margin-top: 4px;">
-                                Mesa ${result.mesa}
+                                ${result.mesa}
                             </div>
                         </div>
 
                         <div style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 12px; border-radius: 8px; text-align: center;">
-                            <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Sección Censal</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Sección</div>
                             <div style="font-size: 1.45rem; font-weight: 800; color: var(--text-primary); font-family: var(--font-heading); margin-top: 4px;">
-                                Sección ${result.seccion}
+                                ${result.seccion}
+                            </div>
+                        </div>
+
+                        <div style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 12px; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Distrito</div>
+                            <div style="font-size: 1.45rem; font-weight: 800; color: var(--text-primary); font-family: var(--font-heading); margin-top: 4px;">
+                                ${distritoLabel}
                             </div>
                         </div>
                     </div>
@@ -5921,6 +6016,12 @@ require([
                     locateColegioOnMap(colName);
                 });
             }
+        }).catch((err) => {
+            console.error("Error al consultar el censo:", err);
+            container.innerHTML = `
+                <div style="text-align: center; color: #ef4444; padding: 20px;">
+                    Error al consultar el censo. Inténtalo de nuevo.
+                </div>`;
         });
     }
 

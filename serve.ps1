@@ -66,6 +66,7 @@ try {
                 elseif ($ext -eq ".jpg" -or $ext -eq ".jpeg") { $contentType = "image/jpeg" }
                 elseif ($ext -eq ".gif") { $contentType = "image/gif" }
                 elseif ($ext -eq ".svg") { $contentType = "image/svg+xml; charset=utf-8" }
+                elseif ($ext -eq ".json") { $contentType = "application/json; charset=utf-8" }
                 
                 $response.ContentType = $contentType
                 $response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate")
