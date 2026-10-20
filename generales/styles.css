@@ -127,6 +127,19 @@ h1, h2, h3, h4, h5, h6 {
     font-weight: 700;
 }
 
+.brand-proceso-logo {
+    flex-shrink: 0;
+    height: clamp(40px, 5.5vw, 52px);
+    width: auto;
+    max-width: min(280px, 36vw);
+    object-fit: contain;
+    object-position: left center;
+    background: #fff;
+    border-radius: 10px;
+    padding: 6px 10px;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.18);
+}
+
 .brand-title {
     min-width: 0;
     display: flex;
@@ -757,6 +770,17 @@ h1, h2, h3, h4, h5, h6 {
     filter: brightness(0) invert(1);
 }
 
+.login-logo-proceso {
+    height: auto;
+    width: min(280px, 78%);
+    max-height: 72px;
+    object-fit: contain;
+    filter: none;
+    background: #fff;
+    border-radius: 12px;
+    padding: 10px 14px;
+}
+
 .login-title {
     font-size: 1.6rem;
     font-weight: 800;
@@ -1294,6 +1318,26 @@ h1, h2, h3, h4, h5, h6 {
     gap: 8px;
 }
 
+.mesa-pin-code {
+    font-family: ui-monospace, Consolas, monospace;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: #0f766e;
+    background: #ecfdf5;
+    border: 1px solid #99f6e4;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 0.92rem;
+}
+
+.mesa-pin-input {
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 1.45rem !important;
+    letter-spacing: 0.35em;
+    text-align: center;
+    font-weight: 700;
+}
+
 .admin-mesa-editing-icon {
     color: #16a34a;
     font-size: 0.95rem;
@@ -1496,6 +1540,12 @@ h1, h2, h3, h4, h5, h6 {
         width: auto;
     }
 
+    .acta-logo-proceso {
+        height: 42px;
+        max-width: 220px;
+        object-fit: contain;
+    }
+
     .acta-header-title {
         flex: 1;
     }
@@ -1690,6 +1740,12 @@ h1, h2, h3, h4, h5, h6 {
 
     .btn-back-hub {
         align-self: flex-start;
+    }
+
+    .brand-proceso-logo {
+        height: 44px;
+        max-width: min(240px, 78vw);
+        padding: 5px 8px;
     }
 
     .brand-title {

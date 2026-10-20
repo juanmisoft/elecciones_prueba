@@ -204,6 +204,13 @@ const DEFAULT_PARTIES_CONFIG = [
     field: "votos_fo"
   },
   {
+    id: "FA",
+    name: "Frente Amplio",
+    color: "#f24405",
+    logo: "../Imagenes/logos/generales/frenteamplio.jpeg",
+    field: "votos_fa"
+  },
+  {
     id: "PCTE",
     name: "PCTE",
     color: "#b91c1c",

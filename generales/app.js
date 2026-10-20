@@ -204,6 +204,230 @@ require([
         return cod === PARTIES_CONFIG_CODIGO || cod === PARTIES_CONFIG_CODIGO_LEGACY;
     }
 
+    // ==========================================================================
+    // PIN DE MESA (6 dígitos, guardado en RESULTADOS_JSON / MIEMBROS sin campo GDB)
+    // ==========================================================================
+    function getElectoralMesas() {
+        return (state.mesas || []).filter((m) => m && m.codigo && !isConfigRecordCodigo(m.codigo));
+    }
+
+    function normalizePin(pin) {
+        const s = String(pin == null ? "" : pin).replace(/\D/g, "");
+        return s.length === 6 ? s : "";
+    }
+
+    function collectUsedPins(excludeCodigo, extraUsed) {
+        const used = new Set();
+        getElectoralMesas().forEach((m) => {
+            if (excludeCodigo && m.codigo === excludeCodigo) return;
+            const p = normalizePin(m.pin);
+            if (p) used.add(p);
+        });
+        if (extraUsed) {
+            extraUsed.forEach((p) => {
+                const n = normalizePin(p);
+                if (n) used.add(n);
+            });
+        }
+        return used;
+    }
+
+    function generateUniquePin(excludeCodigo, extraUsed) {
+        const used = collectUsedPins(excludeCodigo, extraUsed);
+        for (let i = 0; i < 800; i++) {
+            const pin = String(Math.floor(100000 + Math.random() * 900000));
+            if (!used.has(pin)) return pin;
+        }
+        for (let n = 100000; n <= 999999; n++) {
+            const pin = String(n);
+            if (!used.has(pin)) return pin;
+        }
+        return String(Date.now()).slice(-6);
+    }
+
+    function ensureMesaPin(mesa) {
+        if (!mesa || isConfigRecordCodigo(mesa.codigo)) return "";
+        const existing = normalizePin(mesa.pin);
+        if (existing) {
+            mesa.pin = existing;
+            return existing;
+        }
+        mesa.pin = generateUniquePin(mesa.codigo);
+        return mesa.pin;
+    }
+
+    function ensureAllMesasHavePins(options) {
+        const persistMissing = !!(options && options.persistMissing);
+        const missing = [];
+        getElectoralMesas().forEach((m) => {
+            const before = normalizePin(m.pin);
+            ensureMesaPin(m);
+            if (!before && normalizePin(m.pin)) missing.push(m);
+        });
+        if (persistMissing && missing.length) {
+            saveLocalDatabase();
+            if (state.arcgisMode) {
+                missing.forEach((m) => {
+                    sendMesaUpdateToServer(m).catch(() => {});
+                });
+            }
+        }
+        return missing.length;
+    }
+
+    function regenerateMesaPin(codigo) {
+        const mesa = state.mesas.find((m) => m.codigo === codigo);
+        if (!mesa || isConfigRecordCodigo(codigo)) return;
+        const conf = confirm(
+            `¿Regenerar el PIN de la mesa ${codigo}?\n\nEl PIN anterior dejará de ser válido (hay que reimprimir o comunicar el nuevo).`
+        );
+        if (!conf) return;
+        mesa.pin = generateUniquePin(codigo);
+        saveLocalDatabase();
+        sendMesaUpdateToServer(mesa).catch(() => {});
+        renderAdminMesasTable();
+        alert(`Nuevo PIN de la mesa ${codigo}: ${mesa.pin}`);
+    }
+
+    function extractPinFromMesaSources(resObj, mObj, existingMesa) {
+        let pinVal = "";
+        if (resObj && resObj.pin != null) pinVal = normalizePin(resObj.pin);
+        if (!pinVal && mObj && mObj.pin != null) pinVal = normalizePin(mObj.pin);
+        if (!pinVal && existingMesa) pinVal = normalizePin(existingMesa.pin);
+        return pinVal;
+    }
+
+    let _pendingPinMesa = null;
+    let _pendingPinCallback = null;
+
+    function openMesaPinModal(mesa, onSuccess) {
+        ensureMesaPin(mesa);
+        _pendingPinMesa = mesa;
+        _pendingPinCallback = onSuccess;
+        const modal = document.getElementById("modal-mesa-pin");
+        const title = document.getElementById("modal-mesa-pin-title");
+        const info = document.getElementById("modal-mesa-pin-info");
+        const input = document.getElementById("mesa-pin-input");
+        const err = document.getElementById("mesa-pin-error");
+        if (title) title.textContent = `Acceso a Mesa ${mesa.codigo}`;
+        if (info) {
+            info.textContent = `${mesa.colegio || "Colegio"} · Apellidos ${formatMesaApellidos(mesa)} · Censo ${(mesa.censo || 0).toLocaleString()} electores`;
+        }
+        if (err) {
+            err.textContent = "";
+            err.classList.add("hidden");
+        }
+        if (input) input.value = "";
+        if (modal) modal.classList.remove("hidden");
+        setTimeout(() => {
+            if (input) input.focus();
+        }, 40);
+    }
+
+    function closeMesaPinModal() {
+        const modal = document.getElementById("modal-mesa-pin");
+        if (modal) modal.classList.add("hidden");
+        _pendingPinMesa = null;
+        _pendingPinCallback = null;
+    }
+
+    function submitMesaPinModal() {
+        const input = document.getElementById("mesa-pin-input");
+        const err = document.getElementById("mesa-pin-error");
+        const entered = normalizePin(input && input.value);
+        const expected = normalizePin(_pendingPinMesa && _pendingPinMesa.pin);
+        if (!entered) {
+            if (err) {
+                err.textContent = "Introduce el PIN de 6 dígitos de esta mesa.";
+                err.classList.remove("hidden");
+            }
+            return;
+        }
+        if (entered !== expected) {
+            if (err) {
+                err.textContent = "PIN incorrecto. Comprueba que es el de esta mesa (no el de otra).";
+                err.classList.remove("hidden");
+            }
+            if (input) input.select();
+            return;
+        }
+        const cb = _pendingPinCallback;
+        const mesa = _pendingPinMesa;
+        closeMesaPinModal();
+        if (typeof cb === "function") cb(mesa);
+    }
+
+    function printMesasPins() {
+        ensureAllMesasHavePins({ persistMissing: true });
+        const mesas = getElectoralMesas().slice().sort((a, b) => {
+            const colComp = (a.colegio || "").localeCompare(b.colegio || "", "es", { sensitivity: "base" });
+            if (colComp !== 0) return colComp;
+            const secComp = (a.seccion || "").localeCompare(b.seccion || "", "es", { numeric: true, sensitivity: "base" });
+            if (secComp !== 0) return secComp;
+            return (a.mesa || "").localeCompare(b.mesa || "", "es", { sensitivity: "base" });
+        });
+        if (!mesas.length) {
+            alert("No hay mesas para imprimir PIN.");
+            return;
+        }
+
+        const printContainer = document.getElementById("printableActa");
+        if (!printContainer) {
+            alert("No se encontró el contenedor de impresión.");
+            return;
+        }
+
+        const byColegio = {};
+        mesas.forEach((m) => {
+            const key = m.colegio || "Sin colegio";
+            if (!byColegio[key]) byColegio[key] = [];
+            byColegio[key].push(m);
+        });
+
+        const colegioNames = Object.keys(byColegio).sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
+        const sectionsHtml = colegioNames.map((colName) => {
+            const rows = byColegio[colName].map((m) => `
+                <tr>
+                    <td style="padding:6px 8px;border-bottom:1px solid #ccc;font-weight:700;">${m.codigo}</td>
+                    <td style="padding:6px 8px;border-bottom:1px solid #ccc;">${m.seccion || "—"}</td>
+                    <td style="padding:6px 8px;border-bottom:1px solid #ccc;">${formatMesaApellidos(m)}</td>
+                    <td style="padding:6px 8px;border-bottom:1px solid #ccc;">${(m.censo || 0).toLocaleString()}</td>
+                    <td style="padding:6px 8px;border-bottom:1px solid #ccc;font-family:ui-monospace,Consolas,monospace;font-size:1.15rem;font-weight:800;letter-spacing:0.15em;">${normalizePin(m.pin)}</td>
+                </tr>`).join("");
+            return `
+                <section class="pins-colegio-block" style="page-break-inside:avoid;margin-bottom:18px;">
+                    <h2 style="margin:0 0 6px 0;font-size:14px;border-bottom:2px solid #000;padding-bottom:4px;">${colName}</h2>
+                    <p style="margin:0 0 8px 0;font-size:10px;">Entregar un PIN a cada presidente/a de mesa. No compartir entre mesas.</p>
+                    <table style="width:100%;border-collapse:collapse;font-size:11px;">
+                        <thead>
+                            <tr style="background:#eee;text-align:left;">
+                                <th style="padding:6px 8px;">Mesa</th>
+                                <th style="padding:6px 8px;">Sección</th>
+                                <th style="padding:6px 8px;">Apellidos</th>
+                                <th style="padding:6px 8px;">Censo</th>
+                                <th style="padding:6px 8px;">PIN</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </section>`;
+        }).join("");
+
+        printContainer.innerHTML = `
+            <div class="acta-header">
+                <div>
+                    <div class="acta-title">PINs de acceso por mesa</div>
+                    <div class="acta-subtitle">Rivas Vaciamadrid · Generales · ${new Date().toLocaleString("es-ES")}</div>
+                </div>
+            </div>
+            ${sectionsHtml}
+        `;
+
+        setTimeout(() => {
+            window.print();
+        }, 50);
+    }
+
     function isScrutinyFormActive() {
         return !!(state.selectedMesa);
     }
@@ -811,6 +1035,32 @@ require([
             exportToPDF();
         });
 
+        const btnPrintPins = document.getElementById("btn-admin-print-pins");
+        if (btnPrintPins) {
+            btnPrintPins.addEventListener("click", printMesasPins);
+        }
+        const btnClosePinModal = document.getElementById("btn-close-mesa-pin-modal");
+        if (btnClosePinModal) {
+            btnClosePinModal.addEventListener("click", closeMesaPinModal);
+        }
+        const btnCancelPinModal = document.getElementById("btn-cancel-mesa-pin");
+        if (btnCancelPinModal) {
+            btnCancelPinModal.addEventListener("click", closeMesaPinModal);
+        }
+        const btnConfirmPin = document.getElementById("btn-confirm-mesa-pin");
+        if (btnConfirmPin) {
+            btnConfirmPin.addEventListener("click", submitMesaPinModal);
+        }
+        const pinInput = document.getElementById("mesa-pin-input");
+        if (pinInput) {
+            pinInput.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    submitMesaPinModal();
+                }
+            });
+        }
+
         // Borrar canvas
         document.querySelectorAll(".btn-clear-canvas").forEach(btn => {
             btn.addEventListener("click", function() {
@@ -1281,8 +1531,16 @@ require([
         });
     }
 
-    // Selecciona una mesa para escrutinio o avance
+    // Selecciona una mesa para escrutinio o avance (colegio: exige PIN de esa mesa)
     function selectMesaForScrutiny(mesa) {
+        if (state.currentUser && state.currentUser.role === "colegio") {
+            openMesaPinModal(mesa, () => proceedSelectMesaForScrutiny(mesa));
+            return;
+        }
+        proceedSelectMesaForScrutiny(mesa);
+    }
+
+    function proceedSelectMesaForScrutiny(mesa) {
         state.selectedMesa = mesa;
 
         if (mesa.estado !== "Cerrada") {
@@ -1599,8 +1857,10 @@ require([
         "PACMA": { name: "PACMA", color: "#16a085", logo: "../Imagenes/logos/generales/PACMA.png" },
         "SAF": { name: "Se Acabó La Fiesta", color: "#0f172a", logo: "../Imagenes/logos/generales/Seacabolafiesta.png" },
         "SALF": { name: "Se Acabó La Fiesta", color: "#0f172a", logo: "../Imagenes/logos/generales/Seacabolafiesta.png" },
-        "FO": { name: "Frente Obrero", color: "#991b1b", logo: "../Imagenes/logos/generales/Logo_OITR.png" },
-        "PCTE": { name: "PCTE", color: "#b91c1c", logo: "../Imagenes/logos/generales/Logo_OITR.png" },
+        "FO": { name: "Frente Obrero", color: "#991b1b", logo: "../Imagenes/logos/generales/FO.png" },
+        "FA": { name: "Frente Amplio", color: "#f24405", logo: "../Imagenes/logos/generales/frenteamplio.jpeg" },
+        "FRENTE_AMPLIO": { name: "Frente Amplio", color: "#f24405", logo: "../Imagenes/logos/generales/frenteamplio.jpeg" },
+        "PCTE": { name: "PCTE", color: "#b91c1c", logo: "../Imagenes/logos/generales/PCTE.png" },
         "PUMMJ": { name: "PUM+J", color: "#64748b", logo: "../Imagenes/logos/generales/Logo_OITR.png" },
         "PUMJ": { name: "PUM+J", color: "#64748b", logo: "../Imagenes/logos/generales/Logo_OITR.png" },
         "RECORTES_CERO": { name: "Recortes Cero", color: "#475569", logo: "../Imagenes/logos/generales/Logo_OITR.png" },
@@ -1627,16 +1887,40 @@ require([
         return false;
     }
 
+    function dedupePartiesList(parties) {
+        if (!Array.isArray(parties)) return [];
+        const seenIds = new Set();
+        const seenNames = new Set();
+        const out = [];
+        parties.forEach((p) => {
+            if (!p || !p.id) return;
+            const idKey = String(p.id).trim().toUpperCase();
+            const nameKey = String(p.name || p.id).trim().toUpperCase();
+            // Evitar dos entradas con el mismo id (p. ej. PP / pp) o el mismo nombre visible
+            if (seenIds.has(idKey) || seenNames.has(nameKey)) {
+                console.warn("[PARTIDOS] Omitido duplicado:", p.id, p.name);
+                return;
+            }
+            seenIds.add(idKey);
+            seenNames.add(nameKey);
+            out.push({ ...p });
+        });
+        return out;
+    }
+
     function savePartiesToStorage(newParties) {
         if (Array.isArray(newParties)) {
-            const sourceList = [...newParties];
+            const sourceList = dedupePartiesList(newParties);
             PARTIES_CONFIG.length = 0;
             sourceList.forEach(p => {
-                if (p && p.id) {
-                    PARTIES_CONFIG.push({ ...p });
-                }
+                PARTIES_CONFIG.push(p);
             });
             window.PARTIES_CONFIG = PARTIES_CONFIG;
+
+            // Si había duplicados en GDB/local, persistir la lista limpia
+            if (sourceList.length < newParties.filter((p) => p && p.id).length && state.arcgisMode) {
+                savePartiesToArcGIS(PARTIES_CONFIG);
+            }
         }
         console.log("[PARTIDOS] Configuración en memoria (GDB):", PARTIES_CONFIG.length, "partidos");
     }
@@ -2145,13 +2429,15 @@ require([
         if (!tbody) return;
         tbody.innerHTML = "";
 
+        ensureAllMesasHavePins({ persistMissing: true });
+
         const colFilterEl = document.getElementById("admin-filter-colegio");
         const estFilterEl = document.getElementById("admin-filter-estado");
         const prevCol = colFilterEl ? colFilterEl.value : "";
         const prevEst = estFilterEl ? estFilterEl.value : "";
 
         if (colFilterEl) {
-            const colegios = [...new Set(state.mesas.map(m => m.colegio).filter(Boolean))]
+            const colegios = [...new Set(getElectoralMesas().map(m => m.colegio).filter(Boolean))]
                 .sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
             colFilterEl.innerHTML = `<option value="">Todos los colegios</option>` +
                 colegios.map(c => `<option value="${c.replace(/"/g, "&quot;")}">${c}</option>`).join("");
@@ -2179,7 +2465,7 @@ require([
         const filterEstado = estFilterEl ? estFilterEl.value : "";
 
         // Ordenar mesas: 1º por Colegio, 2º por Sección, 3º por Mesa
-        const sortedMesas = [...state.mesas]
+        const sortedMesas = getElectoralMesas()
             .filter(mesa => {
                 if (filterColegio && mesa.colegio !== filterColegio) return false;
                 if (filterEstado === "__editing__") return isMesaOccupied(mesa);
@@ -2200,6 +2486,7 @@ require([
             const tr = document.createElement("tr");
             const statusBadgeHtml = buildAdminStatusBadgeHtml(mesa);
             const baseEstado = resolveMesaBaseEstado(mesa);
+            const pinShow = normalizePin(mesa.pin) || "—";
 
             let actionButtons = `
                 <button class="admin-btn-action btn-edit-admin-votes" data-codigo="${mesa.codigo}" title="Editar Votos (Admin)">
@@ -2207,6 +2494,9 @@ require([
                 </button>
                 <button class="admin-btn-action btn-edit-admin-members" data-codigo="${mesa.codigo}" title="Editar Miembros (Admin)">
                     <i class="fa-solid fa-users-gear" style="color: #7c3aed;"></i>
+                </button>
+                <button class="admin-btn-action btn-regen-pin" data-codigo="${mesa.codigo}" title="Regenerar PIN de mesa">
+                    <i class="fa-solid fa-key" style="color: #0f766e;"></i>
                 </button>
             `;
             
@@ -2233,6 +2523,7 @@ require([
                 <td>${mesa.mesa}</td>
                 <td>${formatMesaApellidos(mesa)}</td>
                 <td>${mesa.censo}</td>
+                <td><span class="mesa-pin-code" title="PIN de acceso de la mesa">${pinShow}</span></td>
                 <td>${statusBadgeHtml}</td>
                 <td style="text-align: right; white-space: nowrap;">${actionButtons}</td>
             `;
@@ -2252,6 +2543,13 @@ require([
             btn.addEventListener("click", function() {
                 const cod = this.getAttribute("data-codigo");
                 openAdminEditMembersModal(cod);
+            });
+        });
+
+        tbody.querySelectorAll(".btn-regen-pin").forEach(btn => {
+            btn.addEventListener("click", function() {
+                const cod = this.getAttribute("data-codigo");
+                regenerateMesaPin(cod);
             });
         });
 
@@ -2351,7 +2649,8 @@ require([
             part1_votos: 0,
             part1_time: "",
             part2_votos: 0,
-            part2_time: ""
+            part2_time: "",
+            pin: existingMesa && normalizePin(existingMesa.pin) ? normalizePin(existingMesa.pin) : ""
         };
         PARTIES_CONFIG.forEach((p) => { mesaObj[p.field] = 0; });
         return mesaObj;
@@ -2399,7 +2698,8 @@ require([
             firma_vocal1: "",
             firma_vocal2: "",
             censo: census,
-            objectid: null
+            objectid: null,
+            pin: generateUniquePin(cod)
         };
         PARTIES_CONFIG.forEach(p => { nuevaMesa[p.field] = 0; });
 
@@ -2408,7 +2708,7 @@ require([
         saveLocalDatabase();
         sendMesaAddToServer(nuevaMesa);
 
-        alert(`¡Mesa ${cod} configurada con éxito!\nColegio: ${col}\nApellidos: ${li}–${lf}\nCenso: ${census} electores`);
+        alert(`¡Mesa ${cod} configurada con éxito!\nColegio: ${col}\nApellidos: ${li}–${lf}\nCenso: ${census} electores\nPIN: ${nuevaMesa.pin}`);
         document.getElementById("modal-admin-add-mesa").classList.add("hidden");
         renderAdminPortal();
         updateGlobalMetrics();
@@ -2856,7 +3156,7 @@ require([
         setTimeout(() => {
             console.log(simulateVotes ? "Simulación sobre estructura oficial..." : "Creando mesas oficiales...");
 
-            const weights = { PP: 0.30, PSOE: 0.28, VOX: 0.12, SUMAR: 0.10, UP: 0.08, Cs: 0.02, PACMA: 0.02, SALF: 0.03 };
+            const weights = { PP: 0.30, PSOE: 0.28, VOX: 0.12, SUMAR: 0.10, UP: 0.08, Cs: 0.02, PACMA: 0.02, SALF: 0.03, FA: 0.04 };
             const built = estructura.map((row) => {
                 const existing = state.mesas.find((m) => m.codigo === (String(row.seccion).padStart(3, "0") + String(row.mesa).toUpperCase()));
                 const mesaObj = buildEmptyMesaFromEstructura(row, existing);
@@ -2894,12 +3194,14 @@ require([
             // Conservar registros de configuración (__PARTIES_GEN__, etc.)
             const configRows = (state.mesas || []).filter((m) => m && isConfigRecordCodigo(m.codigo));
             state.mesas = configRows.concat(built);
+            // PIN único por mesa (si la mesa ya existía, se conserva el PIN previo)
+            built.forEach((m) => ensureMesaPin(m));
 
             applyMesasBatchToServer(
                 built,
                 simulateVotes
                     ? `Simulación lista: ${built.length} mesas oficiales con resultados de prueba.`
-                    : `Mesas oficiales creadas: ${built.length} mesas abiertas con censo y tramos LI–LF.`,
+                    : `Mesas oficiales creadas: ${built.length} mesas abiertas con censo, tramos LI–LF y PIN de acceso.`,
                 simulateVotes
                     ? `Subiendo simulación (${built.length} mesas) a la GDB…`
                     : `Creando ${built.length} mesas oficiales en la GDB…`
@@ -4320,7 +4622,7 @@ require([
         
         printContainer.innerHTML = `
             <div class="acta-header">
-                <img src="../Imagenes/Logo_OITR.png" class="acta-logo-oitr" alt="Ayuntamiento Rivas">
+                <img src="../Imagenes/logo_proceso.svg" class="acta-logo-oitr acta-logo-proceso" alt="Elecciones Generales">
                 <div class="acta-header-title">
                     <h1>AYUNTAMIENTO DE Rivas Vaciamadrid</h1>
                     <p>OFICINA DE INFORMACIÓN TERRITORIAL (OITR) - ELECCIONES GENERALES 2026</p>
@@ -4445,7 +4747,7 @@ require([
         const printContainer = document.getElementById("printableActa");
         printContainer.innerHTML = `
             <div class="acta-header">
-                <img src="../Imagenes/Logo_OITR.png" class="acta-logo-oitr" alt="Ayuntamiento Rivas">
+                <img src="../Imagenes/logo_proceso.svg" class="acta-logo-oitr acta-logo-proceso" alt="Elecciones Generales">
                 <div class="acta-header-title">
                     <h1>AYUNTAMIENTO DE Rivas Vaciamadrid</h1>
                     <p>OFICINA DE INFORMACIÓN TERRITORIAL (OITR) - ELECCIONES GENERALES 2026</p>
@@ -4763,7 +5065,7 @@ require([
         const printContainer = document.getElementById("printableActa");
         printContainer.innerHTML = `
             <div class="acta-header">
-                <img src="../Imagenes/Logo_OITR.png" class="acta-logo-oitr" alt="Ayuntamiento Rivas">
+                <img src="../Imagenes/logo_proceso.svg" class="acta-logo-oitr acta-logo-proceso" alt="Elecciones Generales">
                 <div class="acta-header-title">
                     <h1>AYUNTAMIENTO DE Rivas Vaciamadrid</h1>
                     <p>OFICINA DE INFORMACIÓN TERRITORIAL (OITR) - ELECCIONES GENERALES 2026</p>
@@ -5175,6 +5477,10 @@ require([
                                 releasedAt && (now - releasedAt) < 8000) {
                                 serverMesa.estado = "Abierta";
                             }
+                            // Conservar PIN local si el servidor aún no lo tiene en RESULTADOS_JSON
+                            if (normalizePin(localMesa.pin) && !normalizePin(serverMesa.pin)) {
+                                serverMesa.pin = normalizePin(localMesa.pin);
+                            }
                         }
                     });
 
@@ -5188,6 +5494,7 @@ require([
                     }
 
                     state.mesas = serverMesas;
+                    ensureAllMesasHavePins({ persistMissing: true });
                     rebuildDynamicMappings();
                     saveLocalDatabase();
                     
@@ -5333,7 +5640,8 @@ require([
             part1_votos: p1Votos,
             part1_time: p1Time,
             part2_votos: p2Votos,
-            part2_time: p2Time
+            part2_time: p2Time,
+            pin: extractPinFromMesaSources(resObj, mObj, existingMesa)
         };
 
         // Extraer votos de partidos y blancos/nulos de RESULTADOS_JSON o fallback a columnas
@@ -5384,6 +5692,7 @@ require([
         partidosVotesMap["BLANCOS"] = targetMesa.votos_blancos || 0;
         partidosVotesMap["NULOS"] = targetMesa.votos_nulos || 0;
 
+        const pinVal = normalizePin(targetMesa.pin);
         const resultadosObj = {
             part1: {
                 votos: targetMesa.part1_votos || 0,
@@ -5395,6 +5704,7 @@ require([
             },
             votos_partidos: partidosVotesMap
         };
+        if (pinVal) resultadosObj.pin = pinVal;
         const resultadosJsonStr = JSON.stringify(resultadosObj);
 
         let miembrosObj = { 
@@ -5423,6 +5733,7 @@ require([
                 };
             } catch (e) {}
         }
+        if (pinVal) miembrosObj.pin = pinVal;
         const miembrosStr = JSON.stringify(miembrosObj);
 
         const attrs = {

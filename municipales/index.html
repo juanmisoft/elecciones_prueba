@@ -633,6 +633,10 @@
                         <button id="btn-export-pdf" class="btn-header btn-secondary" title="Imprimir Informe a PDF">
                             <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> Imprimir PDF
                         </button>
+                        <button id="btn-admin-print-pins" class="btn-header btn-secondary"
+                            title="Imprimir PINs de mesas ordenados por colegio">
+                            <i class="fa-solid fa-key" style="color: #0f766e;"></i> Imprimir PINs
+                        </button>
                         <button id="btn-admin-manage-parties" class="btn-header btn-secondary"
                             style="background-color: #8b5cf6; color: #fff; border: none;"
                             title="Gestionar Fuerzas Políticas">
@@ -695,6 +699,7 @@
                                             <th>Sección</th>
                                             <th>Mesa</th>
                                             <th>Censo</th>
+                                            <th>PIN</th>
                                             <th>Estado</th>
                                             <th style="text-align: right;">Acciones</th>
                                         </tr>
@@ -1151,6 +1156,27 @@
     </div>
 
 
+    <!-- MODAL: PIN DE ACCESO A MESA (PORTAL COLEGIO) -->
+    <div id="modal-mesa-pin" class="modal-container hidden">
+        <div class="modal-card" style="max-width: 420px;">
+            <div class="modal-header">
+                <h3 id="modal-mesa-pin-title">Acceso a Mesa</h3>
+                <button type="button" class="modal-close" id="btn-close-mesa-pin-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="modal-mesa-pin-info" class="text-secondary" style="margin-bottom: 14px; font-size: 0.88rem;"></p>
+                <label for="mesa-pin-input" style="display:block; font-weight:700; margin-bottom:6px;">PIN de la mesa (6 dígitos)</label>
+                <input id="mesa-pin-input" class="portal-input mesa-pin-input" type="password" inputmode="numeric"
+                    autocomplete="one-time-code" maxlength="6" placeholder="••••••" />
+                <p id="mesa-pin-error" class="hidden" style="color:#dc2626; font-size:0.85rem; margin-top:8px;"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="btn-cancel-mesa-pin" class="btn-header btn-secondary">Cancelar</button>
+                <button type="button" id="btn-confirm-mesa-pin" class="btn-header btn-primary">Entrar en la mesa</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ==========================================================================
        ACTA OFICIAL DE IMPRESIÓN (ESTRUCTURA PARA MEDIA PRINT - SÓLO IMPRESORA)
        ========================================================================== -->
@@ -1168,7 +1194,7 @@
     <script src="section_colegio_mapping.js?v=2.1.7"></script>
 
     <!-- Lógica de Control y Sincronización -->
-    <script src="app.js?v=2.2.0"></script>
+    <script src="app.js?v=2.3.3"></script>
 </body>
 
 </html>

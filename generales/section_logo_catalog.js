@@ -7,7 +7,6 @@ const LOGO_CATALOG_FOLDER = "../Imagenes/logos/generales";
 
 const LOGO_PRESETS = [
   { label: "PP", file: "PP.png" },
-  { label: "PP (alt)", file: "PP2.png" },
   { label: "PSOE", file: "PSOE.png" },
   { label: "VOX", file: "VOX.png" },
   { label: "Sumar", file: "sumar-logo-png_seeklogo-487418.png" },
@@ -17,6 +16,7 @@ const LOGO_PRESETS = [
   { label: "PACMA", file: "PACMA.png" },
   { label: "Se Acabó La Fiesta (SALF / SAF)", file: "Seacabolafiesta.png" },
   { label: "Frente Obrero (FO)", file: "FO.png" },
+  { label: "Frente Amplio (FA)", file: "frenteamplio.jpeg" },
   { label: "PCTE", file: "PCTE.png" },
   { label: "Volt", file: "VOLT.svg" },
   { label: "Izquierda Española", file: "IZQESP2.png" },

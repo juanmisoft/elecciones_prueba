@@ -23,7 +23,7 @@
     <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css">
 
     <!-- Estilos del Proyecto -->
-    <link rel="stylesheet" href="styles.css?v=1.4.2">
+    <link rel="stylesheet" href="styles.css?v=1.4.3">
 </head>
 
 <body>
@@ -38,6 +38,7 @@
                     <span class="btn-back-hub-arrow" aria-hidden="true">&#8592;</span>
                     <span>HUB</span>
                 </a>
+                <img class="brand-proceso-logo" src="../Imagenes/logo_proceso.svg" alt="Elecciones Generales — logo oficial del proceso">
                 <div class="brand-title">
                     <span class="brand-context"><span class="live-pulse" aria-hidden="true"></span> En vivo</span>
                     <span class="brand-heading">Generales</span>
@@ -271,8 +272,8 @@
            ========================================================================== -->
         <section id="login-view" class="view-section login-view hidden">
             <div class="login-card">
-                <img src="../Imagenes/Logo_OITR.png" alt="ArcGIS Portal Logo" class="login-logo">
-                <div class="login-title">Portal ArcGIS Enterprise</div>
+                <img src="../Imagenes/logo_proceso.svg" alt="Elecciones Generales — logo oficial del proceso" class="login-logo login-logo-proceso">
+                <div class="login-title">Portal electoral · Generales</div>
                 <div class="login-subtitle">Introduce tus credenciales para acceder a la aplicación electoral</div>
 
                 <!-- Mensaje de error -->
@@ -631,6 +632,10 @@
                         <button id="btn-export-pdf" class="btn-header btn-secondary" title="Imprimir Informe a PDF">
                             <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> Imprimir PDF
                         </button>
+                        <button id="btn-admin-print-pins" class="btn-header btn-secondary"
+                            title="Imprimir PINs de mesas ordenados por colegio">
+                            <i class="fa-solid fa-key" style="color: #0f766e;"></i> Imprimir PINs
+                        </button>
                         <button id="btn-admin-manage-parties" class="btn-header btn-secondary"
                             style="background-color: #8b5cf6; color: #fff; border: none;"
                             title="Gestionar Fuerzas Políticas">
@@ -694,6 +699,7 @@
                                             <th>Mesa</th>
                                             <th>Apellidos</th>
                                             <th>Censo</th>
+                                            <th>PIN</th>
                                             <th>Estado</th>
                                             <th style="text-align: right;">Acciones</th>
                                         </tr>
@@ -1168,6 +1174,27 @@
     </div>
 
 
+    <!-- MODAL: PIN DE ACCESO A MESA (PORTAL COLEGIO) -->
+    <div id="modal-mesa-pin" class="modal-container hidden">
+        <div class="modal-card" style="max-width: 420px;">
+            <div class="modal-header">
+                <h3 id="modal-mesa-pin-title">Acceso a Mesa</h3>
+                <button type="button" class="modal-close" id="btn-close-mesa-pin-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="modal-mesa-pin-info" class="text-secondary" style="margin-bottom: 14px; font-size: 0.88rem;"></p>
+                <label for="mesa-pin-input" style="display:block; font-weight:700; margin-bottom:6px;">PIN de la mesa (6 dígitos)</label>
+                <input id="mesa-pin-input" class="portal-input mesa-pin-input" type="password" inputmode="numeric"
+                    autocomplete="one-time-code" maxlength="6" placeholder="••••••" />
+                <p id="mesa-pin-error" class="hidden" style="color:#dc2626; font-size:0.85rem; margin-top:8px;"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="btn-cancel-mesa-pin" class="btn-header btn-secondary">Cancelar</button>
+                <button type="button" id="btn-confirm-mesa-pin" class="btn-header btn-primary">Entrar en la mesa</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ==========================================================================
        ACTA OFICIAL DE IMPRESIÓN (ESTRUCTURA PARA MEDIA PRINT - SÓLO IMPRESORA)
        ========================================================================== -->
@@ -1189,12 +1216,12 @@
     <script src="https://js.arcgis.com/4.29/"></script>
 
     <!-- Datos de Configuración del Proyecto (Mapeo Rivas) -->
-    <script src="section_logo_catalog.js?v=1.2.0"></script>
-    <script src="section_colegio_mapping.js?v=1.2.0"></script>
+    <script src="section_logo_catalog.js?v=1.2.2"></script>
+    <script src="section_colegio_mapping.js?v=1.2.1"></script>
     <script src="mesas_estructura_oficial.js?v=1.0.1"></script>
 
     <!-- Lógica de Control y Sincronización -->
-    <script src="app.js?v=1.3.5"></script>
+    <script src="app.js?v=1.4.3"></script>
 </body>
 
 </html>
