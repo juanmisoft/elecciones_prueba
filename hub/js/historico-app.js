@@ -507,16 +507,19 @@ require([
     const colegio = colegioFromAttr
       || (window.HUB_CONFIG.colegioForSection && window.HUB_CONFIG.colegioForSection(sectionKey))
       || "No disponible";
-    const { ranked, validBallots, ballots } = sectionRankForFeature(attrs, yearCfg);
-    const top5 = ranked.filter((p) => p.votes > 0).slice(0, 5);
-    const win = top5[0] || null;
+    const { ranked, validBallots, ballots, blanks, nulls } = sectionRankForFeature(attrs, yearCfg);
+    // Popup: todas las fuerzas con votos; el resumen lateral sigue limitado a top 5.
+    const withVotes = ranked.filter((p) => p.votes > 0);
+    const win = withVotes[0] || null;
     const pctBase = validBallots > 0 ? validBallots : ballots;
+    const totalBase = ballots > 0 ? ballots : (validBallots + nulls);
 
     const partyLabel = (p) => p.fullName || p.name;
+    const fmtPct = (votes, base) => (base > 0 ? ((votes / base) * 100).toFixed(2) : "0.00");
 
-    const rows = top5.length
-      ? top5.map((p, idx) => {
-          const pct = pctBase > 0 ? ((p.votes / pctBase) * 100).toFixed(2) : "0.00";
+    const rows = withVotes.length
+      ? withVotes.map((p, idx) => {
+          const pct = fmtPct(p.votes, pctBase);
           return `<li>
             <span class="left">
               <span>${idx + 1}.</span>
@@ -527,6 +530,23 @@ require([
           </li>`;
         }).join("")
       : "<li>Sin votos contabilizados</li>";
+
+    const extraRows = `
+      <li>
+        <span class="left">
+          <span class="swatch" style="background:#94a3b8"></span>
+          <span class="party-name">Votos en blanco</span>
+        </span>
+        <span class="pct">${blanks.toLocaleString("es-ES")} · ${fmtPct(blanks, pctBase)}%</span>
+      </li>
+      <li>
+        <span class="left">
+          <span class="swatch" style="background:#64748b"></span>
+          <span class="party-name">Votos nulos</span>
+        </span>
+        <span class="pct">${nulls.toLocaleString("es-ES")} · ${fmtPct(nulls, totalBase)}%</span>
+      </li>
+    `;
 
     const winLine = win
       ? `<p class="hist-popup-meta">Ganador: <strong>${partyLabel(win)}</strong> (${win.votes.toLocaleString("es-ES")} votos)</p>`
@@ -542,8 +562,8 @@ require([
         ${sectionLine}
         <p class="hist-popup-meta"><strong>Convocatoria:</strong> ${yearCfg.label}</p>
         ${winLine}
-        <h5>5 fuerzas más votadas</h5>
-        <ul class="hist-popup-list">${rows}</ul>
+        <h5>Fuerzas con votos</h5>
+        <ul class="hist-popup-list">${rows}${extraRows}</ul>
       </div>
     `;
   }

@@ -921,6 +921,216 @@ a { color: inherit; text-decoration: none; }
   }
 }
 
+/* ===== HISTÓRICO · móvil / tablet estrecha ===== */
+@media (max-width: 768px) {
+  .ambito-page {
+    height: auto;
+    max-height: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ambito-top {
+    padding: 0.65rem 0 0.75rem;
+  }
+
+  .ambito-top-row-wide {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.7rem;
+    min-height: 0;
+    padding: 0 0.85rem;
+    padding-left: max(0.85rem, env(safe-area-inset-left));
+    padding-right: max(0.85rem, env(safe-area-inset-right));
+  }
+
+  .btn-back-hub {
+    align-self: flex-start;
+    height: 38px;
+    padding: 0 12px;
+    font-size: 0.82rem;
+  }
+
+  .ambito-top-text {
+    flex: none;
+    width: 100%;
+  }
+
+  .ambito-title {
+    font-size: clamp(1.35rem, 6.5vw, 1.75rem);
+  }
+
+  .ambito-sub {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    font-size: 0.84rem;
+    line-height: 1.4;
+  }
+
+  .ambito-top-actions {
+    max-width: none;
+    width: 100%;
+  }
+
+  .next-inline {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    padding: 0.55rem 0.65rem;
+  }
+
+  .next-inline-text {
+    flex: 0 0 auto;
+    font-size: 0.74rem;
+  }
+
+  .next-inline-note {
+    white-space: normal;
+    max-width: none;
+    overflow: visible;
+    text-overflow: unset;
+  }
+
+  .ambito-page .btn {
+    flex: 0 0 auto;
+    align-self: stretch;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .workspace {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(52vh, 58vh) auto;
+    height: auto;
+  }
+
+  .side-panel {
+    padding: 0.75rem 0.85rem;
+    overflow: visible;
+  }
+
+  .panel-block {
+    margin-bottom: 0.7rem;
+  }
+
+  .panel-block:last-child {
+    margin-bottom: 0;
+  }
+
+  .mode-toggle button,
+  .field select {
+    min-height: 42px;
+    font-size: 0.85rem;
+    padding: 0.55rem 0.65rem;
+  }
+
+  .map-wrap {
+    min-height: 52vh;
+    height: 58vh;
+    max-height: 70vh;
+  }
+
+  .swipe-cartel {
+    bottom: 14px;
+    max-width: min(48%, 160px);
+    padding: 0.35rem 0.5rem;
+  }
+
+  .swipe-cartel-a { left: 8px; }
+  .swipe-cartel-b { right: 8px; }
+
+  .swipe-cartel-side {
+    font-size: 0.58rem;
+  }
+
+  .swipe-cartel-title {
+    font-size: 0.78rem;
+  }
+
+  .summary-rail {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+    padding: 0.75rem 0.85rem;
+    padding-bottom: max(0.85rem, env(safe-area-inset-bottom));
+    overflow: visible;
+  }
+
+  .summary-card {
+    overflow: visible;
+    min-height: 0;
+  }
+
+  .summary-parties {
+    overflow: visible;
+    flex: none;
+  }
+
+  .summary-parties .legend-list {
+    overflow: visible;
+    max-height: none;
+  }
+
+  .workspace.compare-hidden .summary-parties .legend-row {
+    font-size: 0.88rem;
+    padding: 0.5rem 0.6rem;
+  }
+
+  /* Popup ArcGIS más usable en pantallas estrechas */
+  .ambito-page .esri-popup__main-container {
+    max-width: min(92vw, 360px) !important;
+  }
+
+  .ambito-page .esri-view-width-xsmall .esri-popup__main-container,
+  .ambito-page .esri-view-width-small .esri-popup__main-container {
+    width: min(92vw, 360px) !important;
+    max-width: min(92vw, 360px) !important;
+  }
+
+  .hist-popup {
+    font-size: 0.82rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .ambito-top-row-wide {
+    padding: 0 0.7rem;
+  }
+
+  .ambito-title {
+    font-size: 1.3rem;
+  }
+
+  .workspace {
+    grid-template-rows: auto minmax(48vh, 54vh) auto;
+  }
+
+  .map-wrap {
+    min-height: 48vh;
+    height: 54vh;
+  }
+
+  .mode-toggle {
+    gap: 0.35rem;
+  }
+
+  .mode-toggle button {
+    font-size: 0.8rem;
+  }
+
+  .swipe-cartel {
+    max-width: min(46%, 140px);
+  }
+
+  .summary-card .metric .value {
+    font-size: 1.15rem;
+  }
+}
+
 /* ===== HUB RRSS / compartir ===== */
 .hub-share-row {
   display: flex;
