@@ -63,15 +63,10 @@ require([
     const ADMIN_SYNC_MS = 4000;     // Admin: estados de mesas casi en vivo
     const COLEGIO_SYNC_MS = 4000;   // Colegio: solo en listado de mesas (no dentro del formulario)
 
-    // Whitelist Portal SIT (grupo elecciones). Password siempre en sit.rivasciudad.es/portal
-        const AUTH_STORAGE_PREFIX = "elecciones_gen";
-
-    const LOCAL_USERS = {
-        "admin1EleccionesGen": { role: "admin", colegio: null },
-        "eljaramaEleccionesGen": { role: "colegio", colegio: "C.E.I.P. JARAMA" },
-        "elolivarEleccionesGen": { role: "colegio", colegio: "C.E.I.P. EL OLIVAR" },
-        "jmrojas": { role: "admin", colegio: null }
-    };
+    // Auth: rol/colegio viven en tabla Hosted (no whitelist ni passwords en el cliente).
+    // Password siempre en sit.rivasciudad.es/portal
+    const AUTH_STORAGE_PREFIX = "elecciones_gen";
+    const URL_USUARIOS_TABLE_EDIT = "https://sit.rivasciudad.es/server/rest/services/Hosted/Usuarios_APP_Elecciones_Generales/FeatureServer/0";
 
     // Mesas iniciales por defecto (vacío, la única fuente es ArcGIS Server)
     const DEFAULT_MESAS = [];
@@ -108,8 +103,10 @@ require([
         // 1. Inicializar base de datos local
         initLocalDatabase();
         
-        // 2. Intentar recuperar sesión previa de usuario
-        restoreSession();
+        // 2. Intentar recuperar sesión previa de usuario (revalida contra tabla Portal)
+        restoreSession().catch((err) => {
+            console.warn("No se pudo restaurar la sesión:", err);
+        });
 
         // 3. Inicializar el Mapa de ArcGIS
         initArcGISMap();
@@ -445,31 +442,44 @@ require([
         window.dispatchEvent(new Event("localDatabaseUpdated"));
     }
 
-    // Intenta restaurar sesión de usuario de localStorage
-    function restoreSession() {
+    // Intenta restaurar sesión de usuario de localStorage y revalidar contra la tabla Portal
+    async function restoreSession() {
         const storedUser = localStorage.getItem(authKey("user")) || localStorage.getItem("elecciones_user");
-        if (storedUser) {
-            try {
-                const parsed = JSON.parse(storedUser);
-                const allowedUsers = Object.keys(LOCAL_USERS).map(u => u.toLowerCase());
-                if (parsed && parsed.username && allowedUsers.includes(parsed.username.toLowerCase())) {
-                    state.currentUser = parsed;
-                    state.arcgisMode = (localStorage.getItem(authKey("arcgis_mode")) || localStorage.getItem("elecciones_arcgis_mode")) === "true";
-                    showLoggedInUserInterface();
-                    
-                    // Si estamos en modo ArcGIS, forzar sincronización de mesas tras restaurar sesión
-                    if (state.arcgisMode) {
-                        syncDataWithArcGISServer();
-                        startPeriodicSync();
-                    }
-                } else {
-                    localStorage.removeItem(authKey("user")); localStorage.removeItem("elecciones_user");
-                    localStorage.removeItem(authKey("arcgis_mode")); localStorage.removeItem("elecciones_arcgis_mode");
-                }
-            } catch (e) {
-                localStorage.removeItem(authKey("user")); localStorage.removeItem("elecciones_user");
-                localStorage.removeItem(authKey("arcgis_mode")); localStorage.removeItem("elecciones_arcgis_mode");
+        if (!storedUser) return;
+
+        try {
+            const parsed = JSON.parse(storedUser);
+            if (!parsed || !parsed.username) {
+                clearAuthStorage();
+                return;
             }
+
+            const profile = await resolveUserFromTable(parsed.username);
+            if (!profile) {
+                console.warn(`Sesión inválida o usuario sin fila en tabla auth: ${parsed.username}`);
+                IdentityManager.destroyCredentials();
+                state.currentUser = null;
+                state.arcgisMode = false;
+                clearAuthStorage();
+                return;
+            }
+
+            state.currentUser = {
+                username: parsed.username,
+                role: profile.role,
+                colegioName: profile.colegioName
+            };
+            state.arcgisMode = (localStorage.getItem(authKey("arcgis_mode")) || localStorage.getItem("elecciones_arcgis_mode")) === "true";
+            localStorage.setItem(authKey("user"), JSON.stringify(state.currentUser));
+            showLoggedInUserInterface();
+
+            if (state.arcgisMode) {
+                syncDataWithArcGISServer();
+                startPeriodicSync();
+            }
+        } catch (e) {
+            console.warn("Error restaurando sesión:", e);
+            clearAuthStorage();
         }
     }
 
@@ -744,16 +754,17 @@ require([
                 // Generar y registrar token oficial de ArcGIS Enterprise
                 generateAndRegisterArcGISToken(username, password).then(() => {
                     console.log("Token de ArcGIS obtenido y registrado con éxito para:", username);
-                    const allowed = loginUserSuccess(username, true);
+                    return loginUserSuccess(username, true);
+                }).then((allowed) => {
                     if (!allowed) {
                         if (errBox && errText) {
-                            errText.textContent = `El usuario '${username}' no tiene rol configurado en la aplicación.`;
+                            errText.textContent = `El usuario '${username}' está autenticado en Portal pero no está dado de alta en la tabla de acceso de esta aplicación.`;
                             errBox.classList.remove("hidden");
                             errBox.style.display = "flex";
                         }
                     }
                 }).catch(err => {
-                    console.warn("Fallo de autenticación en ArcGIS Enterprise:", err);
+                    console.warn("Fallo de autenticación / tabla auth:", err);
                     if (errBox && errText) {
                         errText.textContent = err.message || "Usuario o contraseña incorrectos en el Portal ArcGIS Enterprise.";
                         errBox.classList.remove("hidden");
@@ -1126,30 +1137,121 @@ require([
         }).then(credential => {
             console.log("Autenticación exitosa en Portal ArcGIS. Usuario:", credential.userId);
             saveIdentityManagerSession();
-            const allowed = loginUserSuccess(credential.userId, true);
-            if (!allowed) {
-                if (errorDiv && errorText) {
-                    errorText.textContent = `El usuario '${credential.userId}' no tiene rol configurado en la aplicación.`;
+            return loginUserSuccess(credential.userId, true).then((allowed) => {
+                if (!allowed && errorDiv && errorText) {
+                    errorText.textContent = `El usuario '${credential.userId}' está autenticado en Portal pero no está dado de alta en la tabla de acceso de esta aplicación.`;
                     errorDiv.classList.remove("hidden");
                     errorDiv.style.display = "flex";
                 }
-            }
+            });
         }).catch(err => {
-            console.warn("Fallo de autenticación en ArcGIS Portal:", err);
+            console.warn("Fallo de autenticación / tabla auth:", err);
             if (errorDiv && errorText) {
-                errorText.textContent = "Error al autenticar contra el portal ArcGIS Enterprise.";
+                errorText.textContent = err.message || "Error al autenticar contra el portal ArcGIS Enterprise.";
                 errorDiv.classList.remove("hidden");
                 errorDiv.style.display = "flex";
             }
         });
     }
 
-    function loginUserSuccess(username, isArcGIS) {
+    function escapeSqlLiteral(value) {
+        return String(value || "").replace(/'/g, "''");
+    }
+
+    function attrCI(attrs, name) {
+        if (!attrs) return undefined;
+        if (Object.prototype.hasOwnProperty.call(attrs, name)) return attrs[name];
+        const key = Object.keys(attrs).find((k) => k.toLowerCase() === name.toLowerCase());
+        return key ? attrs[key] : undefined;
+    }
+
+    function findFieldName(fields, candidates) {
+        const list = fields || [];
+        for (const cand of candidates) {
+            const hit = list.find((f) => f && f.name && f.name.toLowerCase() === cand.toLowerCase());
+            if (hit) return hit.name;
+        }
+        return null;
+    }
+
+    // Resuelve rol + colegio desde la tabla Hosted (solo la fila del usuario autenticado).
+    async function resolveUserFromTable(username) {
+        if (!username || !URL_USUARIOS_TABLE_EDIT) return null;
+
+        // Asegura token también para la capa Hosted (no solo el FeatureServer de mesas).
+        try {
+            await IdentityManager.getCredential(URL_USUARIOS_TABLE_EDIT);
+        } catch (credErr) {
+            const msg = (credErr && (credErr.message || credErr.details)) || "sin permiso";
+            throw new Error(`No hay acceso a la tabla de usuarios (comparte la capa con el grupo/organización). Detalle: ${msg}`);
+        }
+
+        const usersLayer = new FeatureLayer({
+            url: URL_USUARIOS_TABLE_EDIT,
+            outFields: ["*"]
+        });
+        await usersLayer.load();
+
+        const fUser = findFieldName(usersLayer.fields, ["USERNAME", "USUARIO", "USER", "LOGIN"]);
+        const fRole = findFieldName(usersLayer.fields, ["ROLE", "ROL"]);
+        const fCol = findFieldName(usersLayer.fields, ["COLEGIO", "COLEGIO_NAME", "CENTRO"]);
+        if (!fUser || !fRole) {
+            const names = (usersLayer.fields || []).map((f) => f.name).join(", ");
+            throw new Error(`La tabla de usuarios no tiene campos USERNAME/ROLE. Campos actuales: ${names || "(ninguno)"}`);
+        }
+
+        const safe = escapeSqlLiteral(username);
+        const query = usersLayer.createQuery();
+        query.where = `UPPER(${fUser}) = UPPER('${safe}')`;
+        query.outFields = ["*"];
+        query.returnGeometry = false;
+        query.num = 1;
+
+        let result;
+        try {
+            result = await usersLayer.queryFeatures(query);
+        } catch (qErr) {
+            const detail = (qErr && (qErr.message || (qErr.details && qErr.details.join("; ")))) || String(qErr);
+            throw new Error(`Error consultando la tabla de usuarios: ${detail}`);
+        }
+
+        if (!result.features || result.features.length === 0) return null;
+
+        const attrs = result.features[0].attributes || {};
+        const roleRaw = String(attrs[fRole] != null ? attrs[fRole] : attrCI(attrs, "ROLE") || "").trim().toLowerCase();
+        const colegioRaw = String(
+            (fCol && attrs[fCol] != null ? attrs[fCol] : attrCI(attrs, "COLEGIO")) || ""
+        ).trim();
+
+        if (roleRaw !== "admin" && roleRaw !== "colegio") {
+            throw new Error(`ROLE inválido para '${username}' (valor '${roleRaw || "(vacío)"}'). Usa exactamente admin o colegio.`);
+        }
+        if (roleRaw === "colegio" && !colegioRaw) {
+            throw new Error(`El usuario '${username}' es colegio pero COLEGIO está vacío en la tabla.`);
+        }
+
+        return {
+            role: roleRaw,
+            colegioName: roleRaw === "admin" ? null : colegioRaw
+        };
+    }
+
+    async function loginUserSuccess(username, isArcGIS) {
         if (!username) return false;
 
-        // Solo usuarios de la whitelist de ESTE ámbito (sin heurísticas "admin"/colegio).
-        const matchKey = Object.keys(LOCAL_USERS).find(k => k.toLowerCase() === username.toLowerCase());
-        if (!matchKey) {
+        let profile = null;
+        try {
+            profile = await resolveUserFromTable(username);
+        } catch (err) {
+            console.warn(`No se pudo consultar la tabla de usuarios auth (${AUTH_STORAGE_PREFIX}):`, err);
+            IdentityManager.destroyCredentials();
+            state.currentUser = null;
+            state.arcgisMode = false;
+            clearAuthStorage();
+            throw err;
+        }
+
+        if (!profile) {
             console.warn(`Usuario no autorizado en este ámbito (${AUTH_STORAGE_PREFIX}): ${username}`);
             IdentityManager.destroyCredentials();
             state.currentUser = null;
@@ -1158,22 +1260,19 @@ require([
             return false;
         }
 
-        const userObj = LOCAL_USERS[matchKey];
         state.currentUser = {
             username: username,
-            role: userObj.role,
-            colegioName: userObj.colegio
+            role: profile.role,
+            colegioName: profile.colegioName
         };
         state.arcgisMode = isArcGIS;
 
-        // Persistir sesión
         localStorage.setItem(authKey("user"), JSON.stringify(state.currentUser));
         localStorage.setItem(authKey("arcgis_mode"), isArcGIS ? "true" : "false");
         saveIdentityManagerSession();
 
         showLoggedInUserInterface();
 
-        // Si estamos en modo ArcGIS, sincronizamos datos con el FeatureServer
         if (isArcGIS) {
             syncDataWithArcGISServer();
             startPeriodicSync();

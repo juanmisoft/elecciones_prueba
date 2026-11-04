@@ -39,3 +39,9 @@ build/
 SI_*.txt
 censo-data/
 elecciones-data/
+
+# Informes/resultados locales de carga (no subir a GitHub)
+loadtests/*.pdf
+loadtests/*.html
+loadtests/results-*.json
+loadtests/_md_to_html.py
