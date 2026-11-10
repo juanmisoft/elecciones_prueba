@@ -86,10 +86,6 @@
                         <i class="fa-solid fa-school"></i>
                         <span>Colegios</span>
                     </button>
-                    <button class="tab-btn" data-tab="censo-search-pane">
-                        <i class="fa-solid fa-id-card"></i>
-                        <span>Mi Colegio</span>
-                    </button>
                 </div>
 
                 <!-- PESTAÑA A: Estadísticas Globales del Municipio -->
@@ -202,43 +198,6 @@
                             <!-- Se rellena dinámicamente -->
                         </div>
                     </div>
-
-                    <!-- PESTAÑA C: Consulta de Censo por DNI -->
-                    <div id="censo-search-pane" class="tab-pane">
-                        <div class="card-title">Consulta de Censo Electoral</div>
-                        <p class="text-secondary" style="font-size: 0.8rem; margin-bottom: 14px;">
-                            Introduce tu DNI o NIE para consultar en qué colegio, sección y mesa te corresponde votar.
-                        </p>
-
-                        <!-- Buscador de DNI -->
-                        <div style="display: flex; gap: 8px; margin-bottom: 14px;">
-                            <div class="search-box" style="flex: 1; margin-bottom: 0;">
-                                <i class="fa-solid fa-id-card"></i>
-                                <input type="text" id="dni-search-input" placeholder="Ej. 12345678A..."
-                                    style="text-transform: uppercase;">
-                            </div>
-                            <button id="btn-dni-search-action" class="btn-header btn-primary"
-                                style="padding: 0 16px; font-size: 0.85rem; border-radius: 6px; flex-shrink: 0;">
-                                <i class="fa-solid fa-magnifying-glass"></i> Buscar
-                            </button>
-                        </div>
-
-                        <!-- Indicador de Carga / Estado -->
-                        <div id="dni-search-status" class="hidden"
-                            style="text-align: center; padding: 12px; font-size: 0.85rem; color: var(--text-muted);">
-                            <i class="fa-solid fa-spinner fa-spin"></i> Cargando censo electoral...
-                        </div>
-
-                        <!-- Contenedor de Resultados -->
-                        <div id="dni-search-result-container">
-                            <div
-                                style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 30px 10px;">
-                                <i class="fa-solid fa-address-card"
-                                    style="font-size: 2.2rem; margin-bottom: 10px; display: block; opacity: 0.35;"></i>
-                                Escribe tu DNI/NIE y pulsa Buscar para saber dónde votar.
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </aside>
 
@@ -337,6 +296,38 @@
                     <button id="btn-portal-logout" class="btn-header btn-secondary">
                         <i class="fa-solid fa-map"></i> Volver al visor público
                     </button>
+                </div>
+
+                <!-- Consulta de censo (Mi Colegio) -->
+                <div class="portal-card censo-search-widget">
+                    <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-id-card"></i> Mi Colegio
+                    </div>
+                    <p class="text-secondary" style="font-size: 0.8rem; margin-bottom: 14px;">
+                        Introduce el DNI o NIE del elector para consultar colegio, sección y mesa.
+                    </p>
+                    <div style="display: flex; gap: 8px; margin-bottom: 14px;">
+                        <div class="search-box" style="flex: 1; margin-bottom: 0;">
+                            <i class="fa-solid fa-id-card"></i>
+                            <input type="text" class="dni-search-input" placeholder="Ej. 12345678A..."
+                                style="text-transform: uppercase;" autocomplete="off">
+                        </div>
+                        <button type="button" class="btn-header btn-primary btn-dni-search-action"
+                            style="padding: 0 16px; font-size: 0.85rem; border-radius: 6px; flex-shrink: 0;">
+                            <i class="fa-solid fa-magnifying-glass"></i> Buscar
+                        </button>
+                    </div>
+                    <div class="dni-search-status hidden"
+                        style="text-align: center; padding: 12px; font-size: 0.85rem; color: var(--text-muted);">
+                        <i class="fa-solid fa-spinner fa-spin"></i> Cargando censo electoral...
+                    </div>
+                    <div class="dni-search-result-container">
+                        <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 20px 10px;">
+                            <i class="fa-solid fa-address-card"
+                                style="font-size: 2rem; margin-bottom: 10px; display: block; opacity: 0.35;"></i>
+                            Escribe el DNI/NIE y pulsa Buscar.
+                        </div>
+                    </div>
                 </div>
 
                 <!-- PASO 1: SELECCIONAR MESA ELECTORAL -->
@@ -633,10 +624,6 @@
                         <button id="btn-export-pdf" class="btn-header btn-secondary" title="Imprimir Informe a PDF">
                             <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> Imprimir PDF
                         </button>
-                        <button id="btn-admin-print-pins" class="btn-header btn-secondary"
-                            title="Imprimir PINs de mesas ordenados por colegio">
-                            <i class="fa-solid fa-key" style="color: #0f766e;"></i> Imprimir PINs
-                        </button>
                         <button id="btn-admin-manage-parties" class="btn-header btn-secondary"
                             style="background-color: #8b5cf6; color: #fff; border: none;"
                             title="Gestionar Fuerzas Políticas">
@@ -699,7 +686,6 @@
                                             <th>Sección</th>
                                             <th>Mesa</th>
                                             <th>Censo</th>
-                                            <th>PIN</th>
                                             <th>Estado</th>
                                             <th style="text-align: right;">Acciones</th>
                                         </tr>
@@ -732,6 +718,38 @@
                                     <div class="stat-value" id="admin-metric-participation">0.00%</div>
                                     <span class="stat-label" style="margin-top: 4px; font-size: 0.65rem;"
                                         id="admin-metric-participation-sub">Pendiente de avances</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Consulta de censo (Mi Colegio) -->
+                        <div class="portal-card censo-search-widget">
+                            <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-solid fa-id-card"></i> Mi Colegio
+                            </div>
+                            <p class="text-secondary" style="font-size: 0.8rem; margin-bottom: 14px;">
+                                Introduce el DNI o NIE del elector para consultar colegio, sección y mesa.
+                            </p>
+                            <div style="display: flex; gap: 8px; margin-bottom: 14px;">
+                                <div class="search-box" style="flex: 1; margin-bottom: 0;">
+                                    <i class="fa-solid fa-id-card"></i>
+                                    <input type="text" class="dni-search-input" placeholder="Ej. 12345678A..."
+                                        style="text-transform: uppercase;" autocomplete="off">
+                                </div>
+                                <button type="button" class="btn-header btn-primary btn-dni-search-action"
+                                    style="padding: 0 16px; font-size: 0.85rem; border-radius: 6px; flex-shrink: 0;">
+                                    <i class="fa-solid fa-magnifying-glass"></i> Buscar
+                                </button>
+                            </div>
+                            <div class="dni-search-status hidden"
+                                style="text-align: center; padding: 12px; font-size: 0.85rem; color: var(--text-muted);">
+                                <i class="fa-solid fa-spinner fa-spin"></i> Cargando censo electoral...
+                            </div>
+                            <div class="dni-search-result-container">
+                                <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 20px 10px;">
+                                    <i class="fa-solid fa-address-card"
+                                        style="font-size: 2rem; margin-bottom: 10px; display: block; opacity: 0.35;"></i>
+                                    Escribe el DNI/NIE y pulsa Buscar.
                                 </div>
                             </div>
                         </div>
@@ -1156,27 +1174,6 @@
     </div>
 
 
-    <!-- MODAL: PIN DE ACCESO A MESA (PORTAL COLEGIO) -->
-    <div id="modal-mesa-pin" class="modal-container hidden">
-        <div class="modal-card" style="max-width: 420px;">
-            <div class="modal-header">
-                <h3 id="modal-mesa-pin-title">Acceso a Mesa</h3>
-                <button type="button" class="modal-close" id="btn-close-mesa-pin-modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <p id="modal-mesa-pin-info" class="text-secondary" style="margin-bottom: 14px; font-size: 0.88rem;"></p>
-                <label for="mesa-pin-input" style="display:block; font-weight:700; margin-bottom:6px;">PIN de la mesa (6 dígitos)</label>
-                <input id="mesa-pin-input" class="portal-input mesa-pin-input" type="password" inputmode="numeric"
-                    autocomplete="one-time-code" maxlength="6" placeholder="••••••" />
-                <p id="mesa-pin-error" class="hidden" style="color:#dc2626; font-size:0.85rem; margin-top:8px;"></p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" id="btn-cancel-mesa-pin" class="btn-header btn-secondary">Cancelar</button>
-                <button type="button" id="btn-confirm-mesa-pin" class="btn-header btn-primary">Entrar en la mesa</button>
-            </div>
-        </div>
-    </div>
-
     <!-- ==========================================================================
        ACTA OFICIAL DE IMPRESIÓN (ESTRUCTURA PARA MEDIA PRINT - SÓLO IMPRESORA)
        ========================================================================== -->
@@ -1194,7 +1191,7 @@
     <script src="section_colegio_mapping.js?v=2.1.7"></script>
 
     <!-- Lógica de Control y Sincronización -->
-    <script src="app.js?v=2.3.3"></script>
+    <script src="app.js?v=2.3.5"></script>
 </body>
 
 </html>

@@ -131,10 +131,27 @@ require([
 
         // 8. Renderizar vistas iniciales
         updateGlobalMetrics();
+        initAppHistoryNavigation();
 
         // 9. Exponer estado globalmente para depuración en la consola del navegador
         window.appState = state;
         window.appConfig = { PARTIES_CONFIG, SECTION_COLEGIO_MAPPING, COLEGIO_DETAILS };
+        window.runCensoSearch = function (btnOrWidget) {
+            try {
+                const el = btnOrWidget && btnOrWidget.nodeType ? btnOrWidget : null;
+                const widget = el
+                    ? (el.classList && el.classList.contains("censo-search-widget") ? el : el.closest(".censo-search-widget"))
+                    : document.querySelector("#colegio-portal-view .censo-search-widget, #admin-portal-view .censo-search-widget, .censo-search-widget");
+                if (!widget) {
+                    alert("No se encontró el buscador de censo en la página.");
+                    return;
+                }
+                handleDniSearch(widget);
+            } catch (err) {
+                console.error("[CENSO] Error en runCensoSearch:", err);
+                alert("Error al iniciar la búsqueda de censo: " + (err && err.message ? err.message : err));
+            }
+        };
 
         // 10. Liberar la mesa solo al cerrar/navegar de verdad (no al pasar a bfcache / hibernar pestaña).
         window.addEventListener("pagehide", (event) => {
@@ -243,47 +260,18 @@ require([
     }
 
     function ensureMesaPin(mesa) {
-        if (!mesa || isConfigRecordCodigo(mesa.codigo)) return "";
-        const existing = normalizePin(mesa.pin);
-        if (existing) {
-            mesa.pin = existing;
-            return existing;
-        }
-        mesa.pin = generateUniquePin(mesa.codigo);
-        return mesa.pin;
+        // PINs desactivados: no se generan ni se asocian a mesas.
+        if (!mesa) return "";
+        return normalizePin(mesa.pin) || "";
     }
 
-    function ensureAllMesasHavePins(options) {
-        const persistMissing = !!(options && options.persistMissing);
-        const missing = [];
-        getElectoralMesas().forEach((m) => {
-            const before = normalizePin(m.pin);
-            ensureMesaPin(m);
-            if (!before && normalizePin(m.pin)) missing.push(m);
-        });
-        if (persistMissing && missing.length) {
-            saveLocalDatabase();
-            if (state.arcgisMode) {
-                missing.forEach((m) => {
-                    sendMesaUpdateToServer(m).catch(() => {});
-                });
-            }
-        }
-        return missing.length;
+    function ensureAllMesasHavePins() {
+        // PINs desactivados: no-op (compatibilidad con llamadas existentes).
+        return 0;
     }
 
-    function regenerateMesaPin(codigo) {
-        const mesa = state.mesas.find((m) => m.codigo === codigo);
-        if (!mesa || isConfigRecordCodigo(codigo)) return;
-        const conf = confirm(
-            `¿Regenerar el PIN de la mesa ${codigo}?\n\nEl PIN anterior dejará de ser válido (hay que reimprimir o comunicar el nuevo).`
-        );
-        if (!conf) return;
-        mesa.pin = generateUniquePin(codigo);
-        saveLocalDatabase();
-        sendMesaUpdateToServer(mesa).catch(() => {});
-        renderAdminMesasTable();
-        alert(`Nuevo PIN de la mesa ${codigo}: ${mesa.pin}`);
+    function regenerateMesaPin() {
+        // PINs desactivados.
     }
 
     function extractPinFromMesaSources(resObj, mObj, existingMesa) {
@@ -789,17 +777,26 @@ require([
 
 
 
-        // Buscador de Censo por DNI
-        const btnDniSearch = document.getElementById("btn-dni-search-action");
-        if (btnDniSearch) {
-            btnDniSearch.addEventListener("click", handleDniSearch);
-        }
-        const inputDniSearch = document.getElementById("dni-search-input");
-        if (inputDniSearch) {
-            inputDniSearch.addEventListener("keypress", (e) => {
-                if (e.key === "Enter") handleDniSearch();
-            });
-        }
+        // Buscador de Censo por DNI (delegación: funciona aunque el portal se re-renderice)
+        document.addEventListener("click", (e) => {
+            const btn = e.target && e.target.closest ? e.target.closest(".btn-dni-search-action") : null;
+            if (!btn) return;
+            const widget = btn.closest(".censo-search-widget");
+            if (!widget) return;
+            e.preventDefault();
+            handleDniSearch(widget);
+        });
+        document.addEventListener("keydown", (e) => {
+            if (e.key !== "Enter") return;
+            const input = e.target && e.target.classList && e.target.classList.contains("dni-search-input")
+                ? e.target
+                : null;
+            if (!input) return;
+            const widget = input.closest(".censo-search-widget");
+            if (!widget) return;
+            e.preventDefault();
+            handleDniSearch(widget);
+        });
 
         // Pestañas de la Barra Lateral (Global / Colegios / Mi Colegio)
         document.querySelectorAll(".tab-btn").forEach(btn => {
@@ -857,18 +854,12 @@ require([
         // Botones de Escrutinio en Colegio
         document.getElementById("btn-portal-logout").addEventListener("click", logoutUser);
         document.getElementById("btn-change-mesa").addEventListener("click", async () => {
-            stopMesaLockHeartbeat();
-            if (state.selectedMesa) {
-                if (state.selectedMesa.estado === "Escrutando" || state.selectedMesa.estado === "Asignada") {
-                    await releaseMesaOnExit(state.selectedMesa);
-                }
-                state.selectedMesa = null;
+            // Si hay entrada de historial de esta mesa, el botón atrás del navegador (y este) vuelven al listado
+            if (window.history.state && window.history.state.appNav && window.history.state.mesa) {
+                window.history.back();
+                return;
             }
-            showSchoolPortalView();
-            startPeriodicSync();
-            if (state.arcgisMode) {
-                syncDataWithArcGISServer();
-            }
+            await exitSelectedMesaToList({ replaceHistory: true });
         });
 
         // Cambiar Votos: Sumar en vivo en Escrutinio
@@ -1099,12 +1090,131 @@ require([
         window.addEventListener("localDatabaseUpdated", syncUIFromState);
     }
 
+    // ==========================================================================
+    // HISTORIAL DEL NAVEGADOR (atrás/adelante entre vistas y mesas)
+    // ==========================================================================
+    function buildAppNavUrl(nav) {
+        const base = window.location.pathname + window.location.search;
+        if (nav && nav.mesa) {
+            return `${base}#/${nav.view}/mesa/${encodeURIComponent(nav.mesa)}`;
+        }
+        return `${base}#/${(nav && nav.view) || "public-dashboard-view"}`;
+    }
+
+    function parseAppNavFromLocation() {
+        const hash = String(window.location.hash || "").replace(/^#\/?/, "");
+        const parts = hash.split("/").filter(Boolean);
+        if (!parts.length) {
+            return { view: state.currentViewId || "public-dashboard-view", mesa: null };
+        }
+        const view = parts[0];
+        let mesa = null;
+        if (parts[1] === "mesa" && parts[2]) {
+            mesa = decodeURIComponent(parts[2]);
+        }
+        return { view, mesa };
+    }
+
+    function pushAppHistory(nav, options) {
+        options = options || {};
+        if (state._navFromHistory) return;
+        const view = (nav && nav.view) || state.currentViewId || "public-dashboard-view";
+        const mesa = (nav && nav.mesa) || null;
+        const key = `${view}|${mesa || ""}`;
+        if (!options.replace && state._lastNavKey === key) return;
+        state._lastNavKey = key;
+        const data = { appNav: true, view, mesa };
+        const url = buildAppNavUrl(data);
+        try {
+            if (options.replace) {
+                window.history.replaceState(data, "", url);
+            } else {
+                window.history.pushState(data, "", url);
+            }
+        } catch (e) {
+            console.warn("[NAV] No se pudo actualizar history:", e);
+        }
+    }
+
+    async function exitSelectedMesaToList(options) {
+        options = options || {};
+        stopMesaLockHeartbeat();
+        if (state.selectedMesa) {
+            if (state.selectedMesa.estado === "Escrutando" || state.selectedMesa.estado === "Asignada") {
+                await releaseMesaOnExit(state.selectedMesa);
+            }
+            state.selectedMesa = null;
+        }
+        if (state.currentViewId !== "colegio-portal-view") {
+            switchView("colegio-portal-view", { skipHistory: true });
+        }
+        showSchoolPortalView();
+        startPeriodicSync();
+        if (state.arcgisMode) {
+            syncDataWithArcGISServer();
+        }
+        if (!options.skipHistory) {
+            pushAppHistory({ view: "colegio-portal-view", mesa: null }, { replace: !!options.replaceHistory });
+        } else {
+            state._lastNavKey = `colegio-portal-view|`;
+        }
+    }
+
+    async function handleAppPopState(event) {
+        const nav = (event && event.state && event.state.appNav)
+            ? { view: event.state.view, mesa: event.state.mesa || null }
+            : parseAppNavFromLocation();
+
+        state._navFromHistory = true;
+        try {
+            const leavingMesa = !!(state.selectedMesa && (!nav.mesa || nav.mesa !== state.selectedMesa.codigo));
+            if (leavingMesa) {
+                await exitSelectedMesaToList({ skipHistory: true });
+            }
+
+            if (nav.view && nav.view !== state.currentViewId) {
+                switchView(nav.view, { skipHistory: true });
+                if (nav.view === "colegio-portal-view" && state.currentUser && state.currentUser.role === "colegio") {
+                    showSchoolPortalView();
+                } else if (nav.view === "admin-portal-view" && state.currentUser && state.currentUser.role === "admin") {
+                    renderAdminPortal();
+                }
+            }
+
+            // Adelante: reabrir mesa si el historial lo pide (sin volver a pushState)
+            if (nav.view === "colegio-portal-view" && nav.mesa && (!state.selectedMesa || state.selectedMesa.codigo !== nav.mesa)) {
+                const mesa = state.mesas.find((m) => m.codigo === nav.mesa);
+                if (mesa) {
+                    state._suppressMesaHistoryPush = true;
+                    proceedSelectMesaForScrutiny(mesa);
+                }
+            }
+
+            state._lastNavKey = `${nav.view || state.currentViewId}|${nav.mesa || ""}`;
+        } finally {
+            state._navFromHistory = false;
+        }
+    }
+
+    function initAppHistoryNavigation() {
+        state.currentViewId = state.currentViewId || "public-dashboard-view";
+        pushAppHistory({ view: state.currentViewId, mesa: null }, { replace: true });
+        window.addEventListener("popstate", (event) => {
+            handleAppPopState(event).catch((err) => {
+                console.warn("[NAV] Error en popstate:", err);
+            });
+        });
+    }
+
     // Cambia de sección visible (Público, Login, Colegio, Admin)
-    function switchView(viewId) {
+    function switchView(viewId, options) {
+        options = options || {};
         document.querySelectorAll(".view-section").forEach(sec => {
             sec.classList.add("hidden");
         });
-        document.getElementById(viewId).classList.remove("hidden");
+        const target = document.getElementById(viewId);
+        if (target) target.classList.remove("hidden");
+        state.currentViewId = viewId;
 
         // Acciones específicas al entrar a una vista
         if (viewId === "public-dashboard-view") {
@@ -1114,6 +1224,13 @@ require([
             if (state.view) {
                 state.view.container = "mapViewDiv";
             }
+        }
+
+        if (!options.skipHistory) {
+            pushAppHistory({
+                view: viewId,
+                mesa: options.mesa || null
+            }, { replace: !!options.replaceHistory });
         }
     }
 
@@ -1515,6 +1632,8 @@ require([
         if (!state.selectedMesa) {
             document.getElementById("portal-escrutinio-container").classList.add("hidden");
             document.getElementById("portal-step-select-mesa").classList.remove("hidden");
+            const censoWidget = document.querySelector("#colegio-portal-view .censo-search-widget");
+            if (censoWidget) censoWidget.classList.remove("hidden");
         }
 
         // Listar mesas de este colegio
@@ -1630,12 +1749,8 @@ require([
         });
     }
 
-    // Selecciona una mesa para escrutinio o avance (colegio: exige PIN de esa mesa)
+    // Selecciona una mesa para escrutinio o avance
     function selectMesaForScrutiny(mesa) {
-        if (state.currentUser && state.currentUser.role === "colegio") {
-            openMesaPinModal(mesa, () => proceedSelectMesaForScrutiny(mesa));
-            return;
-        }
         proceedSelectMesaForScrutiny(mesa);
     }
 
@@ -1935,9 +2050,22 @@ require([
             switchPortalPhase("part1");
         }
 
-        // Mostrar formulario y ocultar cuadrícula
+        // Mostrar formulario y ocultar cuadrícula / consulta de censo
         document.getElementById("portal-step-select-mesa").classList.add("hidden");
         document.getElementById("portal-escrutinio-container").classList.remove("hidden");
+        const censoWidget = document.querySelector("#colegio-portal-view .censo-search-widget");
+        if (censoWidget) censoWidget.classList.add("hidden");
+
+        // Entrada de historial: Atrás del navegador vuelve al listado de mesas
+        if (state.currentViewId !== "colegio-portal-view") {
+            switchView("colegio-portal-view", { skipHistory: true });
+        }
+        if (state._suppressMesaHistoryPush) {
+            state._suppressMesaHistoryPush = false;
+            state._lastNavKey = `colegio-portal-view|${mesa.codigo}`;
+        } else {
+            pushAppHistory({ view: "colegio-portal-view", mesa: mesa.codigo });
+        }
     }
 
     // --------------------------------------------------------------------------
@@ -2007,7 +2135,8 @@ require([
         return out;
     }
 
-    function savePartiesToStorage(newParties) {
+    function savePartiesToStorage(newParties, options) {
+        const silent = !!(options && options.silent);
         if (Array.isArray(newParties)) {
             const sourceList = dedupePartiesList(newParties);
             PARTIES_CONFIG.length = 0;
@@ -2021,7 +2150,9 @@ require([
                 savePartiesToArcGIS(PARTIES_CONFIG);
             }
         }
-        console.log("[PARTIDOS] Configuración en memoria (GDB):", PARTIES_CONFIG.length, "partidos");
+        if (!silent) {
+            console.log("[PARTIDOS] Configuración en memoria (GDB):", PARTIES_CONFIG.length, "partidos");
+        }
     }
 
     function getPartiesConfig() {
@@ -2266,6 +2397,7 @@ require([
             alert(`¡Mesa ${targetMesa.codigo} cerrada y guardada en el servidor!`);
             state.selectedMesa = null;
             showSchoolPortalView();
+            pushAppHistory({ view: "colegio-portal-view", mesa: null }, { replace: true });
             startPeriodicSync();
             updateGlobalMetrics();
             renderAdminPortal();
@@ -2585,17 +2717,12 @@ require([
             const tr = document.createElement("tr");
             const statusBadgeHtml = buildAdminStatusBadgeHtml(mesa);
             const baseEstado = resolveMesaBaseEstado(mesa);
-            const pinShow = normalizePin(mesa.pin) || "—";
-
             let actionButtons = `
                 <button class="admin-btn-action btn-edit-admin-votes" data-codigo="${mesa.codigo}" title="Editar Votos (Admin)">
                     <i class="fa-solid fa-pen-to-square" style="color: #0284c7;"></i>
                 </button>
                 <button class="admin-btn-action btn-edit-admin-members" data-codigo="${mesa.codigo}" title="Editar Miembros (Admin)">
                     <i class="fa-solid fa-users-gear" style="color: #7c3aed;"></i>
-                </button>
-                <button class="admin-btn-action btn-regen-pin" data-codigo="${mesa.codigo}" title="Regenerar PIN de mesa">
-                    <i class="fa-solid fa-key" style="color: #0f766e;"></i>
                 </button>
             `;
             
@@ -2622,7 +2749,6 @@ require([
                 <td>${mesa.mesa}</td>
                 <td>${formatMesaApellidos(mesa)}</td>
                 <td>${mesa.censo}</td>
-                <td><span class="mesa-pin-code" title="PIN de acceso de la mesa">${pinShow}</span></td>
                 <td>${statusBadgeHtml}</td>
                 <td style="text-align: right; white-space: nowrap;">${actionButtons}</td>
             `;
@@ -2642,13 +2768,6 @@ require([
             btn.addEventListener("click", function() {
                 const cod = this.getAttribute("data-codigo");
                 openAdminEditMembersModal(cod);
-            });
-        });
-
-        tbody.querySelectorAll(".btn-regen-pin").forEach(btn => {
-            btn.addEventListener("click", function() {
-                const cod = this.getAttribute("data-codigo");
-                regenerateMesaPin(cod);
             });
         });
 
@@ -2797,8 +2916,7 @@ require([
             firma_vocal1: "",
             firma_vocal2: "",
             censo: census,
-            objectid: null,
-            pin: generateUniquePin(cod)
+            objectid: null
         };
         PARTIES_CONFIG.forEach(p => { nuevaMesa[p.field] = 0; });
 
@@ -2807,7 +2925,7 @@ require([
         saveLocalDatabase();
         sendMesaAddToServer(nuevaMesa);
 
-        alert(`¡Mesa ${cod} configurada con éxito!\nColegio: ${col}\nApellidos: ${li}–${lf}\nCenso: ${census} electores\nPIN: ${nuevaMesa.pin}`);
+        alert(`¡Mesa ${cod} configurada con éxito!\nColegio: ${col}\nApellidos: ${li}–${lf}\nCenso: ${census} electores`);
         document.getElementById("modal-admin-add-mesa").classList.add("hidden");
         renderAdminPortal();
         updateGlobalMetrics();
@@ -5341,10 +5459,18 @@ require([
 
     function saveIdentityManagerSession() {
         try {
-            if (typeof IdentityManager !== "undefined" && IdentityManager.toJSON) {
-                const idJson = IdentityManager.toJSON();
-                localStorage.setItem(authKey("arcgis_id_mgr"), JSON.stringify(idJson));
+            if (typeof IdentityManager === "undefined" || !IdentityManager.toJSON) return;
+            // En 4.29 toJSON puede romper si serverInfos tiene entradas incompletas
+            const infos = IdentityManager.serverInfos;
+            if (Array.isArray(infos)) {
+                const broken = infos.some((s) => !s || typeof s.toJSON !== "function");
+                if (broken) {
+                    console.warn("Omitido guardado IdentityManager: serverInfos incompletos.");
+                    return;
+                }
             }
+            const idJson = IdentityManager.toJSON();
+            localStorage.setItem(authKey("arcgis_id_mgr"), JSON.stringify(idJson));
         } catch (e) {
             console.warn("No se pudo guardar la sesión de IdentityManager en localStorage:", e);
         }
@@ -5414,11 +5540,13 @@ require([
     }
 
     function applyElectoralConfigFromFeatures(features) {
-        if (!features || !features.length) return;
+        if (!features || !features.length) return false;
 
         let preferredParties = null;
         let preferredCodigo = null;
         let legacyParties = null;
+        let closedList = state.colegiosCerrados || [];
+        let sawClosed = false;
 
         features.forEach(feat => {
             const attrs = feat.attributes || feat;
@@ -5431,11 +5559,12 @@ require([
                 legacyParties = parsePartiesConfigPayload(raw);
             }
             if (cod === "__CLOSED__") {
+                sawClosed = true;
                 try {
                     const parsed = raw ? (typeof raw === "string" ? JSON.parse(raw) : raw) : {};
-                    state.colegiosCerrados = Array.isArray(parsed.closed) ? parsed.closed : [];
+                    closedList = Array.isArray(parsed.closed) ? parsed.closed : [];
                 } catch (e) {
-                    state.colegiosCerrados = [];
+                    closedList = [];
                 }
             }
         });
@@ -5451,6 +5580,20 @@ require([
             usedCodigo = PARTIES_CONFIG_CODIGO_LEGACY;
         }
 
+        const signature = JSON.stringify({
+            codigo: usedCodigo,
+            parties: serverList,
+            closed: sawClosed ? closedList : state.colegiosCerrados
+        });
+        if (state._electoralConfigSignature === signature) {
+            return false;
+        }
+        state._electoralConfigSignature = signature;
+
+        if (sawClosed) {
+            state.colegiosCerrados = closedList;
+        }
+
         savePartiesToStorage(serverList);
 
         if (serverList.length > 0 && usedCodigo === PARTIES_CONFIG_CODIGO_LEGACY && state.arcgisMode) {
@@ -5461,6 +5604,7 @@ require([
             generateVoteFields();
         }
         console.log("[PARTIDOS] Aplicados desde GDB:", serverList.length, "partidos", "codigo=", usedCodigo);
+        return true;
     }
 
     function loadResultsFromServer() {
@@ -5523,12 +5667,25 @@ require([
         }
     }
     
+    function buildMesasSyncSignature(mesas) {
+        return (mesas || []).map((m) => [
+            m.codigo,
+            m.estado,
+            m.objectid || "",
+            m.part1_votos || 0,
+            m.part2_votos || 0,
+            m.votos_blancos || 0,
+            m.votos_nulos || 0,
+            m.pin || ""
+        ].join(":")).sort().join("|");
+    }
+
     // Al autenticar con ArcGIS, descargamos los registros actuales del FeatureServer editable
     function syncDataWithArcGISServer() {
         if (!state.arcgisMode) return;
         if (isScrutinyFormActive()) return;
-
-        console.log("Iniciando sincronización con ArcGIS Feature Server...");
+        if (state._syncInFlight) return;
+        state._syncInFlight = true;
 
         try {
             const tablesLayer = new FeatureLayer({
@@ -5541,7 +5698,11 @@ require([
             query.outFields = ["*"];
 
             tablesLayer.queryFeatures(query).then(results => {
-                console.log(`Se recuperaron ${results.features ? results.features.length : 0} registros del servidor ArcGIS.`);
+                const featureCount = results.features ? results.features.length : 0;
+                if (state._lastSyncFeatureCount !== featureCount) {
+                    console.log(`Sincronización ArcGIS: ${featureCount} registros.`);
+                    state._lastSyncFeatureCount = featureCount;
+                }
                 
                 if (results.features && results.features.length > 0) {
                     applyElectoralConfigFromFeatures(results.features);
@@ -5596,8 +5757,14 @@ require([
                     ensureAllMesasHavePins({ persistMissing: true });
                     rebuildDynamicMappings();
                     saveLocalDatabase();
+
+                    const nextSignature = buildMesasSyncSignature(state.mesas);
+                    if (state._lastMesasSyncSignature === nextSignature) {
+                        return;
+                    }
+                    state._lastMesasSyncSignature = nextSignature;
                     
-                    // Refrescar vistas
+                    // Refrescar vistas solo si cambió el estado de mesas
                     updateGlobalMetrics();
                     renderMapTheme();
                     if (state.currentUser && state.currentUser.role === "admin") {
@@ -5617,8 +5784,11 @@ require([
                 }
             }).catch(err => {
                 console.error("Fallo al consultar la tabla de mesas en ArcGIS Server:", err);
+            }).finally(() => {
+                state._syncInFlight = false;
             });
         } catch (e) {
+            state._syncInFlight = false;
             console.error("Excepción en syncDataWithArcGISServer:", e);
         }
     }
@@ -6211,10 +6381,10 @@ require([
         alert(`La Mesa ${codigo} ha sido reabierta correctamente.`);
     }
 
-    // Hosted Table (Portal item ad27250c9ef547b88503c4a72a5ea8cb)
+    // Hosted Table (Portal item ad27250c9ef547b88503c4a72a5ea8cb) — requiere token Portal
     const CENSO_TABLE_URL =
         "https://sit.rivasciudad.es/server/rest/services/Hosted/CENSO_GENERALES_2026_NUEVO/FeatureServer/0";
-    const CENSO_OUT_FIELDS = "ident,nlocal,dirmesa1,dirmesa2,dirmesa3,secc,mesa,dist";
+    const CENSO_SEARCH_TIMEOUT_MS = 12000;
 
     function calculateDniLetter(numStr) {
         const letters = "TRWAGMYFPDXBNJZSQVHLCKE";
@@ -6254,48 +6424,180 @@ require([
 
     function mapCensusAttrs(attrs) {
         if (!attrs) return null;
-        const ident = String(attrs.ident || attrs.IDENT || "").trim();
-        const seccRaw = String(attrs.secc ?? attrs.SECC ?? "").trim();
-        const dirMesa = [attrs.dirmesa1, attrs.dirmesa2, attrs.dirmesa3, attrs.DIRMESA1, attrs.DIRMESA2, attrs.DIRMESA3]
-            .map((v) => String(v || "").trim())
+        const pick = (...names) => {
+            for (const name of names) {
+                const val = getAttributeValue(attrs, name);
+                if (val != null && String(val).trim() !== "") return String(val).trim();
+            }
+            return "";
+        };
+        const ident = pick("ident", "IDENT");
+        const seccRaw = pick("secc", "SECC", "seccion", "SECCION");
+        const dirMesa = [pick("dirmesa1", "DIRMESA1"), pick("dirmesa2", "DIRMESA2"), pick("dirmesa3", "DIRMESA3")]
             .filter(Boolean)
             .join(", ");
+        const nombre = pick("nombre", "NOMBRE", "name", "NAME");
+        const ape1 = pick("ape1", "APE1", "apellido1", "APELLIDO1", "primerapellido", "PRIMERAPELLIDO");
+        const ape2 = pick("ape2", "APE2", "apellido2", "APELLIDO2", "segundoapellido", "SEGUNDOAPELLIDO");
+        const fullName = [nombre, ape1, ape2].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
         return {
             dni: ident,
-            colegio: String(attrs.nlocal || attrs.NLOCAL || "").trim(),
+            nombre,
+            ape1,
+            ape2,
+            fullName,
+            colegio: pick("nlocal", "NLOCAL"),
             dirMesa,
-            distrito: String(attrs.dist ?? attrs.DIST ?? "").trim(),
+            distrito: pick("dist", "DIST", "distrito", "DISTRITO"),
             seccion: seccRaw ? seccRaw.padStart(3, "0") : "",
-            mesa: String(attrs.mesa || attrs.MESA || "").trim()
+            mesa: pick("mesa", "MESA")
         };
     }
 
-    function queryCensusByDni(rawQuery) {
+    function findArcGisTokenForCensus() {
+        const urls = [
+            CENSO_TABLE_URL,
+            "https://sit.rivasciudad.es/server/rest/services",
+            "https://sit.rivasciudad.es/server",
+            "https://sit.rivasciudad.es/portal",
+            EDITABLE_SERVICE_URL,
+            PUBLIC_SERVICE_URL,
+            "https://sit.rivasciudad.es/portal/sharing/rest"
+        ];
+        for (const url of urls) {
+            try {
+                const cred = IdentityManager.findCredential(url);
+                if (cred && cred.token) return String(cred.token);
+            } catch (e) { /* ignore */ }
+        }
+        try {
+            const list = IdentityManager.credentials || [];
+            for (const cred of list) {
+                if (cred && cred.token) return String(cred.token);
+            }
+        } catch (e) { /* ignore */ }
+
+        // Fallback: token guardado al hacer login (IdentityManager.toJSON a veces falla)
+        try {
+            const raw = localStorage.getItem("elecciones_arcgis_token_data");
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed && parsed.token) {
+                    const expires = Number(parsed.expires) || 0;
+                    // ArcGIS generateToken suele devolver expires en epoch ms
+                    if (!expires || expires > Date.now()) {
+                        return String(parsed.token);
+                    }
+                }
+            }
+        } catch (e) { /* ignore */ }
+        return null;
+    }
+
+    function withTimeout(promise, ms, message) {
+        return new Promise((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error(message)), ms);
+            Promise.resolve(promise).then(
+                (value) => { clearTimeout(timer); resolve(value); },
+                (err) => { clearTimeout(timer); reject(err); }
+            );
+        });
+    }
+
+    function setCensoSearchStatus(root, message, kind) {
+        if (!root) return;
+        const statusDiv = root.querySelector(".dni-search-status");
+        const container = root.querySelector(".dni-search-result-container");
+        const btn = root.querySelector(".btn-dni-search-action");
+        const tone = kind === "error" ? "#ef4444" : (kind === "ok" ? "#15803d" : "var(--text-muted)");
+
+        if (statusDiv) {
+            statusDiv.classList.remove("hidden");
+            statusDiv.style.color = tone;
+            statusDiv.innerHTML = message;
+        }
+        if (container && kind !== "ok") {
+            container.innerHTML = `
+                <div style="text-align:center; padding:16px 10px; font-size:0.85rem; color:${tone};">
+                    ${message}
+                </div>`;
+        }
+        if (btn) {
+            if (kind === "loading") {
+                if (!btn.dataset.idleHtml) btn.dataset.idleHtml = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Buscando...`;
+            } else {
+                btn.disabled = false;
+                if (btn.dataset.idleHtml) {
+                    btn.innerHTML = btn.dataset.idleHtml;
+                }
+            }
+        }
+        console.log("[CENSO]", kind || "info", message.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
+    }
+
+    function queryCensusByDni(rawQuery, onProgress) {
         const candidates = buildIdentCandidates(rawQuery);
         if (!candidates.length) return Promise.resolve(null);
 
+        const progress = typeof onProgress === "function" ? onProgress : () => {};
         const escaped = candidates.map((c) => `'${String(c).replace(/'/g, "''")}'`);
-        const where = `ident IN (${escaped.join(",")})`;
-        const params = new URLSearchParams({
-            where,
-            outFields: CENSO_OUT_FIELDS,
-            returnGeometry: "false",
-            resultRecordCount: "1",
-            f: "json"
-        });
 
-        return fetch(`${CENSO_TABLE_URL}/query?${params.toString()}`)
-            .then((res) => {
-                if (!res.ok) throw new Error(`HTTP ${res.status} al consultar el censo`);
-                return res.json();
+        progress("Buscando token de sesión ArcGIS...");
+        const token = findArcGisTokenForCensus();
+        if (!token) {
+            return Promise.reject(new Error(
+                "No hay token ArcGIS en esta sesión. Cierra sesión, vuelve a entrar y asegúrate de que la capa del censo esté compartida con tu usuario."
+            ));
+        }
+
+        progress(`Token OK. Consultando censo (${candidates.length} variantes de DNI/NIE)...`);
+
+        function runQuery(whereClause) {
+            const params = new URLSearchParams({
+                where: whereClause,
+                outFields: "*",
+                returnGeometry: "false",
+                resultRecordCount: "1",
+                f: "json",
+                token
+            });
+            return fetch(`${CENSO_TABLE_URL}/query?${params.toString()}`)
+                .then((res) => {
+                    if (!res.ok) throw new Error(`HTTP ${res.status} al consultar el censo`);
+                    return res.json();
+                })
+                .then((data) => {
+                    if (data && data.error) {
+                        const code = data.error.code != null ? ` [${data.error.code}]` : "";
+                        const err = new Error(`${data.error.message || "Error ArcGIS"}${code}`);
+                        err.arcgis = data.error;
+                        throw err;
+                    }
+                    return data;
+                });
+        }
+
+        const request = runQuery(`ident IN (${escaped.join(",")})`)
+            .catch((err) => {
+                // Si el campo no existe o falla, reintentar con IDENT
+                progress("Reintentando consulta con campo IDENT...");
+                return runQuery(`IDENT IN (${escaped.join(",")})`);
             })
             .then((data) => {
-                if (data && data.error) {
-                    throw new Error(data.error.message || "Error de consulta ArcGIS");
-                }
                 const feat = (data.features || [])[0];
+                progress(feat
+                    ? "Registro encontrado. Preparando ficha..."
+                    : `Sin coincidencias para: ${candidates.join(", ")}`);
                 return feat ? mapCensusAttrs(feat.attributes) : null;
             });
+
+        return withTimeout(
+            request,
+            CENSO_SEARCH_TIMEOUT_MS,
+            `La consulta al censo no respondió en ${Math.round(CENSO_SEARCH_TIMEOUT_MS / 1000)}s. Puede ser un problema de permisos/token o de red.`
+        );
     }
 
     function getColegioOfficialAddress(colName, rawDir) {
@@ -6321,28 +6623,34 @@ require([
         return rawDir || "";
     }
 
-    function handleDniSearch() {
-        const input = document.getElementById("dni-search-input");
-        const container = document.getElementById("dni-search-result-container");
-        if (!input || !container) return;
+    function handleDniSearch(widget) {
+        const root = widget || document.querySelector(".censo-search-widget:not(.hidden)") || document.querySelector(".censo-search-widget");
+        if (!root) {
+            console.warn("[CENSO] No se encontró el widget .censo-search-widget");
+            alert("No se encontró el bloque de búsqueda de censo en la página.");
+            return;
+        }
+        const input = root.querySelector(".dni-search-input");
+        const container = root.querySelector(".dni-search-result-container");
+        if (!input || !container) {
+            setCensoSearchStatus(root, "Error interno: falta el campo o el contenedor de resultados.", "error");
+            return;
+        }
 
         const rawQuery = input.value.trim();
         const query = rawQuery.toUpperCase().replace(/[^A-Z0-9]/g, "");
         if (!query) {
-            container.innerHTML = `
-                <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 20px 10px;">
-                    Por favor, introduce un DNI o NIE válido.
-                </div>`;
+            setCensoSearchStatus(root, "Introduce un DNI o NIE válido y pulsa Buscar.", "error");
             return;
         }
 
-        container.innerHTML = `
-            <div style="text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.85rem;">
-                <i class="fa-solid fa-spinner fa-spin"></i> Consultando censo electoral...
-            </div>`;
+        setCensoSearchStatus(root, `<i class="fa-solid fa-spinner fa-spin"></i> Iniciando búsqueda de <strong>${rawQuery}</strong>...`, "loading");
 
-        queryCensusByDni(rawQuery).then((result) => {
+        queryCensusByDni(rawQuery, (msg) => {
+            setCensoSearchStatus(root, `<i class="fa-solid fa-spinner fa-spin"></i> ${msg}`, "loading");
+        }).then((result) => {
             if (!result) {
+                setCensoSearchStatus(root, "Búsqueda terminada: no hay coincidencias.", "error");
                 container.innerHTML = `
                     <div class="stat-card" style="border-left: 4px solid #ef4444; background: #fff5f5; padding: 16px; margin-top: 10px;">
                         <div style="font-weight: 700; color: #ef4444; margin-bottom: 6px; display:flex; align-items:center; gap:8px;">
@@ -6356,18 +6664,28 @@ require([
             }
 
             const officialAddress = getColegioOfficialAddress(result.colegio, result.dirMesa);
-            const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(result.colegio + ", " + officialAddress)}`;
             const distritoLabel = result.distrito ? String(result.distrito) : "—";
+            const fullName = (result.fullName || [result.nombre, result.ape1, result.ape2].filter(Boolean).join(" ")).trim();
+            const nameLabel = fullName || "Nombre no disponible en censo";
+
+            setCensoSearchStatus(root, `<i class="fa-solid fa-circle-check"></i> ${nameLabel} · Mesa ${result.mesa || "—"}`, "ok");
             
             container.innerHTML = `
                 <div class="stat-card" style="border-left: 5px solid var(--primary-color); background: #ffffff; padding: 20px; box-shadow: var(--shadow-md); margin-top: 10px; border-radius: 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                         <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--primary-color); letter-spacing: 0.5px;">
                             <i class="fa-solid fa-user-check"></i> Elector empadronado
                         </span>
                         <span style="font-size: 0.72rem; background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 12px; font-weight: 600;">
                             <i class="fa-solid fa-clock"></i> 09:00h - 20:00h
                         </span>
+                    </div>
+
+                    <h4 style="font-size: 1.2rem; margin: 0 0 14px 0; color: var(--text-primary); font-family: var(--font-heading); font-weight: 800;">
+                        ${nameLabel}
+                    </h4>
+                    <div style="font-size: 0.78rem; color: var(--text-muted); margin: -8px 0 14px 0;">
+                        DNI/NIE: <strong style="color: var(--text-secondary); letter-spacing: 0.04em;">${result.dni || rawQuery}</strong>
                     </div>
 
                     <!-- Bloque 1: Colegio Electoral -->
@@ -6385,7 +6703,7 @@ require([
                     </div>
 
                     <!-- Bloque 2: Mesa, Sección y Distrito -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
                         <div style="background: #fff1f2; border: 1px solid #fecdd3; padding: 12px; border-radius: 8px; text-align: center;">
                             <div style="font-size: 0.75rem; color: #9f1239; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Mesa</div>
                             <div style="font-size: 1.45rem; font-weight: 800; color: var(--primary-color); font-family: var(--font-heading); margin-top: 4px;">
@@ -6407,31 +6725,11 @@ require([
                             </div>
                         </div>
                     </div>
-
-                    <!-- Botones de Acción -->
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <button id="btn-censo-view-map" class="btn-header btn-primary" style="width: 100%; justify-content: center; font-size: 0.85rem; padding: 10px;" data-colegio="${result.colegio}">
-                            <i class="fa-solid fa-map-location-dot"></i> Ver en el Mapa interactivo
-                        </button>
-                        <a href="${googleMapsUrl}" target="_blank" class="btn-header btn-secondary" style="width: 100%; justify-content: center; font-size: 0.82rem; padding: 8px; text-decoration: none; display: flex; align-items: center; gap: 6px; background: #ffffff; border: 1px solid #cbd5e1; color: var(--text-primary);">
-                            <i class="fa-solid fa-route" style="color: #4285F4;"></i> Cómo llegar (Google Maps GPS)
-                        </a>
-                    </div>
                 </div>`;
-
-            const mapBtn = document.getElementById("btn-censo-view-map");
-            if (mapBtn) {
-                mapBtn.addEventListener("click", function() {
-                    const colName = this.getAttribute("data-colegio");
-                    locateColegioOnMap(colName);
-                });
-            }
         }).catch((err) => {
             console.error("Error al consultar el censo:", err);
-            container.innerHTML = `
-                <div style="text-align: center; color: #ef4444; padding: 20px;">
-                    Error al consultar el censo. Inténtalo de nuevo.
-                </div>`;
+            const detail = (err && err.message) ? err.message : "Error al consultar el censo. Inténtalo de nuevo.";
+            setCensoSearchStatus(root, `<i class="fa-solid fa-triangle-exclamation"></i> ${detail}`, "error");
         });
     }
 
