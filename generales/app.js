@@ -593,6 +593,13 @@ require([
             if (mapLoader) mapLoader.classList.add("hidden");
             // Si el servicio responde (con token o público), descargamos las features
             queryAllGeometries();
+            // En móvil el contenedor cambia de fila a columna: forzar recálculo del MapView
+            const resizeMapView = () => {
+                if (state.view && typeof state.view.resize === "function") state.view.resize();
+            };
+            resizeMapView();
+            window.addEventListener("resize", resizeMapView);
+            window.addEventListener("orientationchange", () => setTimeout(resizeMapView, 250));
         }, (err) => {
             console.warn("Error cargando el mapa de ArcGIS:", err);
             const mapLoader = document.getElementById("mapLoader");
