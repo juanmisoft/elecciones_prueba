@@ -23,7 +23,7 @@
     <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css">
 
     <!-- Estilos del Proyecto -->
-    <link rel="stylesheet" href="styles.css?v=2.3.1">
+    <link rel="stylesheet" href="styles.css?v=2.3.3">
 </head>
 
 <body>
@@ -638,6 +638,37 @@
                     </div>
                 </div>
 
+                <!-- Consulta de censo a ancho completo (más usable en escritorio) -->
+                <div class="portal-card censo-search-widget censo-search-widget--admin">
+                    <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-id-card"></i> Mi Colegio
+                    </div>
+                    <p class="text-secondary" style="font-size: 0.9rem; margin-bottom: 14px;">
+                        Introduce el DNI o NIE del elector para consultar colegio, sección y mesa.
+                    </p>
+                    <div class="censo-search-row">
+                        <div class="search-box" style="flex: 1; margin-bottom: 0;">
+                            <i class="fa-solid fa-id-card"></i>
+                            <input type="text" class="dni-search-input" placeholder="Ej. 12345678A..."
+                                style="text-transform: uppercase;" autocomplete="off">
+                        </div>
+                        <button type="button" class="btn-header btn-primary btn-dni-search-action">
+                            <i class="fa-solid fa-magnifying-glass"></i> Buscar
+                        </button>
+                    </div>
+                    <div class="dni-search-status hidden"
+                        style="text-align: center; padding: 12px; font-size: 0.85rem; color: var(--text-muted);">
+                        <i class="fa-solid fa-spinner fa-spin"></i> Cargando censo electoral...
+                    </div>
+                    <div class="dni-search-result-container">
+                        <div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 18px 10px;">
+                            <i class="fa-solid fa-address-card"
+                                style="font-size: 1.75rem; margin-bottom: 8px; display: block; opacity: 0.35;"></i>
+                            Escribe el DNI/NIE y pulsa Buscar.
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Grid de Administración -->
                 <div class="admin-dashboard-grid">
 
@@ -718,38 +749,6 @@
                                     <div class="stat-value" id="admin-metric-participation">0.00%</div>
                                     <span class="stat-label" style="margin-top: 4px; font-size: 0.65rem;"
                                         id="admin-metric-participation-sub">Pendiente de avances</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Consulta de censo (Mi Colegio) -->
-                        <div class="portal-card censo-search-widget">
-                            <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
-                                <i class="fa-solid fa-id-card"></i> Mi Colegio
-                            </div>
-                            <p class="text-secondary" style="font-size: 0.8rem; margin-bottom: 14px;">
-                                Introduce el DNI o NIE del elector para consultar colegio, sección y mesa.
-                            </p>
-                            <div style="display: flex; gap: 8px; margin-bottom: 14px;">
-                                <div class="search-box" style="flex: 1; margin-bottom: 0;">
-                                    <i class="fa-solid fa-id-card"></i>
-                                    <input type="text" class="dni-search-input" placeholder="Ej. 12345678A..."
-                                        style="text-transform: uppercase;" autocomplete="off">
-                                </div>
-                                <button type="button" class="btn-header btn-primary btn-dni-search-action"
-                                    style="padding: 0 16px; font-size: 0.85rem; border-radius: 6px; flex-shrink: 0;">
-                                    <i class="fa-solid fa-magnifying-glass"></i> Buscar
-                                </button>
-                            </div>
-                            <div class="dni-search-status hidden"
-                                style="text-align: center; padding: 12px; font-size: 0.85rem; color: var(--text-muted);">
-                                <i class="fa-solid fa-spinner fa-spin"></i> Cargando censo electoral...
-                            </div>
-                            <div class="dni-search-result-container">
-                                <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 20px 10px;">
-                                    <i class="fa-solid fa-address-card"
-                                        style="font-size: 2rem; margin-bottom: 10px; display: block; opacity: 0.35;"></i>
-                                    Escribe el DNI/NIE y pulsa Buscar.
                                 </div>
                             </div>
                         </div>

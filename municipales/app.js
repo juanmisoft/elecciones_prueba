@@ -2571,13 +2571,13 @@ require([
             `;
 
             tr.innerHTML = `
-                <td><strong>${mesa.codigo}</strong></td>
-                <td>${mesa.colegio}</td>
-                <td>${mesa.seccion}</td>
-                <td>${mesa.mesa}</td>
-                <td>${mesa.censo}</td>
-                <td>${statusBadgeHtml}</td>
-                <td style="text-align: right; white-space: nowrap;">${actionButtons}</td>
+                <td data-label="Código"><strong>${mesa.codigo}</strong></td>
+                <td data-label="Colegio">${mesa.colegio}</td>
+                <td data-label="Sección">${mesa.seccion}</td>
+                <td data-label="Mesa">${mesa.mesa}</td>
+                <td data-label="Censo">${mesa.censo}</td>
+                <td data-label="Estado">${statusBadgeHtml}</td>
+                <td data-label="Acciones" style="text-align: right; white-space: nowrap;">${actionButtons}</td>
             `;
 
             tbody.appendChild(tr);

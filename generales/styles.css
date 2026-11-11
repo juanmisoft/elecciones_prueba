@@ -1238,6 +1238,53 @@ h1, h2, h3, h4, h5, h6 {
     }
 }
 
+/* Mi Colegio (admin): ancho completo, buscador cómodo */
+.censo-search-widget--admin {
+    margin: 0 0 24px;
+    padding: 20px 22px;
+}
+
+.censo-search-row {
+    display: flex;
+    gap: 12px;
+    align-items: stretch;
+    max-width: 720px;
+}
+
+.censo-search-widget--admin .censo-search-row .search-box {
+    min-height: 46px;
+}
+
+.censo-search-widget--admin .censo-search-row .search-box input {
+    font-size: 1rem;
+    padding-top: 12px;
+    padding-bottom: 12px;
+}
+
+.censo-search-widget--admin .btn-dni-search-action {
+    flex-shrink: 0;
+    padding: 0 22px;
+    font-size: 0.95rem;
+    border-radius: 8px;
+}
+
+.censo-search-widget--admin .dni-search-result-container {
+    min-height: 88px;
+}
+
+@media (max-width: 600px) {
+    .censo-search-row {
+        flex-direction: column;
+        max-width: none;
+    }
+
+    .censo-search-widget--admin .btn-dni-search-action {
+        width: 100%;
+        justify-content: center;
+        padding: 12px 16px;
+    }
+}
+
 .admin-colegio-card {
     background: var(--white);
     border: 1px solid #cbd5e1;
@@ -1773,9 +1820,9 @@ h1, h2, h3, h4, h5, h6 {
     /* Cabecera adaptativa centrada en dispositivos móviles */
     .main-header {
         height: auto;
-        padding: 12px 14px;
+        padding: 10px 12px 12px;
         flex-direction: column;
-        align-items: center;
+        align-items: stretch;
         text-align: center;
         gap: 10px;
     }
@@ -1784,46 +1831,166 @@ h1, h2, h3, h4, h5, h6 {
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 8px;
+        gap: 6px;
         text-align: center;
+        width: 100%;
     }
 
     .btn-back-hub {
         align-self: flex-start;
+        padding: 6px 10px;
+        font-size: 0.8rem;
     }
 
+    /* El SVG animado se ve como caja blanca vacía en móvil */
     .brand-proceso-logo {
-        height: 44px;
-        max-width: min(240px, 78vw);
-        padding: 5px 8px;
+        display: none;
     }
 
     .brand-title {
         align-items: center;
         text-align: center;
+        width: 100%;
     }
 
     .brand-heading {
-        font-size: clamp(1.35rem, 6vw, 1.75rem);
+        font-size: clamp(1.25rem, 6vw, 1.6rem);
     }
 
     .brand-subtitle {
         text-align: center;
         white-space: normal;
+        font-size: 0.72rem;
+        line-height: 1.35;
+        max-width: 22rem;
+        margin: 0 auto;
     }
 
     .header-status {
         justify-content: center;
-        align-items: center;
+        align-items: stretch;
         width: 100%;
         gap: 8px;
         flex-wrap: wrap;
     }
 
     .user-badge, .scrutiny-pill {
-        font-size: 0.78rem;
-        padding: 6px 12px;
+        font-size: 0.75rem;
+        padding: 6px 10px;
         justify-content: center;
+    }
+
+    #logged-user-area:not(.hidden) {
+        display: contents;
+    }
+
+    #btn-portal-action {
+        width: 100%;
+        justify-content: center;
+        font-size: 0.85rem;
+        padding: 10px 14px;
+    }
+
+    /* Portal admin: sin desborde horizontal; tabla → tarjetas */
+    .admin-portal-view {
+        padding: 12px 10px 24px !important;
+        overflow-x: hidden;
+    }
+
+    .admin-portal-view .portal-container {
+        max-width: 100% !important;
+        width: 100% !important;
+        padding: 0 !important;
+        box-sizing: border-box;
+    }
+
+    .admin-portal-view .portal-welcome {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .admin-portal-view .portal-welcome > div {
+        display: flex !important;
+        flex-wrap: wrap;
+        gap: 8px !important;
+    }
+
+    .admin-portal-view .portal-welcome .btn-header {
+        flex: 1 1 calc(50% - 8px);
+        justify-content: center;
+        font-size: 0.78rem;
+        padding: 8px 10px;
+    }
+
+    .admin-mesas-filters {
+        grid-template-columns: 1fr !important;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .admin-portal-view .portal-card > div[style*="overflow-x"] {
+        overflow: visible !important;
+    }
+
+    .admin-table {
+        width: 100%;
+        border: 0;
+    }
+
+    .admin-table thead {
+        display: none;
+    }
+
+    .admin-table tbody {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .admin-table tr {
+        display: block;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px 12px 8px;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    }
+
+    .admin-table tr:hover {
+        background: #fff;
+    }
+
+    .admin-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 6px 0;
+        border-bottom: 1px solid #f1f5f9;
+        white-space: normal;
+        text-align: right;
+    }
+
+    .admin-table td:last-child {
+        border-bottom: none;
+        padding-top: 10px;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .admin-table td::before {
+        content: attr(data-label);
+        font-weight: 700;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: #64748b;
+        text-align: left;
+        flex: 0 0 42%;
     }
 
     /* Reglas exclusivas para el portal de representante de colegio en móvil */
