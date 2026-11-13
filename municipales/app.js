@@ -39,14 +39,135 @@ require([
     const OUT_FIELDS_SECCIONES = ["OBJECTID", "SECCION"];
     const OUT_FIELDS_TERMINO = ["OBJECTID"];
     const OUT_FIELDS_COLEGIOS = ["OBJECTID"];
-    // Avances/votos van en RESULTADOS_JSON; no pedir columnas opcionales que puedan no existir.
+    // Solo campos de la VISTA pública. LI/LF/firmas no existen como columnas → van en JSON.
+    // Pedirlos en outFields provoca HTTP 400 y el visor público queda vacío.
     const OUT_FIELDS_MESAS = [
         "OBJECTID", "CODIGO", "SECCION", "MESA", "COLEGIO", "CENSO", "ESTADO",
-        "LI", "LF", "MIEMBROS", "RESULTADOS_JSON",
-        "FIRMA_PRESI", "FIRMA_VOCAL1", "FIRMA_VOCAL2"
+        "MIEMBROS", "RESULTADOS_JSON"
     ];
     const OUT_FIELDS_MESAS_IDS = ["OBJECTID", "CODIGO"];
     const OUT_FIELDS_MESAS_ESTADO = ["OBJECTID", "CODIGO", "ESTADO"];
+
+    function resolveOutFields(layerOrFields, wanted) {
+        if (!wanted || wanted === "*" || (Array.isArray(wanted) && wanted.indexOf("*") !== -1)) return ["*"];
+        const list = Array.isArray(wanted) ? wanted : [wanted];
+        const fields = Array.isArray(layerOrFields)
+            ? layerOrFields
+            : ((layerOrFields && layerOrFields.fields) || []);
+        if (!fields.length) return ["*"];
+        const byLower = {};
+        fields.forEach((f) => {
+            if (f && f.name) byLower[String(f.name).toLowerCase()] = f.name;
+        });
+        const out = [];
+        list.forEach((w) => {
+            const hit = byLower[String(w).toLowerCase()];
+            if (hit && out.indexOf(hit) === -1) out.push(hit);
+        });
+        return out.length ? out : ["*"];
+    }
+
+    function ensureLayerLoaded(layer) {
+        if (!layer) return Promise.reject(new Error("FeatureLayer no definido"));
+        if (layer.loaded) return Promise.resolve(layer);
+        return layer.load().then(() => layer);
+    }
+
+    function createMesasFeatureLayer(url) {
+        return new FeatureLayer({ url: url, outFields: ["*"] });
+    }
+
+    function queryMesasLayer(layer, whereClause) {
+        return ensureLayerLoaded(layer).then((loaded) => {
+            const query = loaded.createQuery();
+            query.where = whereClause || "1=1";
+            query.outFields = resolveOutFields(loaded, OUT_FIELDS_MESAS);
+            query.returnGeometry = false;
+            return loaded.queryFeatures(query);
+        });
+    }
+
+    function findArcGisTokenForUrl(url) {
+        try {
+            const cred = IdentityManager.findCredential(url)
+                || IdentityManager.findCredential("https://sit.rivasciudad.es/server/rest/services")
+                || IdentityManager.findCredential("https://sit.rivasciudad.es/server")
+                || IdentityManager.findCredential("https://sit.rivasciudad.es/portal");
+            return cred && cred.token ? cred.token : "";
+        } catch (e) {
+            return "";
+        }
+    }
+
+    function countElectoralFeatures(features) {
+        let n = 0;
+        (features || []).forEach((f) => {
+            const cod = getAttributeValue((f && f.attributes) || {}, "codigo");
+            if (cod && !isConfigRecordCodigo(String(cod))) n += 1;
+        });
+        return n;
+    }
+
+    // Lectura REST f=json: 1 HTTP por sync (sin metadata FeatureLayer).
+    function fetchMesasRest(tableUrl, whereClause) {
+        const params = new URLSearchParams({
+            where: whereClause || "1=1",
+            outFields: OUT_FIELDS_MESAS.join(","),
+            returnGeometry: "false",
+            resultRecordCount: "2000",
+            f: "json"
+        });
+        const token = findArcGisTokenForUrl(tableUrl);
+        if (token) params.set("token", token);
+        return fetch(`${tableUrl}/query?${params.toString()}`)
+            .then((res) => {
+                if (!res.ok) throw new Error(`HTTP ${res.status} consultando mesas`);
+                return res.json();
+            })
+            .then((data) => {
+                if (data && data.error) {
+                    const err = new Error(data.error.message || "Error ArcGIS");
+                    err.arcgis = data.error;
+                    throw err;
+                }
+                return (data && data.features) || [];
+            });
+    }
+
+    function fetchMesasFeaturesPreferEdit() {
+        return fetchMesasRest(URL_MESAS_TABLE_EDIT, "1=1")
+            .then((feats) => {
+                const electoral = countElectoralFeatures(feats);
+                if (electoral > 0) {
+                    return { features: feats, source: "edit-rest" };
+                }
+                console.warn("[SYNC] Editable sin mesas electorales → fallback VISTA REST");
+                return fetchMesasRest(URL_MESAS_TABLE, "1=1").then((feats2) => ({
+                    features: feats2,
+                    source: "vista-rest-fallback"
+                }));
+            })
+            .catch((err) => {
+                console.warn("[SYNC] Fallo REST editable → fallback VISTA:", err);
+                return fetchMesasRest(URL_MESAS_TABLE, "1=1").then((feats2) => ({
+                    features: feats2,
+                    source: "vista-rest-fallback-error"
+                }));
+            });
+    }
+
+    function buildMesasSyncSignature(mesas) {
+        return (mesas || []).map((m) => [
+            m.codigo,
+            m.estado,
+            m.objectid || "",
+            m.part1_votos || 0,
+            m.part2_votos || 0,
+            m.votos_blancos || 0,
+            m.votos_nulos || 0,
+            m.pin || ""
+        ].join(":")).sort().join("|");
+    }
 
 
     // ==========================================================================
@@ -74,9 +195,12 @@ require([
     };
 
     // Intervalos de sincronización según perfil
-    const PUBLIC_SYNC_MS = 35000;   // Visor ciudadano
-    const ADMIN_SYNC_MS = 4000;     // Admin: estados de mesas casi en vivo
-    const COLEGIO_SYNC_MS = 4000;   // Colegio: solo en listado de mesas (no dentro del formulario)
+    // Sin proxy: RPS ≈ usuarios_visibles / (PUBLIC_SYNC_MS/1000). Objetivo GDB: ≤5–10 req/s.
+    // 180 s: ~5 rps con 900 visibles, ~8 rps con 1500, ~17 rps con 3000 (límite; 3000 reales pedirían ≥5 min).
+    const PUBLIC_SYNC_MS = 180000;  // Visor ciudadano: 3 min
+    const ADMIN_SYNC_MS = 5000;     // Admin: estados de mesas casi en vivo
+    const COLEGIO_SYNC_MS = 5000;   // Colegio: solo en listado de mesas (no dentro del formulario)
+    const SYNC_JITTER_RATIO = 0.15; // Evita thundering herd con muchos clientes
 
     // Usuarios locales de respaldo (por si falla la red o para pruebas rápidas)
         const AUTH_STORAGE_PREFIX = "elecciones_muni";
@@ -5452,33 +5576,36 @@ require([
     }
 
     function fetchElectoralConfigFeatures(tablesLayer) {
-        const q = tablesLayer.createQuery();
-        q.where = [
-            `CODIGO IN ('${PARTIES_CONFIG_CODIGO}','${PARTIES_CONFIG_CODIGO_LEGACY}','__CLOSED__')`,
-            `codigo IN ('${PARTIES_CONFIG_CODIGO}','${PARTIES_CONFIG_CODIGO_LEGACY}','__CLOSED__')`
-        ].join(" OR ");
-        q.outFields = OUT_FIELDS_MESAS;
-        q.returnGeometry = false;
-        return tablesLayer.queryFeatures(q).then(r => r.features || []).catch(err => {
+        return ensureLayerLoaded(tablesLayer).then((layer) => {
+            const q = layer.createQuery();
+            q.where = [
+                `CODIGO IN ('${PARTIES_CONFIG_CODIGO}','${PARTIES_CONFIG_CODIGO_LEGACY}','__CLOSED__')`,
+                `codigo IN ('${PARTIES_CONFIG_CODIGO}','${PARTIES_CONFIG_CODIGO_LEGACY}','__CLOSED__')`
+            ].join(" OR ");
+            q.outFields = resolveOutFields(layer, OUT_FIELDS_MESAS);
+            q.returnGeometry = false;
+            return layer.queryFeatures(q).then(r => r.features || []);
+        }).catch(err => {
             console.warn("[PARTIDOS] Query de registros de configuración falló:", err);
             return [];
         });
     }
 
     function mergeFeaturesByOid(primary, secondary) {
-        const map = new Map();
+        // OJO: en este scope `Map` es esri/Map, no el Map nativo de JS.
+        const byKey = new window.Map();
         const add = (list) => {
             (list || []).forEach(f => {
                 const attrs = f.attributes || {};
                 const oid = attrs.OBJECTID != null ? attrs.OBJECTID : attrs.objectid;
                 const cod = getAttributeValue(attrs, "codigo");
                 const key = oid != null ? ("oid:" + oid) : ("cod:" + (cod || Math.random()));
-                map.set(key, f);
+                byKey.set(key, f);
             });
         };
         add(primary);
         add(secondary);
-        return Array.from(map.values());
+        return Array.from(byKey.values());
     }
 
     function loadResultsFromServer() {
@@ -5486,89 +5613,76 @@ require([
             syncDataWithArcGISServer();
             return;
         }
-        
+        if (typeof document !== "undefined" && document.hidden) return;
+        if (state._publicSyncInFlight) return;
+        state._publicSyncInFlight = true;
+
         console.log("Intentando descargar resultados públicos desde ArcGIS Server...");
         console.log("URL de la tabla de mesas pública:", URL_MESAS_TABLE);
-        
-        try {
-            const tablesLayer = new FeatureLayer({
-                url: URL_MESAS_TABLE,
-                outFields: OUT_FIELDS_MESAS
-            });
 
-            tablesLayer.load().then(() => {
-                const query = tablesLayer.createQuery();
-                query.where = "1=1";
-                query.outFields = OUT_FIELDS_MESAS;
+        // Una sola query 1=1: incluye mesas + registros de config
+        fetchMesasRest(URL_MESAS_TABLE, "1=1")
+            .then((allFeats) => {
+                console.log(`Resultados públicos REST: ${(allFeats || []).length} registros.`);
+                if (allFeats && allFeats.length > 0) {
+                    applyElectoralConfigFromFeatures(allFeats);
 
-                Promise.all([
-                    tablesLayer.queryFeatures(query),
-                    fetchElectoralConfigFeatures(tablesLayer)
-                ]).then(([results, configFeats]) => {
-                    const allFeats = mergeFeaturesByOid(results.features, configFeats);
-                    console.log(`Resultados públicos: se descargaron ${allFeats.length} registros.`);
-                    if (allFeats.length > 0) {
-                        applyElectoralConfigFromFeatures(allFeats);
+                    const serverMesas = [];
+                    allFeats.forEach(feat => {
+                        const cod = getAttributeValue(feat.attributes, "codigo");
+                        if (!cod || isConfigRecordCodigo(cod)) return;
+                        const existingMesa = state.mesas.find(m => m.codigo === cod);
+                        const mesaObj = parseMesaFromAttributes(feat.attributes, existingMesa);
+                        if (mesaObj) {
+                            serverMesas.push(mesaObj);
+                        }
+                    });
+                    console.log("[PUBLIC] Mesas electorales cargadas:", serverMesas.length);
 
-                        const serverMesas = [];
-                        allFeats.forEach(feat => {
-                            const cod = getAttributeValue(feat.attributes, "codigo");
-                            if (!cod || isConfigRecordCodigo(cod)) return;
-                            const existingMesa = state.mesas.find(m => m.codigo === cod);
-                            const mesaObj = parseMesaFromAttributes(feat.attributes, existingMesa);
-                            if (mesaObj) {
-                                serverMesas.push(mesaObj);
-                            }
-                        });
-                        
-                        state.mesas = serverMesas;
-                        rebuildDynamicMappings();
-                        saveLocalDatabase();
+                    state.mesas = serverMesas;
+                    const nextSignature = buildMesasSyncSignature(state.mesas);
+                    const changed = state._lastMesasSyncSignature !== nextSignature;
+                    state._lastMesasSyncSignature = nextSignature;
+                    rebuildDynamicMappings();
+                    saveLocalDatabase();
+                    if (changed) {
                         updateGlobalMetrics();
                         renderMapTheme();
-                    } else {
-                        console.log("La tabla de mesas pública está vacía.");
+                    }
+                } else {
+                    console.log("La tabla de mesas pública está vacía.");
+                    if (!state.mesas || state.mesas.length === 0) {
                         state.mesas = [];
                         rebuildDynamicMappings();
                         saveLocalDatabase();
                         updateGlobalMetrics();
                         renderMapTheme();
                     }
-                }).catch(err => {
-                    console.error("Error en queryFeatures de la tabla de mesas pública:", err);
-                });
-            }).catch(err => {
-                console.error("Error al cargar la tabla pública:", err);
+                }
+            })
+            .catch(err => {
+                console.error("Error en query REST de la tabla de mesas pública:", err);
+            })
+            .finally(() => {
+                state._publicSyncInFlight = false;
             });
-        } catch (e) {
-            console.error("Excepción al instanciar FeatureLayer de la tabla pública:", e);
-        }
     }
     
     // Al autenticar con ArcGIS, descargamos los registros actuales del FeatureServer editable
     function syncDataWithArcGISServer() {
         if (!state.arcgisMode) return;
         if (isScrutinyFormActive()) return;
+        if (state._syncInFlight) return;
+        state._syncInFlight = true;
 
         console.log("Iniciando sincronización con ArcGIS Feature Server...");
 
-        try {
-            const tablesLayer = new FeatureLayer({
-                url: URL_MESAS_TABLE_EDIT,
-                outFields: OUT_FIELDS_MESAS
-            });
+        fetchMesasFeaturesPreferEdit()
+            .then((pack) => {
+                const allFeats = (pack && pack.features) || [];
+                const source = (pack && pack.source) || "edit";
+                console.log(`Sincronización ArcGIS (${source}): ${allFeats.length} registros.`);
 
-            const query = tablesLayer.createQuery();
-            query.where = "1=1";
-            query.outFields = OUT_FIELDS_MESAS;
-
-            Promise.all([
-                tablesLayer.queryFeatures(query),
-                fetchElectoralConfigFeatures(tablesLayer)
-            ]).then(([results, configFeats]) => {
-                const allFeats = mergeFeaturesByOid(results.features, configFeats);
-                console.log(`Se recuperaron ${allFeats.length} registros del servidor ArcGIS.`);
-                
                 if (allFeats.length > 0) {
                     applyElectoralConfigFromFeatures(allFeats);
 
@@ -5584,19 +5698,13 @@ require([
                         }
                     });
 
-                    // El servidor es la fuente de verdad. Solo preservamos el estado local
-                    // para mesas que ESTA sesión acaba de liberar (protección contra race condition
-                    // del sync periódico, sin bloquear actualizaciones de otros navegadores).
                     const now = Date.now();
                     serverMesas.forEach(serverMesa => {
                         const localMesa = state.mesas.find(m => m.codigo === serverMesa.codigo);
                         if (localMesa) {
-                            // Preservar el objectid cacheado localmente
                             if (localMesa.objectid && !serverMesa.objectid) {
                                 serverMesa.objectid = localMesa.objectid;
                             }
-                            // Solo ignorar "Escrutando" del servidor si ESTA sesión liberó esa mesa
-                            // hace menos de 8 segundos (ventana de seguridad para el update en vuelo)
                             const releasedAt = state.recentlyReleasedMesas && state.recentlyReleasedMesas[serverMesa.codigo];
                             if (serverMesa.estado === "Escrutando" &&
                                 releasedAt && (now - releasedAt) < 8000) {
@@ -5608,7 +5716,6 @@ require([
                         }
                     });
 
-                    // Limpiar entradas caducadas del registro de mesas recientemente liberadas
                     if (state.recentlyReleasedMesas) {
                         Object.keys(state.recentlyReleasedMesas).forEach(cod => {
                             if (now - state.recentlyReleasedMesas[cod] >= 8000) {
@@ -5621,13 +5728,16 @@ require([
                     ensureAllMesasHavePins({ persistMissing: true });
                     rebuildDynamicMappings();
                     saveLocalDatabase();
-                    
-                    // Refrescar vistas
+
+                    const nextSignature = buildMesasSyncSignature(state.mesas);
+                    const changed = state._lastMesasSyncSignature !== nextSignature;
+                    state._lastMesasSyncSignature = nextSignature;
+
                     updateGlobalMetrics();
                     renderMapTheme();
                     if (state.currentUser && state.currentUser.role === "admin") {
                         renderAdminPortal();
-                    } else if (state.currentUser && state.currentUser.role === "colegio") {
+                    } else if (changed && state.currentUser && state.currentUser.role === "colegio") {
                         if (state.selectedMesa === null) {
                             showSchoolPortalView();
                         }
@@ -5640,12 +5750,13 @@ require([
                     updateGlobalMetrics();
                     renderMapTheme();
                 }
-            }).catch(err => {
+            })
+            .catch(err => {
                 console.error("Fallo al consultar la tabla de mesas en ArcGIS Server:", err);
+            })
+            .finally(() => {
+                state._syncInFlight = false;
             });
-        } catch (e) {
-            console.error("Excepción en syncDataWithArcGISServer:", e);
-        }
     }
 
     // Helper para extraer objeto mesa desde atributos de ArcGIS Server (soporta CENSO nativo y RESULTADOS_JSON)
@@ -6006,11 +6117,49 @@ require([
         return PUBLIC_SYNC_MS;
     }
 
+    function clearPeriodicSyncTimer() {
+        if (state.syncInterval) {
+            clearTimeout(state.syncInterval);
+            state.syncInterval = null;
+        }
+    }
+
+    function runPeriodicSyncTick() {
+        if (typeof document !== "undefined" && document.hidden) return;
+        if (state.currentUser && state.currentUser.role === "colegio" && isScrutinyFormActive()) {
+            return;
+        }
+        if (state.currentUser && state.arcgisMode) {
+            syncDataWithArcGISServer();
+        } else if (!state.currentUser) {
+            loadResultsFromServer();
+        } else if (state.currentUser.role === "admin") {
+            loadResultsFromServer();
+        }
+    }
+
+    function scheduleNextPeriodicSync(baseMs) {
+        clearPeriodicSyncTimer();
+        const jitter = Math.floor(Math.random() * Math.max(1, baseMs * SYNC_JITTER_RATIO));
+        state.syncInterval = setTimeout(() => {
+            state.syncInterval = null;
+            runPeriodicSyncTick();
+            const next = getSyncIntervalMs();
+            if (next) scheduleNextPeriodicSync(next);
+        }, baseMs + jitter);
+    }
+
     // Configura e inicia la sincronización periódica según el perfil activo
     function startPeriodicSync() {
-        if (state.syncInterval) {
-            clearInterval(state.syncInterval);
-            state.syncInterval = null;
+        clearPeriodicSyncTimer();
+
+        if (!state._syncVisibilityBound && typeof document !== "undefined") {
+            state._syncVisibilityBound = true;
+            document.addEventListener("visibilitychange", () => {
+                if (document.hidden) return;
+                runPeriodicSyncTick();
+                startPeriodicSync();
+            });
         }
 
         const intervalMs = getSyncIntervalMs();
@@ -6019,25 +6168,12 @@ require([
             return;
         }
 
-        console.log(`[SYNC] Periodic sync every ${intervalMs}ms`, {
+        console.log(`[SYNC] Periodic sync every ~${intervalMs}ms (+jitter)`, {
             role: state.currentUser ? state.currentUser.role : "public",
             mesaActiva: !!(state.selectedMesa && state.selectedMesa.codigo)
         });
 
-        state.syncInterval = setInterval(() => {
-            // Colegio grabando datos: no sincronizar
-            if (state.currentUser && state.currentUser.role === "colegio" && isScrutinyFormActive()) {
-                return;
-            }
-            if (state.currentUser && state.arcgisMode) {
-                syncDataWithArcGISServer();
-            } else if (!state.currentUser) {
-                loadResultsFromServer();
-            } else if (state.currentUser.role === "admin") {
-                // Admin sin token ArcGIS aún: intentar lectura pública
-                loadResultsFromServer();
-            }
-        }, intervalMs);
+        scheduleNextPeriodicSync(intervalMs);
     }
 
     // Funciones auxiliares de edición en ArcGIS
