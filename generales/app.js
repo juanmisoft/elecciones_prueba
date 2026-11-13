@@ -34,6 +34,69 @@ require([
     const EDITABLE_SERVICE_URL = "https://sit.rivasciudad.es/server/rest/services/Elecciones_Rivas_Gen_Prueba/FeatureServer";
     const URL_MESAS_TABLE_EDIT = `${EDITABLE_SERVICE_URL}/6`;
 
+
+    // Campos deseados (la capitalización real se resuelve con resolveOutFields tras layer.load).
+    // Hosted → objectid/minúsculas; FeatureServer enterprise → OBJECTID/MAYÚSCULAS.
+    const OUT_FIELDS_SECCIONES = ["OBJECTID", "SECCION"];
+    const OUT_FIELDS_TERMINO = ["OBJECTID"];
+    const OUT_FIELDS_COLEGIOS = ["OBJECTID"];
+    // Avances/votos van en RESULTADOS_JSON; no pedir columnas opcionales que puedan no existir.
+    const OUT_FIELDS_MESAS = [
+        "OBJECTID", "CODIGO", "SECCION", "MESA", "COLEGIO", "CENSO", "ESTADO",
+        "LI", "LF", "MIEMBROS", "RESULTADOS_JSON",
+        "FIRMA_PRESI", "FIRMA_VOCAL1", "FIRMA_VOCAL2"
+    ];
+    const OUT_FIELDS_MESAS_IDS = ["OBJECTID", "CODIGO"];
+    const OUT_FIELDS_MESAS_ESTADO = ["OBJECTID", "CODIGO", "ESTADO"];
+    // Censo Hosted: "*" evita fallos de mayúsculas.
+    const OUT_FIELDS_CENSO = "*";
+
+    function resolveOutFields(layerOrFields, wanted) {
+        if (!wanted || wanted === "*" || (Array.isArray(wanted) && wanted.indexOf("*") !== -1)) return ["*"];
+        const list = Array.isArray(wanted) ? wanted : [wanted];
+        const fields = Array.isArray(layerOrFields)
+            ? layerOrFields
+            : ((layerOrFields && layerOrFields.fields) || []);
+        if (!fields.length) return list.slice();
+        const byLower = {};
+        fields.forEach((f) => {
+            if (f && f.name) byLower[String(f.name).toLowerCase()] = f.name;
+        });
+        const out = [];
+        list.forEach((w) => {
+            const hit = byLower[String(w).toLowerCase()];
+            if (hit && out.indexOf(hit) === -1) out.push(hit);
+        });
+        return out.length ? out : list.slice();
+    }
+
+    function oidFieldFromLayer(layer) {
+        return findFieldName((layer && layer.fields) || [], ["OBJECTID", "objectid", "FID"]) || "OBJECTID";
+    }
+
+    function oidFromAttrs(attrs) {
+        return getAttributeValue(attrs, "objectid")
+            || getAttributeValue(attrs, "OBJECTID")
+            || getAttributeValue(attrs, "FID")
+            || null;
+    }
+
+    async function queryObjectId(layer, where) {
+        if (layer.load && !layer.loaded) await layer.load();
+        const oidField = oidFieldFromLayer(layer);
+        const q = layer.createQuery();
+        q.where = where;
+        q.outFields = [oidField];
+        q.returnGeometry = false;
+        q.num = 1;
+        const res = await layer.queryFeatures(q);
+        if (!res.features || !res.features.length) return null;
+        const attrs = res.features[0].attributes || {};
+        const id = oidFromAttrs(attrs);
+        return id == null ? null : { id: id, oidField: oidField, attributes: attrs };
+    }
+
+
     // ==========================================================================
     // ESTADO GLOBAL DE LA APLICACIÓN
     // ==========================================================================
@@ -482,7 +545,7 @@ require([
         state.seccionesLayer = new FeatureLayer({
             id: "seccionesLayer",
             url: URL_SECCIONES,
-            outFields: ["*"],
+            outFields: OUT_FIELDS_SECCIONES,
             opacity: 0.7,
             definitionExpression: SECCIONES_DEFINITION_EXPRESSION,
             popupTemplate: {
@@ -500,7 +563,7 @@ require([
             id: "terminoMunicipalLayer",
             url: URL_TERMINO_MUNICIPAL,
             title: "Término municipal",
-            outFields: ["*"],
+            outFields: OUT_FIELDS_TERMINO,
             legendEnabled: false,
             popupEnabled: false,
             renderer: {
@@ -522,7 +585,7 @@ require([
         state.colegiosLayer = new FeatureLayer({
             id: "colegiosLayer",
             url: URL_COLEGIOS,
-            outFields: ["*"],
+            outFields: OUT_FIELDS_COLEGIOS,
             visible: true
         });
 
@@ -593,13 +656,6 @@ require([
             if (mapLoader) mapLoader.classList.add("hidden");
             // Si el servicio responde (con token o público), descargamos las features
             queryAllGeometries();
-            // En móvil el contenedor cambia de fila a columna: forzar recálculo del MapView
-            const resizeMapView = () => {
-                if (state.view && typeof state.view.resize === "function") state.view.resize();
-            };
-            resizeMapView();
-            window.addEventListener("resize", resizeMapView);
-            window.addEventListener("orientationchange", () => setTimeout(resizeMapView, 250));
         }, (err) => {
             console.warn("Error cargando el mapa de ArcGIS:", err);
             const mapLoader = document.getElementById("mapLoader");
@@ -646,7 +702,7 @@ require([
         state.seccionesLayer.when(() => {
             const query = state.seccionesLayer.createQuery();
             query.where = SECCIONES_DEFINITION_EXPRESSION;
-            query.outFields = ["*"];
+            query.outFields = OUT_FIELDS_SECCIONES;
             query.returnGeometry = true;
 
             state.seccionesLayer.queryFeatures(query).then(results => {
@@ -668,7 +724,7 @@ require([
         console.log("Cargando capa geográfica pública alternativa...");
         const publicSecLayer = new FeatureLayer({
             url: "https://sit.rivasciudad.es/server/rest/services/V_ELECCIONES_GENERALES2023/FeatureServer/0",
-            outFields: ["*"],
+            outFields: OUT_FIELDS_SECCIONES,
             definitionExpression: SECCIONES_DEFINITION_EXPRESSION,
             popupTemplate: {
                 title: "Sección Censal {SECCION}",
@@ -681,7 +737,7 @@ require([
         publicSecLayer.when(() => {
             const query = publicSecLayer.createQuery();
             query.where = SECCIONES_DEFINITION_EXPRESSION;
-            query.outFields = ["*"];
+            query.outFields = OUT_FIELDS_SECCIONES;
             query.returnGeometry = true;
             
             publicSecLayer.queryFeatures(query).then(results => {
@@ -1327,7 +1383,8 @@ require([
         const safe = escapeSqlLiteral(username);
         const query = usersLayer.createQuery();
         query.where = `UPPER(${fUser}) = UPPER('${safe}')`;
-        query.outFields = ["*"];
+        // Usar nombres reales del schema (p.ej. objectid en minúsculas en Hosted)
+        query.outFields = [fUser, fRole, fCol].filter(Boolean);
         query.returnGeometry = false;
         query.num = 1;
 
@@ -1462,19 +1519,18 @@ require([
             try {
                 const tablesLayer = new FeatureLayer({ url: URL_MESAS_TABLE_EDIT, outFields: ["*"] });
                 let objId = mesa.objectid;
+                let oidKey = "OBJECTID";
                 if (!objId) {
-                    const query = tablesLayer.createQuery();
-                    query.where = `CODIGO = '${mesa.codigo}'`;
-                    query.outFields = ["OBJECTID"];
-                    const qRes = await tablesLayer.queryFeatures(query);
-                    if (qRes.features && qRes.features.length > 0) {
-                        objId = qRes.features[0].attributes.OBJECTID || qRes.features[0].attributes.objectid;
+                    const found = await queryObjectId(tablesLayer, `CODIGO = '${mesa.codigo}'`);
+                    if (found) {
+                        objId = found.id;
+                        oidKey = found.oidField;
                         mesa.objectid = objId;
                     }
                 }
 
                 if (objId) {
-                    const attrs = Object.assign({ OBJECTID: objId }, buildFeatureAttributesFromMesa(mesa));
+                    const attrs = Object.assign({ [oidKey]: objId }, buildFeatureAttributesFromMesa(mesa));
                     const graphic = new Graphic({ attributes: attrs });
                     const res = await tablesLayer.applyEdits({ updateFeatures: [graphic] });
                     console.log(`[ESTADO] Mesa ${mesa.codigo} liberada a '${prevEstado}' en ArcGIS:`, res);
@@ -1789,12 +1845,12 @@ require([
         try {
             const tablesLayer = new FeatureLayer({
                 url: URL_MESAS_TABLE_EDIT,
-                outFields: ["*"]
+                outFields: OUT_FIELDS_MESAS_ESTADO
             });
 
             const query = tablesLayer.createQuery();
             query.where = `codigo = '${mesa.codigo}'`;
-            query.outFields = ["*"];
+            query.outFields = OUT_FIELDS_MESAS_ESTADO;
 
             tablesLayer.queryFeatures(query).then(results => {
                 if (results.features.length > 0) {
@@ -2079,31 +2135,32 @@ require([
     // CONFIGURACIÓN DE PARTIDOS (fuente de verdad: Feature __PARTIES_GEN__ en GDB)
     // --------------------------------------------------------------------------
     const KNOWN_PARTIES_CATALOG = {
-        "PP": { name: "PP", color: "#1d84ce", logo: "../Imagenes/logos/generales/PP.png" },
-        "PSOE": { name: "PSOE", color: "#ef1c27", logo: "../Imagenes/logos/generales/PSOE.png" },
-        "VOX": { name: "VOX", color: "#63be21", logo: "../Imagenes/logos/generales/VOX.png" },
-        "SUMAR": { name: "Sumar", color: "#e11d48", logo: "../Imagenes/logos/generales/sumar-logo-png_seeklogo-487418.png" },
-        "PODEMOS": { name: "Podemos", color: "#6b21a8", logo: "../Imagenes/logos/generales/UnidasPodemos.png" },
-        "UNIDAS_PODEMOS": { name: "Unidas Podemos", color: "#6b21a8", logo: "../Imagenes/logos/generales/UnidasPodemos.png" },
-        "IU": { name: "IU", color: "#7b1fa2", logo: "../Imagenes/logos/generales/IU.png" },
-        "CS": { name: "Ciudadanos", color: "#fa5000", logo: "../Imagenes/logos/generales/Ciudadanos.png" },
-        "CIUDADANOS": { name: "Ciudadanos", color: "#fa5000", logo: "../Imagenes/logos/generales/Ciudadanos.png" },
-        "PACMA": { name: "PACMA", color: "#16a085", logo: "../Imagenes/logos/generales/PACMA.png" },
-        "SAF": { name: "Se Acabó La Fiesta", color: "#0f172a", logo: "../Imagenes/logos/generales/Seacabolafiesta.png" },
-        "SALF": { name: "Se Acabó La Fiesta", color: "#0f172a", logo: "../Imagenes/logos/generales/Seacabolafiesta.png" },
         "FO": { name: "Frente Obrero", color: "#991b1b", logo: "../Imagenes/logos/generales/FO.png" },
+        "PSOE": { name: "PSOE", color: "#ef1c27", logo: "../Imagenes/logos/generales/PSOE.png" },
+        "FEJONS": { name: "FE de las JONS", color: "#1e293b", logo: "../Imagenes/logos/generales/falange.png" },
+        "FJONS": { name: "FE de las JONS", color: "#1e293b", logo: "../Imagenes/logos/generales/falange.png" },
+        "VOX": { name: "VOX", color: "#63be21", logo: "../Imagenes/logos/generales/VOX.png" },
+        "PCTE": { name: "PCTE", color: "#b91c1c", logo: "../Imagenes/logos/generales/PCTE.png" },
+        "PH": { name: "Partido Humanista", color: "#a8a29e", logo: "../Imagenes/logos/generales/Partido Humanista.png" },
+        "PARTIDO_HUMANISTA": { name: "Partido Humanista", color: "#a8a29e", logo: "../Imagenes/logos/generales/Partido Humanista.png" },
+        "D21": { name: "Democracia para el Siglo 21", color: "#fa5000", logo: "../Imagenes/logos/generales/democracia21.jpg" },
+        "IE": { name: "Iustitia Europa", color: "#1d4ed8", logo: "../Imagenes/logos/generales/iustitiaeuropa.png" },
+        "MUNDOJUSTO": { name: "Por Un Mundo Más Justo", color: "#64748b", logo: "../Imagenes/logos/generales/mundojusto.png" },
+        "PUMMJ": { name: "Por Un Mundo Más Justo", color: "#64748b", logo: "../Imagenes/logos/generales/mundojusto.png" },
+        "PUMJ": { name: "Por Un Mundo Más Justo", color: "#64748b", logo: "../Imagenes/logos/generales/mundojusto.png" },
+        "SALF": { name: "Se Acabó la Fiesta", color: "#0f172a", logo: "../Imagenes/logos/generales/Seacabolafiesta.png" },
+        "SAF": { name: "Se Acabó la Fiesta", color: "#0f172a", logo: "../Imagenes/logos/generales/Seacabolafiesta.png" },
+        "PP": { name: "PP", color: "#1d84ce", logo: "../Imagenes/logos/generales/PP.png" },
+        "PACMA": { name: "PACMA", color: "#16a085", logo: "../Imagenes/logos/generales/PACMA.png" },
         "FA": { name: "Frente Amplio", color: "#f24405", logo: "../Imagenes/logos/generales/frenteamplio.jpeg" },
         "FRENTE_AMPLIO": { name: "Frente Amplio", color: "#f24405", logo: "../Imagenes/logos/generales/frenteamplio.jpeg" },
-        "PCTE": { name: "PCTE", color: "#b91c1c", logo: "../Imagenes/logos/generales/PCTE.png" },
-        "PUMMJ": { name: "PUM+J", color: "#64748b", logo: "../Imagenes/logos/generales/Logo_OITR.png" },
-        "PUMJ": { name: "PUM+J", color: "#64748b", logo: "../Imagenes/logos/generales/Logo_OITR.png" },
+        "PODEMOS": { name: "Podemos", color: "#6b21a8", logo: "../Imagenes/logos/generales/podemos.jpg" },
+        "UNIDAS_PODEMOS": { name: "Podemos", color: "#6b21a8", logo: "../Imagenes/logos/generales/podemos.jpg" },
+        "SUMAR": { name: "Sumar", color: "#e11d48", logo: "../Imagenes/logos/generales/Logo_OITR.png" },
+        "IU": { name: "IU", color: "#7b1fa2", logo: "../Imagenes/logos/generales/Logo_OITR.png" },
+        "CS": { name: "Ciudadanos", color: "#fa5000", logo: "../Imagenes/logos/generales/democracia21.jpg" },
+        "CIUDADANOS": { name: "Ciudadanos", color: "#fa5000", logo: "../Imagenes/logos/generales/democracia21.jpg" },
         "RECORTES_CERO": { name: "Recortes Cero", color: "#475569", logo: "../Imagenes/logos/generales/Logo_OITR.png" },
-        "RECORTES_C": { name: "Recortes Cero", color: "#475569", logo: "../Imagenes/logos/generales/Logo_OITR.png" },
-        "FJONS": { name: "FE-JONS", color: "#1e293b", logo: "../Imagenes/logos/generales/Logo_OITR.png" },
-        "FEJONS": { name: "FE-JONS", color: "#1e293b", logo: "../Imagenes/logos/generales/Logo_OITR.png" },
-        "PH": { name: "Partido Humanista", color: "#a8a29e", logo: "../Imagenes/logos/generales/Logo_OITR.png" },
-        "PARTIDO_HUMANISTA": { name: "Partido Humanista", color: "#a8a29e", logo: "../Imagenes/logos/generales/Logo_OITR.png" },
-        "ASPARTIDO_HUMANISTA": { name: "Partido Humanista", color: "#a8a29e", logo: "../Imagenes/logos/generales/Logo_OITR.png" },
         "PCPE": { name: "PCPE", color: "#7f1d1d", logo: "../Imagenes/logos/generales/Logo_OITR.png" },
         "VOLT": { name: "Volt", color: "#502379", logo: "../Imagenes/logos/generales/Logo_OITR.png" },
         "IZQESP": { name: "Izquierda Española", color: "#be123c", logo: "../Imagenes/logos/generales/Logo_OITR.png" }
@@ -2750,14 +2807,14 @@ require([
             `;
 
             tr.innerHTML = `
-                <td data-label="Código"><strong>${mesa.codigo}</strong></td>
-                <td data-label="Colegio">${mesa.colegio}</td>
-                <td data-label="Sección">${mesa.seccion}</td>
-                <td data-label="Mesa">${mesa.mesa}</td>
-                <td data-label="Apellidos">${formatMesaApellidos(mesa)}</td>
-                <td data-label="Censo">${mesa.censo}</td>
-                <td data-label="Estado">${statusBadgeHtml}</td>
-                <td data-label="Acciones" style="text-align: right; white-space: nowrap;">${actionButtons}</td>
+                <td><strong>${mesa.codigo}</strong></td>
+                <td>${mesa.colegio}</td>
+                <td>${mesa.seccion}</td>
+                <td>${mesa.mesa}</td>
+                <td>${formatMesaApellidos(mesa)}</td>
+                <td>${mesa.censo}</td>
+                <td>${statusBadgeHtml}</td>
+                <td style="text-align: right; white-space: nowrap;">${actionButtons}</td>
             `;
 
             tbody.appendChild(tr);
@@ -2988,13 +3045,13 @@ require([
                 console.log("Consultando mesas electorales en ArcGIS para eliminación masiva...");
                 const tablesLayer = new FeatureLayer({
                     url: URL_MESAS_TABLE_EDIT,
-                    outFields: ["*"]
+                    outFields: OUT_FIELDS_MESAS
                 });
 
                 await tablesLayer.load();
                 const query = tablesLayer.createQuery();
                 query.where = "1=1";
-                query.outFields = ["*"];
+                query.outFields = OUT_FIELDS_MESAS;
 
                 const results = await tablesLayer.queryFeatures(query);
                 const mesaFeatures = (results.features || []).filter(f => {
@@ -5626,13 +5683,13 @@ require([
         try {
             const tablesLayer = new FeatureLayer({
                 url: URL_MESAS_TABLE,
-                outFields: ["*"]
+                outFields: OUT_FIELDS_MESAS
             });
 
             tablesLayer.load().then(() => {
                 const query = tablesLayer.createQuery();
                 query.where = "1=1";
-                query.outFields = ["*"];
+                query.outFields = OUT_FIELDS_MESAS;
 
                 tablesLayer.queryFeatures(query).then(results => {
                     console.log(`Resultados públicos: se descargaron ${results.features ? results.features.length : 0} registros.`);
@@ -5697,12 +5754,12 @@ require([
         try {
             const tablesLayer = new FeatureLayer({
                 url: URL_MESAS_TABLE_EDIT,
-                outFields: ["*"]
+                outFields: OUT_FIELDS_MESAS
             });
 
             const query = tablesLayer.createQuery();
             query.where = "1=1";
-            query.outFields = ["*"];
+            query.outFields = OUT_FIELDS_MESAS;
 
             tablesLayer.queryFeatures(query).then(results => {
                 const featureCount = results.features ? results.features.length : 0;
@@ -6085,22 +6142,14 @@ require([
 
             const tablesLayer = new FeatureLayer({ url: URL_MESAS_TABLE_EDIT, outFields: ["*"] });
 
-            const q = tablesLayer.createQuery();
-            q.where = `CODIGO = '${PARTIES_CONFIG_CODIGO}'`;
-            q.outFields = ["OBJECTID"];
-
-            tablesLayer.queryFeatures(q).then(res => {
-                if (res.features && res.features.length > 0) {
-                    // Actualizar registro existente
-                    const objId = res.features[0].attributes.OBJECTID;
-                    attrs.OBJECTID = objId;
+            queryObjectId(tablesLayer, `CODIGO = '${PARTIES_CONFIG_CODIGO}'`).then(found => {
+                if (found) {
+                    attrs[found.oidField] = found.id;
                     const updateGraphic = new Graphic({ attributes: attrs });
                     return tablesLayer.applyEdits({ updateFeatures: [updateGraphic] });
-                } else {
-                    // Crear nuevo registro
-                    const addGraphic = new Graphic({ attributes: attrs });
-                    return tablesLayer.applyEdits({ addFeatures: [addGraphic] });
                 }
+                const addGraphic = new Graphic({ attributes: attrs });
+                return tablesLayer.applyEdits({ addFeatures: [addGraphic] });
             }).then(result => {
                 console.log("[PARTIDOS] Config generales guardada en ArcGIS:", PARTIES_CONFIG_CODIGO, leanParties.length, "partidos", result);
             }).catch(err => {
@@ -6127,12 +6176,9 @@ require([
                 MIEMBROS: list.length.toString() + " colegios"
             };
             const tablesLayer = new FeatureLayer({ url: URL_MESAS_TABLE_EDIT, outFields: ["*"] });
-            const q = tablesLayer.createQuery();
-            q.where = "CODIGO = '__CLOSED__'";
-            q.outFields = ["OBJECTID"];
-            tablesLayer.queryFeatures(q).then(res => {
-                if (res.features && res.features.length > 0) {
-                    attrs.OBJECTID = res.features[0].attributes.OBJECTID;
+            queryObjectId(tablesLayer, "CODIGO = '__CLOSED__'").then(found => {
+                if (found) {
+                    attrs[found.oidField] = found.id;
                     return tablesLayer.applyEdits({ updateFeatures: [new Graphic({ attributes: attrs })] });
                 }
                 return tablesLayer.applyEdits({ addFeatures: [new Graphic({ attributes: attrs })] });
@@ -6235,7 +6281,7 @@ require([
         try {
             const tablesLayer = new FeatureLayer({
                 url: URL_MESAS_TABLE_EDIT,
-                outFields: ["*"]
+                outFields: OUT_FIELDS_MESAS
             });
 
             const attrs = buildFeatureAttributesFromMesa(nuevaMesa);
@@ -6288,20 +6334,19 @@ require([
             };
 
             if (targetMesa.objectid) {
-                return doUpdate("OBJECTID", targetMesa.objectid);
+                return tablesLayer.load().then(() => {
+                    const oidKey = oidFieldFromLayer(tablesLayer);
+                    return doUpdate(oidKey, targetMesa.objectid);
+                });
             }
 
-            const query = tablesLayer.createQuery();
-            query.where = `CODIGO = '${String(targetMesa.codigo).replace(/'/g, "''")}'`;
-            query.outFields = ["OBJECTID"];
-
-            return tablesLayer.queryFeatures(query).then(results => {
-                if (results.features && results.features.length > 0) {
-                    const attrs = results.features[0].attributes;
-                    const objIdKey = attrs.OBJECTID !== undefined ? "OBJECTID" : "objectid";
-                    const objIdVal = attrs[objIdKey];
-                    targetMesa.objectid = objIdVal;
-                    return doUpdate(objIdKey, objIdVal);
+            return queryObjectId(
+                tablesLayer,
+                `CODIGO = '${String(targetMesa.codigo).replace(/'/g, "''")}'`
+            ).then(found => {
+                if (found) {
+                    targetMesa.objectid = found.id;
+                    return doUpdate(found.oidField, found.id);
                 }
                 return sendMesaAddToServer(targetMesa);
             });
@@ -6328,12 +6373,12 @@ require([
         try {
             const tablesLayer = new FeatureLayer({
                 url: URL_MESAS_TABLE_EDIT,
-                outFields: ["*"]
+                outFields: OUT_FIELDS_MESAS
             });
 
             const query = tablesLayer.createQuery();
             query.where = `CODIGO = '${codigo}' OR codigo = '${codigo}'`;
-            query.outFields = ["*"];
+            query.outFields = OUT_FIELDS_MESAS;
 
             tablesLayer.queryFeatures(query).then(results => {
                 if (results.features && results.features.length > 0) {
@@ -6564,7 +6609,7 @@ require([
         function runQuery(whereClause) {
             const params = new URLSearchParams({
                 where: whereClause,
-                outFields: "*",
+                outFields: OUT_FIELDS_CENSO,
                 returnGeometry: "false",
                 resultRecordCount: "1",
                 f: "json",

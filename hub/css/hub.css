@@ -190,6 +190,13 @@ a { color: inherit; text-decoration: none; }
   text-transform: uppercase;
 }
 
+.ambito-card .chip-date,
+.ambito-card .chip-countdown {
+  font-size: 0.95rem;
+  padding: 0.4rem 0.9rem;
+  letter-spacing: 0.03em;
+}
+
 .ambito-card .chip-countdown {
   align-self: flex-end;
   margin-left: auto;

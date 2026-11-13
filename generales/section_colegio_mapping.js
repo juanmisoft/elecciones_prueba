@@ -138,14 +138,14 @@ const COLEGIO_DETAILS = {
   }
 };
 
-// Catálogo inicial Congreso (ampliable desde administración; se sincroniza a GDB como __PARTIES_GEN__)
+// Catálogo inicial Congreso 29N 2026 (plantilla; se publica a GDB como __PARTIES_GEN__)
 const DEFAULT_PARTIES_CONFIG = [
   {
-    id: "PP",
-    name: "PP",
-    color: "#1d84ce",
-    logo: "../Imagenes/logos/generales/PP.png",
-    field: "votos_pp"
+    id: "FO",
+    name: "Frente Obrero",
+    color: "#991b1b",
+    logo: "../Imagenes/logos/generales/FO.png",
+    field: "votos_fo"
   },
   {
     id: "PSOE",
@@ -155,60 +155,18 @@ const DEFAULT_PARTIES_CONFIG = [
     field: "votos_psoe"
   },
   {
+    id: "FEJONS",
+    name: "FE de las JONS",
+    color: "#1e293b",
+    logo: "../Imagenes/logos/generales/falange.png",
+    field: "votos_fejons"
+  },
+  {
     id: "VOX",
     name: "VOX",
     color: "#63be21",
     logo: "../Imagenes/logos/generales/VOX.png",
     field: "votos_vox"
-  },
-  {
-    id: "SUMAR",
-    name: "Sumar",
-    color: "#e11d48",
-    logo: "../Imagenes/logos/generales/sumar-logo-png_seeklogo-487418.png",
-    field: "votos_sumar"
-  },
-  {
-    id: "PODEMOS",
-    name: "Podemos",
-    color: "#6b21a8",
-    logo: "../Imagenes/logos/generales/UnidasPodemos.png",
-    field: "votos_podemos"
-  },
-  {
-    id: "CS",
-    name: "Ciudadanos",
-    color: "#fa5000",
-    logo: "../Imagenes/logos/generales/Ciudadanos.png",
-    field: "votos_cs"
-  },
-  {
-    id: "PACMA",
-    name: "PACMA",
-    color: "#16a085",
-    logo: "../Imagenes/logos/generales/PACMA.png",
-    field: "votos_pacma"
-  },
-  {
-    id: "SAF",
-    name: "Se Acabó La Fiesta",
-    color: "#0f172a",
-    logo: "../Imagenes/logos/generales/Seacabolafiesta.png",
-    field: "votos_saf"
-  },
-  {
-    id: "FO",
-    name: "Frente Obrero",
-    color: "#991b1b",
-    logo: "../Imagenes/logos/generales/FO.png",
-    field: "votos_fo"
-  },
-  {
-    id: "FA",
-    name: "Frente Amplio",
-    color: "#f24405",
-    logo: "../Imagenes/logos/generales/frenteamplio.jpeg",
-    field: "votos_fa"
   },
   {
     id: "PCTE",
@@ -218,53 +176,67 @@ const DEFAULT_PARTIES_CONFIG = [
     field: "votos_pcte"
   },
   {
-    id: "PUMMJ",
-    name: "PUM+J",
-    color: "#64748b",
-    logo: "../Imagenes/logos/generales/Logo_OITR.png",
-    field: "votos_pummj"
-  },
-  {
-    id: "RECORTES_CERO",
-    name: "Recortes Cero",
-    color: "#475569",
-    logo: "../Imagenes/logos/generales/Logo_OITR.png",
-    field: "votos_recortes_cero"
-  },
-  {
-    id: "FJONS",
-    name: "FE-JONS",
-    color: "#1e293b",
-    logo: "../Imagenes/logos/generales/Logo_OITR.png",
-    field: "votos_fjons"
-  },
-  {
     id: "PH",
     name: "Partido Humanista",
     color: "#a8a29e",
-    logo: "../Imagenes/logos/generales/Logo_OITR.png",
+    logo: "../Imagenes/logos/generales/Partido Humanista.png",
     field: "votos_ph"
   },
   {
-    id: "PCPE",
-    name: "PCPE",
-    color: "#7f1d1d",
-    logo: "../Imagenes/logos/generales/Logo_OITR.png",
-    field: "votos_pcpe"
+    id: "D21",
+    name: "Democracia para el Siglo 21",
+    color: "#fa5000",
+    logo: "../Imagenes/logos/generales/democracia21.jpg",
+    field: "votos_d21"
   },
   {
-    id: "VOLT",
-    name: "Volt",
-    color: "#502379",
-    logo: "../Imagenes/logos/generales/VOLT.svg",
-    field: "votos_volt"
+    id: "IE",
+    name: "Iustitia Europa",
+    color: "#1d4ed8",
+    logo: "../Imagenes/logos/generales/iustitiaeuropa.png",
+    field: "votos_ie"
   },
   {
-    id: "IZQESP",
-    name: "Izquierda Española",
-    color: "#be123c",
-    logo: "../Imagenes/logos/generales/IZQESP2.png",
-    field: "votos_izqesp"
+    id: "MUNDOJUSTO",
+    name: "Por Un Mundo Más Justo",
+    color: "#64748b",
+    logo: "../Imagenes/logos/generales/mundojusto.png",
+    field: "votos_mundojusto"
+  },
+  {
+    id: "SALF",
+    name: "Se Acabó la Fiesta",
+    color: "#0f172a",
+    logo: "../Imagenes/logos/generales/Seacabolafiesta.png",
+    field: "votos_salf"
+  },
+  {
+    id: "PP",
+    name: "PP",
+    color: "#1d84ce",
+    logo: "../Imagenes/logos/generales/PP.png",
+    field: "votos_pp"
+  },
+  {
+    id: "PACMA",
+    name: "PACMA",
+    color: "#16a085",
+    logo: "../Imagenes/logos/generales/PACMA.png",
+    field: "votos_pacma"
+  },
+  {
+    id: "FA",
+    name: "Frente Amplio",
+    color: "#f24405",
+    logo: "../Imagenes/logos/generales/frenteamplio.jpeg",
+    field: "votos_fa"
+  },
+  {
+    id: "PODEMOS",
+    name: "Podemos",
+    color: "#6b21a8",
+    logo: "../Imagenes/logos/generales/podemos.jpg",
+    field: "votos_podemos"
   }
 ];
 

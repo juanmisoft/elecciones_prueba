@@ -34,6 +34,21 @@ require([
     const EDITABLE_SERVICE_URL = "https://sit.rivasciudad.es/server/rest/services/Elecciones_Rivas_Municipales/FeatureServer";
     const URL_MESAS_TABLE_EDIT = `${EDITABLE_SERVICE_URL}/2`; // Mesas_Municipales
 
+
+    // Campos acotados (evitar outFields=*)
+    const OUT_FIELDS_SECCIONES = ["OBJECTID", "SECCION"];
+    const OUT_FIELDS_TERMINO = ["OBJECTID"];
+    const OUT_FIELDS_COLEGIOS = ["OBJECTID"];
+    // Avances/votos van en RESULTADOS_JSON; no pedir columnas opcionales que puedan no existir.
+    const OUT_FIELDS_MESAS = [
+        "OBJECTID", "CODIGO", "SECCION", "MESA", "COLEGIO", "CENSO", "ESTADO",
+        "LI", "LF", "MIEMBROS", "RESULTADOS_JSON",
+        "FIRMA_PRESI", "FIRMA_VOCAL1", "FIRMA_VOCAL2"
+    ];
+    const OUT_FIELDS_MESAS_IDS = ["OBJECTID", "CODIGO"];
+    const OUT_FIELDS_MESAS_ESTADO = ["OBJECTID", "CODIGO", "ESTADO"];
+
+
     // ==========================================================================
     // ESTADO GLOBAL DE LA APLICACIÓN
     // ==========================================================================
@@ -458,7 +473,7 @@ require([
         state.seccionesLayer = new FeatureLayer({
             id: "seccionesLayer",
             url: URL_SECCIONES,
-            outFields: ["*"],
+            outFields: OUT_FIELDS_SECCIONES,
             opacity: 0.7,
             definitionExpression: SECCIONES_DEFINITION_EXPRESSION,
             popupTemplate: {
@@ -476,7 +491,7 @@ require([
             id: "terminoMunicipalLayer",
             url: URL_TERMINO_MUNICIPAL,
             title: "Término municipal",
-            outFields: ["*"],
+            outFields: OUT_FIELDS_TERMINO,
             legendEnabled: false,
             popupEnabled: false,
             renderer: {
@@ -498,7 +513,7 @@ require([
         state.colegiosLayer = new FeatureLayer({
             id: "colegiosLayer",
             url: URL_COLEGIOS,
-            outFields: ["*"],
+            outFields: OUT_FIELDS_COLEGIOS,
             visible: true
         });
 
@@ -569,13 +584,6 @@ require([
             if (mapLoader) mapLoader.classList.add("hidden");
             // Si el servicio responde (con token o público), descargamos las features
             queryAllGeometries();
-            // En móvil el contenedor cambia de fila a columna: forzar recálculo del MapView
-            const resizeMapView = () => {
-                if (state.view && typeof state.view.resize === "function") state.view.resize();
-            };
-            resizeMapView();
-            window.addEventListener("resize", resizeMapView);
-            window.addEventListener("orientationchange", () => setTimeout(resizeMapView, 250));
         }, (err) => {
             console.warn("Error cargando el mapa de ArcGIS:", err);
             const mapLoader = document.getElementById("mapLoader");
@@ -622,7 +630,7 @@ require([
         state.seccionesLayer.when(() => {
             const query = state.seccionesLayer.createQuery();
             query.where = SECCIONES_DEFINITION_EXPRESSION;
-            query.outFields = ["*"];
+            query.outFields = OUT_FIELDS_SECCIONES;
             query.returnGeometry = true;
 
             state.seccionesLayer.queryFeatures(query).then(results => {
@@ -644,7 +652,7 @@ require([
         console.log("Cargando capa geográfica pública alternativa...");
         const publicSecLayer = new FeatureLayer({
             url: "https://sit.rivasciudad.es/server/rest/services/V_ELECCIONES_GENERALES2023/FeatureServer/0",
-            outFields: ["*"],
+            outFields: OUT_FIELDS_SECCIONES,
             definitionExpression: SECCIONES_DEFINITION_EXPRESSION,
             popupTemplate: {
                 title: "Sección Censal {SECCION}",
@@ -657,7 +665,7 @@ require([
         publicSecLayer.when(() => {
             const query = publicSecLayer.createQuery();
             query.where = SECCIONES_DEFINITION_EXPRESSION;
-            query.outFields = ["*"];
+            query.outFields = OUT_FIELDS_SECCIONES;
             query.returnGeometry = true;
             
             publicSecLayer.queryFeatures(query).then(results => {
@@ -1326,7 +1334,7 @@ require([
         // Actualizar en el servidor ArcGIS si es posible
         if (state.arcgisMode && URL_MESAS_TABLE_EDIT) {
             try {
-                const tablesLayer = new FeatureLayer({ url: URL_MESAS_TABLE_EDIT, outFields: ["*"] });
+                const tablesLayer = new FeatureLayer({ url: URL_MESAS_TABLE_EDIT, outFields: OUT_FIELDS_MESAS_IDS });
                 let objId = mesa.objectid;
                 if (!objId) {
                     const query = tablesLayer.createQuery();
@@ -1655,12 +1663,12 @@ require([
         try {
             const tablesLayer = new FeatureLayer({
                 url: URL_MESAS_TABLE_EDIT,
-                outFields: ["*"]
+                outFields: OUT_FIELDS_MESAS_ESTADO
             });
 
             const query = tablesLayer.createQuery();
             query.where = `codigo = '${mesa.codigo}'`;
-            query.outFields = ["*"];
+            query.outFields = OUT_FIELDS_MESAS_ESTADO;
 
             tablesLayer.queryFeatures(query).then(results => {
                 if (results.features.length > 0) {
@@ -2571,13 +2579,13 @@ require([
             `;
 
             tr.innerHTML = `
-                <td data-label="Código"><strong>${mesa.codigo}</strong></td>
-                <td data-label="Colegio">${mesa.colegio}</td>
-                <td data-label="Sección">${mesa.seccion}</td>
-                <td data-label="Mesa">${mesa.mesa}</td>
-                <td data-label="Censo">${mesa.censo}</td>
-                <td data-label="Estado">${statusBadgeHtml}</td>
-                <td data-label="Acciones" style="text-align: right; white-space: nowrap;">${actionButtons}</td>
+                <td><strong>${mesa.codigo}</strong></td>
+                <td>${mesa.colegio}</td>
+                <td>${mesa.seccion}</td>
+                <td>${mesa.mesa}</td>
+                <td>${mesa.censo}</td>
+                <td>${statusBadgeHtml}</td>
+                <td style="text-align: right; white-space: nowrap;">${actionButtons}</td>
             `;
 
             tbody.appendChild(tr);
@@ -2716,13 +2724,13 @@ require([
             try {
                 const tablesLayer = new FeatureLayer({ 
                     url: URL_MESAS_TABLE_EDIT,
-                    outFields: ["*"]
+                    outFields: OUT_FIELDS_MESAS
                 });
                 
                 await tablesLayer.load();
                 const query = tablesLayer.createQuery();
                 query.where = "1=1";
-                query.outFields = ["*"];
+                query.outFields = OUT_FIELDS_MESAS;
                 
                 const results = await tablesLayer.queryFeatures(query);
                 const mesaFeatures = (results.features || []).filter(f => {
@@ -5433,13 +5441,13 @@ require([
         try {
             const tablesLayer = new FeatureLayer({
                 url: URL_MESAS_TABLE,
-                outFields: ["*"]
+                outFields: OUT_FIELDS_MESAS
             });
 
             tablesLayer.load().then(() => {
                 const query = tablesLayer.createQuery();
                 query.where = "1=1";
-                query.outFields = ["*"];
+                query.outFields = OUT_FIELDS_MESAS;
 
                 tablesLayer.queryFeatures(query).then(results => {
                     console.log(`Resultados públicos: se descargaron ${results.features ? results.features.length : 0} registros.`);
@@ -5491,12 +5499,12 @@ require([
         try {
             const tablesLayer = new FeatureLayer({
                 url: URL_MESAS_TABLE_EDIT,
-                outFields: ["*"]
+                outFields: OUT_FIELDS_MESAS
             });
 
             const query = tablesLayer.createQuery();
             query.where = "1=1";
-            query.outFields = ["*"];
+            query.outFields = OUT_FIELDS_MESAS;
 
             tablesLayer.queryFeatures(query).then(results => {
                 console.log(`Se recuperaron ${results.features ? results.features.length : 0} registros del servidor ArcGIS.`);
@@ -5828,7 +5836,7 @@ require([
                 MIEMBROS: leanParties.length.toString() + " partidos"
             };
 
-            const tablesLayer = new FeatureLayer({ url: URL_MESAS_TABLE_EDIT, outFields: ["*"] });
+            const tablesLayer = new FeatureLayer({ url: URL_MESAS_TABLE_EDIT, outFields: OUT_FIELDS_MESAS });
 
             const q = tablesLayer.createQuery();
             q.where = `CODIGO = '${PARTIES_CONFIG_CODIGO}'`;
@@ -5871,7 +5879,7 @@ require([
                 RESULTADOS_JSON: configJson,
                 MIEMBROS: list.length.toString() + " colegios"
             };
-            const tablesLayer = new FeatureLayer({ url: URL_MESAS_TABLE_EDIT, outFields: ["*"] });
+            const tablesLayer = new FeatureLayer({ url: URL_MESAS_TABLE_EDIT, outFields: OUT_FIELDS_MESAS });
             const q = tablesLayer.createQuery();
             q.where = "CODIGO = '__CLOSED__'";
             q.outFields = ["OBJECTID"];
@@ -5980,7 +5988,7 @@ require([
         try {
             const tablesLayer = new FeatureLayer({
                 url: URL_MESAS_TABLE_EDIT,
-                outFields: ["*"]
+                outFields: OUT_FIELDS_MESAS
             });
 
             const attrs = buildFeatureAttributesFromMesa(nuevaMesa);
@@ -6016,7 +6024,7 @@ require([
         try {
             const tablesLayer = new FeatureLayer({
                 url: URL_MESAS_TABLE_EDIT,
-                outFields: ["*"]
+                outFields: OUT_FIELDS_MESAS
             });
 
             const doUpdate = (objIdKey, objIdVal) => {
@@ -6073,12 +6081,12 @@ require([
         try {
             const tablesLayer = new FeatureLayer({
                 url: URL_MESAS_TABLE_EDIT,
-                outFields: ["*"]
+                outFields: OUT_FIELDS_MESAS
             });
 
             const query = tablesLayer.createQuery();
             query.where = `CODIGO = '${codigo}' OR codigo = '${codigo}'`;
-            query.outFields = ["*"];
+            query.outFields = OUT_FIELDS_MESAS;
 
             tablesLayer.queryFeatures(query).then(results => {
                 if (results.features && results.features.length > 0) {

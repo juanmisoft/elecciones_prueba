@@ -1,26 +1,24 @@
-/* Catálogo de logotipos — ámbito GENERALES (Congreso)
- * Logos con fichero propio en Imagenes/logos/generales (Commons / existentes).
- * Partido Humanista: sin logo libre claro en Commons → genérico OITR (sustituible).
+/* Catálogo de logotipos — ámbito GENERALES (Congreso 29N 2026)
+ * Logos en Imagenes/logos/generales.
  */
 const ELECTION_AMBITO = "generales";
 const LOGO_CATALOG_FOLDER = "../Imagenes/logos/generales";
 
 const LOGO_PRESETS = [
-  { label: "PP", file: "PP.png" },
-  { label: "PSOE", file: "PSOE.png" },
-  { label: "VOX", file: "VOX.png" },
-  { label: "Sumar", file: "sumar-logo-png_seeklogo-487418.png" },
-  { label: "Podemos / Unidas Podemos", file: "UnidasPodemos.png" },
-  { label: "IU", file: "IU.png" },
-  { label: "Ciudadanos (CS)", file: "Ciudadanos.png" },
-  { label: "PACMA", file: "PACMA.png" },
-  { label: "Se Acabó La Fiesta (SALF / SAF)", file: "Seacabolafiesta.png" },
   { label: "Frente Obrero (FO)", file: "FO.png" },
-  { label: "Frente Amplio (FA)", file: "frenteamplio.jpeg" },
+  { label: "PSOE", file: "PSOE.png" },
+  { label: "Falange Española de las J.O.N.S. (FE de las JONS)", file: "falange.png" },
+  { label: "VOX", file: "VOX.png" },
   { label: "PCTE", file: "PCTE.png" },
-  { label: "Volt", file: "VOLT.svg" },
-  { label: "Izquierda Española", file: "IZQESP2.png" },
-  { label: "Partido Humanista — genérico OITR", file: "Logo_OITR.png" },
+  { label: "Partido Humanista (PH)", file: "Partido Humanista.png" },
+  { label: "Democracia para el Siglo 21 (D21)", file: "democracia21.jpg" },
+  { label: "Iustitia Europa (IE)", file: "iustitiaeuropa.png" },
+  { label: "Por Un Mundo Más Justo (MUNDO+JUSTO)", file: "mundojusto.png" },
+  { label: "Se Acabó la Fiesta (SALF)", file: "Seacabolafiesta.png" },
+  { label: "PP", file: "PP.png" },
+  { label: "PACMA", file: "PACMA.png" },
+  { label: "Frente Amplio (FA)", file: "frenteamplio.jpeg" },
+  { label: "Podemos", file: "podemos.jpg" },
   { label: "Otras candidaturas — genérico OITR", file: "Logo_OITR.png" }
 ];
 
