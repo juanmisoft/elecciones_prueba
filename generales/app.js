@@ -2211,7 +2211,9 @@ require([
 
             // Si había duplicados en GDB/local, persistir la lista limpia
             if (sourceList.length < newParties.filter((p) => p && p.id).length && state.arcgisMode) {
-                savePartiesToArcGIS(PARTIES_CONFIG);
+                savePartiesToArcGIS(PARTIES_CONFIG).catch(err => {
+                    console.warn("[PARTIDOS] No se pudo persistir dedupe en GDB:", err);
+                });
             }
         }
         if (!silent) {
@@ -3184,12 +3186,29 @@ require([
         if (!conf) return;
 
         savePartiesToStorage(DEFAULT_PARTIES_CONFIG.map(p => ({ ...p })));
-        savePartiesToArcGIS(PARTIES_CONFIG);
         generateVoteFields();
         renderAdminPartiesModal();
         updateGlobalMetrics();
         renderMapTheme();
-        alert(`Catálogo inicial publicado en ${PARTIES_CONFIG_CODIGO}. Recarga la tabla Mesas en Portal para ver la fila.`);
+        persistPartiesToGdbAndNotify(
+            `Catálogo inicial publicado (${PARTIES_CONFIG.length} partidos).`,
+            "No se pudo publicar el catálogo en la GDB"
+        );
+    }
+
+    function persistPartiesToGdbAndNotify(successMsg, failPrefix) {
+        if (!state.arcgisMode) {
+            alert((successMsg || "Cambios aplicados en pantalla.") + "\n\nNo hay sesión ArcGIS: no se escribió en la GDB.");
+            return Promise.resolve(false);
+        }
+        return savePartiesToArcGIS(PARTIES_CONFIG).then(() => {
+            alert((successMsg || "Cambios guardados.") + "\n\nPersistido en GDB (" + PARTIES_CONFIG_CODIGO + ").");
+            return true;
+        }).catch(err => {
+            const detail = (err && (err.message || err.description)) ? (err.message || err.description) : String(err);
+            alert((failPrefix || "No se pudo guardar en la GDB") + ":\n" + detail);
+            return false;
+        });
     }
 
     function handleAdminAddParty(e) {
@@ -3228,7 +3247,6 @@ require([
 
         const updated = [...PARTIES_CONFIG, newParty];
         savePartiesToStorage(updated);
-        savePartiesToArcGIS(PARTIES_CONFIG); // Sincronizar con servidor para otros navegadores
 
         // Inicializar campo en 0 para todas las mesas en memoria
         state.mesas.forEach(m => {
@@ -3250,7 +3268,10 @@ require([
         renderMapTheme();
         renderAdminPortal();
 
-        alert(`¡Fuerza política '${rawName}' (${rawId}) agregada con éxito!`);
+        persistPartiesToGdbAndNotify(
+            `Fuerza política '${rawName}' (${rawId}) agregada.`,
+            "El partido se ve en pantalla pero NO se guardó en la GDB"
+        );
     }
 
     function handleAdminDeleteParty(partyId) {
@@ -3263,7 +3284,6 @@ require([
         const fieldToDelete = party.field;
         const updated = PARTIES_CONFIG.filter(p => p.id !== partyId);
         savePartiesToStorage(updated);
-        savePartiesToArcGIS(PARTIES_CONFIG);
 
         state.mesas.forEach(m => {
             delete m[fieldToDelete];
@@ -3281,7 +3301,10 @@ require([
         renderMapTheme();
         renderAdminPortal();
 
-        alert(`Fuerza política '${party.name}' eliminada correctamente.`);
+        persistPartiesToGdbAndNotify(
+            `Fuerza política '${party.name}' eliminada.`,
+            "El borrado en pantalla no se pudo persistir en la GDB"
+        );
     }
 
     function handleAdminDeleteAllParties() {
@@ -3294,7 +3317,6 @@ require([
         if (!conf) return;
 
         savePartiesToStorage([]);
-        savePartiesToArcGIS([]);
 
         state.mesas.forEach(m => {
             Object.keys(m).forEach(k => {
@@ -3316,7 +3338,10 @@ require([
         renderMapTheme();
         renderAdminPortal();
 
-        alert("Se han eliminado todas las fuerzas políticas del sistema.");
+        persistPartiesToGdbAndNotify(
+            "Se han eliminado todas las fuerzas políticas del sistema.",
+            "El vaciado en pantalla no se pudo persistir en la GDB"
+        );
     }
 
     // Resetear base de datos
@@ -5611,6 +5636,7 @@ require([
         let legacyParties = null;
         let closedList = state.colegiosCerrados || [];
         let sawClosed = false;
+        let sawPartiesRecord = false;
 
         features.forEach(feat => {
             const attrs = feat.attributes || feat;
@@ -5619,8 +5645,10 @@ require([
             if (cod === PARTIES_CONFIG_CODIGO) {
                 preferredParties = parsePartiesConfigPayload(raw);
                 preferredCodigo = cod;
+                sawPartiesRecord = true;
             } else if (cod === PARTIES_CONFIG_CODIGO_LEGACY) {
                 legacyParties = parsePartiesConfigPayload(raw);
+                sawPartiesRecord = true;
             }
             if (cod === "__CLOSED__") {
                 sawClosed = true;
@@ -5633,8 +5661,10 @@ require([
             }
         });
 
-        // Preferir __PARTIES_GEN__; si no, legado __PARTIES__. Si no hay ninguno ⇒ UI vacía.
-        let serverList = [];
+        // Preferir __PARTIES_GEN__; si no, legado __PARTIES__.
+        // Si el lote de sync NO trae el registro de partidos, NO vaciar la lista en memoria
+        // (evita que un query incompleto borre partidos acabados de crear).
+        let serverList = null;
         let usedCodigo = PARTIES_CONFIG_CODIGO;
         if (preferredParties !== null) {
             serverList = preferredParties;
@@ -5646,7 +5676,7 @@ require([
 
         const signature = JSON.stringify({
             codigo: usedCodigo,
-            parties: serverList,
+            parties: serverList === null ? PARTIES_CONFIG : serverList,
             closed: sawClosed ? closedList : state.colegiosCerrados
         });
         if (state._electoralConfigSignature === signature) {
@@ -5658,17 +5688,54 @@ require([
             state.colegiosCerrados = closedList;
         }
 
-        savePartiesToStorage(serverList);
-
-        if (serverList.length > 0 && usedCodigo === PARTIES_CONFIG_CODIGO_LEGACY && state.arcgisMode) {
-            savePartiesToArcGIS(PARTIES_CONFIG);
+        if (state._partiesSavePending) {
+            console.log("[PARTIDOS] Sync omitido (guardado en GDB en curso).");
+        } else if (serverList !== null) {
+            savePartiesToStorage(serverList);
+            if (serverList.length > 0 && usedCodigo === PARTIES_CONFIG_CODIGO_LEGACY && state.arcgisMode) {
+                savePartiesToArcGIS(PARTIES_CONFIG).catch(err => {
+                    console.warn("[PARTIDOS] Migración legado → GDB falló:", err);
+                });
+            }
+            console.log("[PARTIDOS] Aplicados desde GDB:", serverList.length, "partidos", "codigo=", usedCodigo);
+        } else if (!sawPartiesRecord) {
+            console.warn("[PARTIDOS] Sync sin registro de partidos; se conserva la lista en memoria (" + PARTIES_CONFIG.length + ").");
         }
 
         if (!isScrutinyFormActive()) {
             generateVoteFields();
         }
-        console.log("[PARTIDOS] Aplicados desde GDB:", serverList.length, "partidos", "codigo=", usedCodigo);
         return true;
+    }
+
+    function fetchElectoralConfigFeatures(tablesLayer) {
+        const q = tablesLayer.createQuery();
+        q.where = [
+            `CODIGO IN ('${PARTIES_CONFIG_CODIGO}','${PARTIES_CONFIG_CODIGO_LEGACY}','__CLOSED__')`,
+            `codigo IN ('${PARTIES_CONFIG_CODIGO}','${PARTIES_CONFIG_CODIGO_LEGACY}','__CLOSED__')`
+        ].join(" OR ");
+        q.outFields = OUT_FIELDS_MESAS;
+        q.returnGeometry = false;
+        return tablesLayer.queryFeatures(q).then(r => r.features || []).catch(err => {
+            console.warn("[PARTIDOS] Query de registros de configuración falló:", err);
+            return [];
+        });
+    }
+
+    function mergeFeaturesByOid(primary, secondary) {
+        const map = new Map();
+        const add = (list) => {
+            (list || []).forEach(f => {
+                const attrs = f.attributes || {};
+                const oid = attrs.OBJECTID != null ? attrs.OBJECTID : attrs.objectid;
+                const cod = getAttributeValue(attrs, "codigo");
+                const key = oid != null ? ("oid:" + oid) : ("cod:" + (cod || Math.random()));
+                map.set(key, f);
+            });
+        };
+        add(primary);
+        add(secondary);
+        return Array.from(map.values());
     }
 
     function loadResultsFromServer() {
@@ -5691,13 +5758,17 @@ require([
                 query.where = "1=1";
                 query.outFields = OUT_FIELDS_MESAS;
 
-                tablesLayer.queryFeatures(query).then(results => {
-                    console.log(`Resultados públicos: se descargaron ${results.features ? results.features.length : 0} registros.`);
-                    if (results.features && results.features.length > 0) {
-                        applyElectoralConfigFromFeatures(results.features);
+                Promise.all([
+                    tablesLayer.queryFeatures(query),
+                    fetchElectoralConfigFeatures(tablesLayer)
+                ]).then(([results, configFeats]) => {
+                    const allFeats = mergeFeaturesByOid(results.features, configFeats);
+                    console.log(`Resultados públicos: se descargaron ${allFeats.length} registros.`);
+                    if (allFeats.length > 0) {
+                        applyElectoralConfigFromFeatures(allFeats);
 
                         const serverMesas = [];
-                        results.features.forEach(feat => {
+                        allFeats.forEach(feat => {
                             const cod = getAttributeValue(feat.attributes, "codigo");
                             if (!cod || isConfigRecordCodigo(cod)) return;
                             const existingMesa = state.mesas.find(m => m.codigo === cod);
@@ -5761,18 +5832,22 @@ require([
             query.where = "1=1";
             query.outFields = OUT_FIELDS_MESAS;
 
-            tablesLayer.queryFeatures(query).then(results => {
-                const featureCount = results.features ? results.features.length : 0;
+            Promise.all([
+                tablesLayer.queryFeatures(query),
+                fetchElectoralConfigFeatures(tablesLayer)
+            ]).then(([results, configFeats]) => {
+                const allFeats = mergeFeaturesByOid(results.features, configFeats);
+                const featureCount = allFeats.length;
                 if (state._lastSyncFeatureCount !== featureCount) {
                     console.log(`Sincronización ArcGIS: ${featureCount} registros.`);
                     state._lastSyncFeatureCount = featureCount;
                 }
                 
-                if (results.features && results.features.length > 0) {
-                    applyElectoralConfigFromFeatures(results.features);
+                if (allFeats.length > 0) {
+                    applyElectoralConfigFromFeatures(allFeats);
 
                     const serverMesas = [];
-                    results.features.forEach(feature => {
+                    allFeats.forEach(feature => {
                         const cod = getAttributeValue(feature.attributes, "codigo");
                         if (!cod || isConfigRecordCodigo(cod)) return;
 
@@ -6109,26 +6184,58 @@ require([
         return attrs;
     }
 
+    function leanPartiesForGdb(partiesList) {
+        return (partiesList || []).map(p => ({
+            id: p.id,
+            name: p.name,
+            color: p.color,
+            logo: (p.logo && String(p.logo).startsWith("data:"))
+                ? "../Imagenes/Logo_OITR.png"
+                : (p.logo || "../Imagenes/Logo_OITR.png"),
+            field: p.field
+        }));
+    }
+
+    function buildPartiesConfigJson(partiesList) {
+        let lean = leanPartiesForGdb(partiesList);
+        let json = JSON.stringify({ parties_config: lean });
+        if (json.length <= 1990) return { lean: lean, json: json };
+        // RESULTADOS_JSON tiene límite 2000: acortar logos si hace falta.
+        lean = lean.map(p => Object.assign({}, p, { logo: "../Imagenes/Logo_OITR.png" }));
+        json = JSON.stringify({ parties_config: lean });
+        if (json.length <= 1990) return { lean: lean, json: json };
+        throw new Error("El catálogo supera 2000 caracteres de RESULTADOS_JSON. Reduce partidos o nombres.");
+    }
+
+    function extractApplyEditsError(result) {
+        if (!result) return null;
+        const bags = []
+            .concat(result.addFeatureResults || [])
+            .concat(result.updateFeatureResults || [])
+            .concat(result.deleteFeatureResults || []);
+        for (let i = 0; i < bags.length; i++) {
+            const err = bags[i] && (bags[i].error || bags[i].Error);
+            if (err) {
+                return new Error(err.description || err.message || ("applyEdits error " + (err.code || "")));
+            }
+        }
+        return null;
+    }
+
     // Guarda la configuración de partidos en ArcGIS Server como registro __PARTIES_GEN__
     // (separado de __PARTIES_MUNI__ aunque compartan la misma Feature Table).
-    // Solo usa campos del esquema real de la GDB. Los logos base64 se sustituyen por la ruta genérica
-    // para no exceder el límite de 2000 chars de RESULTADOS_JSON.
     function savePartiesToArcGIS(partiesList) {
-        if (typeof FeatureLayer === "undefined" || !URL_MESAS_TABLE_EDIT || !state.arcgisMode) return;
+        if (typeof FeatureLayer === "undefined" || !URL_MESAS_TABLE_EDIT || !state.arcgisMode) {
+            return Promise.reject(new Error("No hay sesión ArcGIS para guardar partidos en la GDB."));
+        }
 
+        state._partiesSavePending = true;
+        let leanParties = [];
         try {
-            // Crear versión "ligera" sin logos base64 (pueden superar los 2000 chars del campo)
-            const leanParties = partiesList.map(p => ({
-                id: p.id,
-                name: p.name,
-                color: p.color,
-                logo: (p.logo && p.logo.startsWith("data:")) ? "../Imagenes/Logo_OITR.png" : (p.logo || "../Imagenes/Logo_OITR.png"),
-                field: p.field
-            }));
+            const packed = buildPartiesConfigJson(partiesList);
+            leanParties = packed.lean;
+            const configJson = packed.json;
 
-            const configJson = JSON.stringify({ parties_config: leanParties });
-
-            // Usar solo los campos que existen en la GDB (según el esquema proporcionado)
             const attrs = {
                 CODIGO: PARTIES_CONFIG_CODIGO,
                 SECCION: "0",
@@ -6141,22 +6248,34 @@ require([
             };
 
             const tablesLayer = new FeatureLayer({ url: URL_MESAS_TABLE_EDIT, outFields: ["*"] });
+            const where = `CODIGO = '${PARTIES_CONFIG_CODIGO}' OR codigo = '${PARTIES_CONFIG_CODIGO}'`;
 
-            queryObjectId(tablesLayer, `CODIGO = '${PARTIES_CONFIG_CODIGO}'`).then(found => {
+            return queryObjectId(tablesLayer, where).then(found => {
                 if (found) {
                     attrs[found.oidField] = found.id;
-                    const updateGraphic = new Graphic({ attributes: attrs });
-                    return tablesLayer.applyEdits({ updateFeatures: [updateGraphic] });
+                    return tablesLayer.applyEdits({ updateFeatures: [new Graphic({ attributes: attrs })] });
                 }
-                const addGraphic = new Graphic({ attributes: attrs });
-                return tablesLayer.applyEdits({ addFeatures: [addGraphic] });
+                return tablesLayer.applyEdits({ addFeatures: [new Graphic({ attributes: attrs })] });
             }).then(result => {
-                console.log("[PARTIDOS] Config generales guardada en ArcGIS:", PARTIES_CONFIG_CODIGO, leanParties.length, "partidos", result);
+                const editErr = extractApplyEditsError(result);
+                if (editErr) throw editErr;
+                state._electoralConfigSignature = JSON.stringify({
+                    codigo: PARTIES_CONFIG_CODIGO,
+                    parties: leanParties,
+                    closed: state.colegiosCerrados
+                });
+                console.log("[PARTIDOS] Guardados en GDB:", PARTIES_CONFIG_CODIGO, leanParties.length, "partidos", result);
+                return result;
             }).catch(err => {
                 console.warn("[PARTIDOS] Error al guardar partidos en ArcGIS:", err);
+                throw err;
+            }).finally(() => {
+                state._partiesSavePending = false;
             });
         } catch (e) {
+            state._partiesSavePending = false;
             console.warn("[PARTIDOS] Excepción en savePartiesToArcGIS:", e);
+            return Promise.reject(e);
         }
     }
 
