@@ -67,7 +67,14 @@ require([
             const hit = byLower[String(w).toLowerCase()];
             if (hit && out.indexOf(hit) === -1) out.push(hit);
         });
-        return out.length ? out : list.slice();
+        // Si ningún nombre coincidió (mayúsculas/minúsculas), "*" evita tumbar el sync.
+        return out.length ? out : ["*"];
+    }
+
+    function ensureLayerLoaded(layer) {
+        if (!layer) return Promise.reject(new Error("FeatureLayer no definido"));
+        if (layer.loaded) return Promise.resolve(layer);
+        return layer.load().then(() => layer);
     }
 
     function oidFieldFromLayer(layer) {
@@ -1059,8 +1066,13 @@ require([
         if (btnManageParties) {
             btnManageParties.addEventListener("click", () => {
                 fillPartyLogoPresetSelect(document.getElementById("party-logo-preset-select"));
-                renderAdminPartiesModal();
                 document.getElementById("modal-admin-parties").classList.remove("hidden");
+                renderAdminPartiesModal();
+                refreshPartiesFromArcGIS().then(() => {
+                    renderAdminPartiesModal();
+                }).catch((err) => {
+                    console.warn("[PARTIDOS] No se pudo refrescar desde ArcGIS:", err);
+                });
             });
         }
         const btnCloseParties = document.getElementById("btn-close-parties-modal");
@@ -5642,18 +5654,28 @@ require([
             const attrs = feat.attributes || feat;
             const cod = getAttributeValue(attrs, "codigo");
             const raw = getAttributeValue(attrs, "RESULTADOS_JSON") || getAttributeValue(attrs, "resultados_json");
+            const hasPayload = raw != null && String(raw).trim() !== "";
             if (cod === PARTIES_CONFIG_CODIGO) {
-                preferredParties = parsePartiesConfigPayload(raw);
-                preferredCodigo = cod;
                 sawPartiesRecord = true;
+                // Solo aplicar si el JSON llega; sin payload (outFields incompleto) no pisar memoria.
+                if (hasPayload) {
+                    preferredParties = parsePartiesConfigPayload(raw);
+                    preferredCodigo = cod;
+                } else {
+                    console.warn("[PARTIDOS] Registro", cod, "sin RESULTADOS_JSON en la respuesta; se conserva memoria.");
+                }
             } else if (cod === PARTIES_CONFIG_CODIGO_LEGACY) {
-                legacyParties = parsePartiesConfigPayload(raw);
                 sawPartiesRecord = true;
+                if (hasPayload) {
+                    legacyParties = parsePartiesConfigPayload(raw);
+                } else {
+                    console.warn("[PARTIDOS] Registro legado sin RESULTADOS_JSON; se conserva memoria.");
+                }
             }
             if (cod === "__CLOSED__") {
                 sawClosed = true;
                 try {
-                    const parsed = raw ? (typeof raw === "string" ? JSON.parse(raw) : raw) : {};
+                    const parsed = hasPayload ? (typeof raw === "string" ? JSON.parse(raw) : raw) : {};
                     closedList = Array.isArray(parsed.closed) ? parsed.closed : [];
                 } catch (e) {
                     closedList = [];
@@ -5709,16 +5731,36 @@ require([
     }
 
     function fetchElectoralConfigFeatures(tablesLayer) {
-        const q = tablesLayer.createQuery();
-        q.where = [
-            `CODIGO IN ('${PARTIES_CONFIG_CODIGO}','${PARTIES_CONFIG_CODIGO_LEGACY}','__CLOSED__')`,
-            `codigo IN ('${PARTIES_CONFIG_CODIGO}','${PARTIES_CONFIG_CODIGO_LEGACY}','__CLOSED__')`
-        ].join(" OR ");
-        q.outFields = OUT_FIELDS_MESAS;
-        q.returnGeometry = false;
-        return tablesLayer.queryFeatures(q).then(r => r.features || []).catch(err => {
+        return ensureLayerLoaded(tablesLayer).then((layer) => {
+            const q = layer.createQuery();
+            q.where = [
+                `CODIGO IN ('${PARTIES_CONFIG_CODIGO}','${PARTIES_CONFIG_CODIGO_LEGACY}','__CLOSED__')`,
+                `codigo IN ('${PARTIES_CONFIG_CODIGO}','${PARTIES_CONFIG_CODIGO_LEGACY}','__CLOSED__')`
+            ].join(" OR ");
+            q.outFields = resolveOutFields(layer, OUT_FIELDS_MESAS);
+            q.returnGeometry = false;
+            return layer.queryFeatures(q).then(r => r.features || []);
+        }).catch(err => {
             console.warn("[PARTIDOS] Query de registros de configuración falló:", err);
             return [];
+        });
+    }
+
+    function refreshPartiesFromArcGIS() {
+        if (!state.arcgisMode || !URL_MESAS_TABLE_EDIT) {
+            return Promise.resolve(PARTIES_CONFIG);
+        }
+        const tablesLayer = new FeatureLayer({
+            url: URL_MESAS_TABLE_EDIT,
+            outFields: OUT_FIELDS_MESAS
+        });
+        return fetchElectoralConfigFeatures(tablesLayer).then((feats) => {
+            if (feats && feats.length) {
+                applyElectoralConfigFromFeatures(feats);
+            } else {
+                console.warn("[PARTIDOS] No se encontró feature de partidos al refrescar el modal.");
+            }
+            return PARTIES_CONFIG;
         });
     }
 
@@ -5756,7 +5798,7 @@ require([
             tablesLayer.load().then(() => {
                 const query = tablesLayer.createQuery();
                 query.where = "1=1";
-                query.outFields = OUT_FIELDS_MESAS;
+                query.outFields = resolveOutFields(tablesLayer, OUT_FIELDS_MESAS);
 
                 Promise.all([
                     tablesLayer.queryFeatures(query),
@@ -5828,14 +5870,16 @@ require([
                 outFields: OUT_FIELDS_MESAS
             });
 
-            const query = tablesLayer.createQuery();
-            query.where = "1=1";
-            query.outFields = OUT_FIELDS_MESAS;
+            ensureLayerLoaded(tablesLayer).then((layer) => {
+                const query = layer.createQuery();
+                query.where = "1=1";
+                query.outFields = resolveOutFields(layer, OUT_FIELDS_MESAS);
 
-            Promise.all([
-                tablesLayer.queryFeatures(query),
-                fetchElectoralConfigFeatures(tablesLayer)
-            ]).then(([results, configFeats]) => {
+                return Promise.all([
+                    layer.queryFeatures(query),
+                    fetchElectoralConfigFeatures(layer)
+                ]);
+            }).then(([results, configFeats]) => {
                 const allFeats = mergeFeaturesByOid(results.features, configFeats);
                 const featureCount = allFeats.length;
                 if (state._lastSyncFeatureCount !== featureCount) {
