@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/hub.css?v=1.7.1">
+  <link rel="stylesheet" href="css/hub.css?v=1.7.2">
 </head>
 <body>
   <header class="hub-band">
@@ -40,17 +40,18 @@
           <h2>Generales</h2>
           <p>Histórico del Congreso en Rivas y acceso al seguimiento en vivo de la jornada.</p>
         </a>
-        <a class="ambito-card" data-ambito="municipales" href="historico.html?ambito=municipales">
+        <!-- Otros ámbitos ocultos temporalmente (solo Generales visible en el HUB) -->
+        <a class="ambito-card is-hidden" data-ambito="municipales" href="historico.html?ambito=municipales" aria-hidden="true" tabindex="-1">
           <span class="chip">23 mayo 2027</span>
           <h2>Municipales</h2>
           <p>Histórico al Ayuntamiento y acceso al visor en directo de participación y escrutinio.</p>
         </a>
-        <a class="ambito-card" data-ambito="asamblea" href="historico.html?ambito=asamblea">
+        <a class="ambito-card is-hidden" data-ambito="asamblea" href="historico.html?ambito=asamblea" aria-hidden="true" tabindex="-1">
           <span class="chip">Histórico</span>
           <h2>Asamblea de Madrid</h2>
           <p>Mapa de ganadores y comparación entre convocatorias autonómicas en el municipio.</p>
         </a>
-        <a class="ambito-card" data-ambito="europeas" href="historico.html?ambito=europeas">
+        <a class="ambito-card is-hidden" data-ambito="europeas" href="historico.html?ambito=europeas" aria-hidden="true" tabindex="-1">
           <span class="chip">Histórico</span>
           <h2>Europeas</h2>
           <p>Participación y fuerzas más votadas en Rivas en las elecciones al Parlamento Europeo.</p>

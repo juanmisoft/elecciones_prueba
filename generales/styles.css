@@ -3,11 +3,11 @@
 
 :root {
     /* Ámbito generales (acorde al HUB) */
-    --ambito-accent: #1e3a5f;
-    --ambito-accent-hover: #152a45;
-    --ambito-accent-soft: #dbe7f5;
-    --primary-color: #1e3a5f;
-    --primary-hover: #152a45;
+    --ambito-accent: #e30613;
+    --ambito-accent-hover: #b8050e;
+    --ambito-accent-soft: #fde8ea;
+    --primary-color: #e30613;
+    --primary-hover: #b8050e;
     --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
     --card-bg: rgba(255, 255, 255, 0.75);
     --card-border: rgba(255, 255, 255, 0.35);

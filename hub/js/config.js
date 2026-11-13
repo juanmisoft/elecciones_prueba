@@ -106,8 +106,8 @@
       id: "generales",
       name: "Generales",
       short: "Congreso",
-      accent: "#1e3a5f",
-      accentSoft: "#dbe7f5",
+      accent: "#e30613",
+      accentSoft: "#fde8ea",
       blurb: "Resultados en Rivas de las elecciones al Congreso.",
       nextEvent: {
         title: "Próximas elecciones generales",
