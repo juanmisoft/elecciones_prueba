@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_5_0.xsd"
+         version="5.0"
+         metadata-complete="true">
+
+  <display-name>Elecciones Rivas Vaciamadrid</display-name>
+  <description>
+    Portal estático de históricos y escrutinio en vivo (HUB + Generales + Municipales).
+    Los datos viven en ArcGIS; este WAR solo sirve la UI.
+  </description>
+
+  <welcome-file-list>
+    <welcome-file>index.html</welcome-file>
+    <welcome-file>hub/index.html</welcome-file>
+  </welcome-file-list>
+
+  <!-- MIME útiles para assets del portal (Tomcat ya cubre la mayoría). -->
+  <mime-mapping>
+    <extension>json</extension>
+    <mime-type>application/json</mime-type>
+  </mime-mapping>
+  <mime-mapping>
+    <extension>svg</extension>
+    <mime-type>image/svg+xml</mime-type>
+  </mime-mapping>
+  <mime-mapping>
+    <extension>woff2</extension>
+    <mime-type>font/woff2</mime-type>
+  </mime-mapping>
+  <mime-mapping>
+    <extension>ico</extension>
+    <mime-type>image/x-icon</mime-type>
+  </mime-mapping>
+  <mime-mapping>
+    <extension>webp</extension>
+    <mime-type>image/webp</mime-type>
+  </mime-mapping>
+
+  <!-- Caché de estáticos: reduce peso en visitas repetidas del día electoral. -->
+  <filter>
+    <filter-name>ExpiresFilter</filter-name>
+    <filter-class>org.apache.catalina.filters.ExpiresFilter</filter-class>
+    <init-param>
+      <param-name>ExpiresByType image</param-name>
+      <param-value>access plus 7 days</param-value>
+    </init-param>
+    <init-param>
+      <param-name>ExpiresByType text/css</param-name>
+      <param-value>access plus 1 day</param-value>
+    </init-param>
+    <init-param>
+      <param-name>ExpiresByType application/javascript</param-name>
+      <param-value>access plus 1 day</param-value>
+    </init-param>
+    <init-param>
+      <param-name>ExpiresByType text/javascript</param-name>
+      <param-value>access plus 1 day</param-value>
+    </init-param>
+    <init-param>
+      <param-name>ExpiresByType image/svg+xml</param-name>
+      <param-value>access plus 7 days</param-value>
+    </init-param>
+    <init-param>
+      <param-name>ExpiresByType image/x-icon</param-name>
+      <param-value>access plus 30 days</param-value>
+    </init-param>
+    <init-param>
+      <param-name>ExpiresDefault</param-name>
+      <param-value>access plus 1 hour</param-value>
+    </init-param>
+  </filter>
+  <filter-mapping>
+    <filter-name>ExpiresFilter</filter-name>
+    <url-pattern>/*</url-pattern>
+    <dispatcher>REQUEST</dispatcher>
+  </filter-mapping>
+
+  <session-config>
+    <tracking-mode>COOKIE</tracking-mode>
+  </session-config>
+</web-app>

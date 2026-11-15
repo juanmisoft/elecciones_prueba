@@ -252,7 +252,7 @@ require([
     // Intervalos de sincronización según perfil
     // Sin proxy: RPS ≈ usuarios_visibles / (PUBLIC_SYNC_MS/1000). Objetivo GDB: ≤5–10 req/s.
     // 180 s: ~5 rps con 900 visibles, ~8 rps con 1500, ~17 rps con 3000 (límite; 3000 reales pedirían ≥5 min).
-    const PUBLIC_SYNC_MS = 180000;  // Visor ciudadano: 3 min
+    const PUBLIC_SYNC_MS = 5000;  // Visor ciudadano: 5 s (prueba)
     const ADMIN_SYNC_MS = 5000;     // Admin: estados de mesas casi en vivo
     const COLEGIO_SYNC_MS = 5000;   // Colegio: solo en listado de mesas (no dentro del formulario)
     const SYNC_JITTER_RATIO = 0.15; // Evita thundering herd con muchos clientes
@@ -2378,7 +2378,7 @@ require([
             const card = document.createElement("div");
             card.className = "vote-input-card";
             card.innerHTML = `
-                <img src="${p.logo}" alt="Logo ${p.name}" class="party-logo">
+                <img src="${p.logo}" alt="Logo ${p.name}" class="party-logo" width="24" height="24" decoding="async">
                 <label for="input-vote-${p.id}">${p.name}</label>
                 <input type="number" inputmode="numeric" pattern="[0-9]*" id="input-vote-${p.id}" class="vote-input-field" value="" min="0" data-party="${p.id}">
             `;
@@ -2839,15 +2839,24 @@ require([
         return "Abierta";
     }
 
+    function mesaAvanceParticipacionPct(mesa, part) {
+        const censo = (mesa && mesa.censo) || 0;
+        const votos = part === 2 ? ((mesa && mesa.part2_votos) || 0) : ((mesa && mesa.part1_votos) || 0);
+        if (censo <= 0) return "0.0";
+        return ((votos / censo) * 100).toFixed(1);
+    }
+
     function buildAdminStatusBadgeHtml(mesa) {
         const baseEstado = resolveMesaBaseEstado(mesa);
         let badge = `<span class="status-badge-inline status-open"><i class="fa-solid fa-lock-open"></i> Abierta</span>`;
         if (baseEstado === "Cerrada") {
             badge = `<span class="status-badge-inline status-closed"><i class="fa-solid fa-lock"></i> Cerrada</span>`;
         } else if (baseEstado === "Part1_Enviada") {
-            badge = `<span class="status-badge-inline status-part1"><i class="fa-solid fa-chart-line"></i> Part. 1 Enviada</span>`;
+            const pct = mesaAvanceParticipacionPct(mesa, 1);
+            badge = `<span class="status-badge-inline status-part1" title="Participación 1º avance: ${pct}%"><i class="fa-solid fa-chart-line"></i> Part. 1 · ${pct}%</span>`;
         } else if (baseEstado === "Part2_Enviada") {
-            badge = `<span class="status-badge-inline status-part2"><i class="fa-solid fa-chart-line"></i> Part. 2 Enviada</span>`;
+            const pct = mesaAvanceParticipacionPct(mesa, 2);
+            badge = `<span class="status-badge-inline status-part2" title="Participación 2º avance: ${pct}%"><i class="fa-solid fa-chart-line"></i> Part. 2 · ${pct}%</span>`;
         }
 
         const editingIcon = isMesaOccupied(mesa)
@@ -3877,7 +3886,7 @@ require([
 
     function renderPartiesRanking(partyTotals, totalVotosValidos, closedMesas) {
         const container = document.getElementById("global-parties-container");
-        container.innerHTML = "";
+        if (!container) return;
 
         if (!closedMesas || closedMesas === 0) {
             container.innerHTML = `
@@ -3893,24 +3902,48 @@ require([
         // Ordenar por votos
         const sorted = [...PARTIES_CONFIG].sort((x, y) => partyTotals[y.id] - partyTotals[x.id]);
         const maxVotes = sorted.length > 0 ? partyTotals[sorted[0].id] : 0;
-
-        sorted.forEach(p => {
-            const votes = partyTotals[p.id];
+        const rowsData = sorted.map(p => {
+            const votes = partyTotals[p.id] || 0;
             const percent = totalVotosValidos > 0 ? ((votes / totalVotosValidos) * 100).toFixed(2) : "0.00";
             const rowWidth = maxVotes > 0 ? (votes / maxVotes * 100) : 0;
+            return { p, votes, percent, rowWidth };
+        });
 
+        const existing = Array.from(container.querySelectorAll(".party-row"));
+        const canPatch = existing.length === rowsData.length
+            && existing.every((el, i) => el.dataset.partyId === rowsData[i].p.id);
+
+        if (canPatch) {
+            rowsData.forEach((d, i) => {
+                const el = existing[i];
+                const votesEl = el.querySelector(".party-votes");
+                if (votesEl) {
+                    votesEl.innerHTML = `${d.votes.toLocaleString()} <span class="party-percent">(${d.percent}%)</span>`;
+                }
+                const bar = el.querySelector(".party-bar-fill");
+                if (bar) {
+                    bar.style.width = `${d.rowWidth}%`;
+                    bar.style.backgroundColor = d.p.color;
+                }
+            });
+            return;
+        }
+
+        container.innerHTML = "";
+        rowsData.forEach(d => {
             const row = document.createElement("div");
             row.className = "party-row";
+            row.dataset.partyId = d.p.id;
             row.innerHTML = `
                 <div class="party-row-top">
-                    <img src="${p.logo}" alt="Logo ${p.name}" class="party-logo">
-                    <span class="party-name">${p.name}</span>
+                    <img src="${d.p.logo}" alt="Logo ${d.p.name}" class="party-logo" width="24" height="24" decoding="async">
+                    <span class="party-name">${d.p.name}</span>
                     <div class="party-votes">
-                        ${votes.toLocaleString()} <span class="party-percent">(${percent}%)</span>
+                        ${d.votes.toLocaleString()} <span class="party-percent">(${d.percent}%)</span>
                     </div>
                 </div>
                 <div class="party-bar-container">
-                    <div class="party-bar-fill" style="width: ${rowWidth}%; background-color: ${p.color};"></div>
+                    <div class="party-bar-fill" style="width: ${d.rowWidth}%; background-color: ${d.p.color};"></div>
                 </div>
             `;
             container.appendChild(row);
@@ -3937,7 +3970,7 @@ require([
 
     function renderColegiosTab() {
         const container = document.getElementById("colegios-list-container");
-        container.innerHTML = "";
+        if (!container) return;
 
         // Catálogo completo de colegios + los que existan en mesas
         const colegios = [...new Set([
@@ -3945,8 +3978,9 @@ require([
             ...state.mesas.map(m => m.colegio).filter(Boolean)
         ])].sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
 
-        const searchVal = document.getElementById("colegio-search").value;
-        let shown = 0;
+        const searchEl = document.getElementById("colegio-search");
+        const searchVal = searchEl ? searchEl.value : "";
+        const itemsData = [];
 
         colegios.forEach(colName => {
             const details = COLEGIO_DETAILS[colName];
@@ -3956,7 +3990,6 @@ require([
             if (!colegioMatchesSearch(colName, address, searchVal)) {
                 return;
             }
-            shown += 1;
 
             const colMesas = state.mesas.filter(m => m.colegio === colName);
             const totalMesas = colMesas.length;
@@ -4031,30 +4064,64 @@ require([
                     </div>`;
             }
 
-            const item = document.createElement("div");
-            item.className = "colegio-item";
-            item.innerHTML = `
-                <img src="${details?.image || '../Imagenes/Logo_OITR.png'}" alt="Foto ${colName}" class="colegio-item-img">
-                <div class="colegio-item-info">
-                    <div class="colegio-item-name">${colName}</div>
-                    <div class="colegio-item-sub">
-                        <span>Escrutinio: <strong>${scrutiny}%</strong></span>
-                        <span>Participación: <strong>${partRate}%</strong></span>
-                    </div>
-                </div>
-                ${winnerBadgeHtml}
-            `;
-
-            item.addEventListener("click", () => {
-                viewColegioDetails(colName);
+            itemsData.push({
+                colName,
+                img: details?.image || '../Imagenes/Logo_OITR.png',
+                scrutiny,
+                partRate,
+                winnerBadgeHtml
             });
-
-            container.appendChild(item);
         });
 
-        if (shown === 0) {
+        if (itemsData.length === 0) {
             container.innerHTML = `<div style="text-align:center;color:var(--text-muted);font-size:0.85rem;padding:18px 10px;">No hay colegios que coincidan con la búsqueda.</div>`;
+            return;
         }
+
+        const existing = Array.from(container.querySelectorAll(".colegio-item"));
+        const canPatch = existing.length === itemsData.length
+            && existing.every((el, i) => el.dataset.colegio === itemsData[i].colName);
+
+        if (canPatch) {
+            // Actualizar cifras/badges sin recrear <img> (evita parpadeo en cada sync)
+            itemsData.forEach((d, i) => {
+                const el = existing[i];
+                const scr = el.querySelector(".colegio-item-scrutiny");
+                const part = el.querySelector(".colegio-item-part");
+                if (scr) scr.textContent = `${d.scrutiny}%`;
+                if (part) part.textContent = `${d.partRate}%`;
+                const badge = el.querySelector(".colegio-item-winner");
+                if (badge) {
+                    const wrap = document.createElement("div");
+                    wrap.innerHTML = d.winnerBadgeHtml.trim();
+                    const next = wrap.firstElementChild;
+                    if (next) badge.replaceWith(next);
+                }
+            });
+            return;
+        }
+
+        container.innerHTML = "";
+        itemsData.forEach(d => {
+            const item = document.createElement("div");
+            item.className = "colegio-item";
+            item.dataset.colegio = d.colName;
+            item.innerHTML = `
+                <img src="${d.img}" alt="Foto ${d.colName}" class="colegio-item-img" width="48" height="48" decoding="async">
+                <div class="colegio-item-info">
+                    <div class="colegio-item-name">${d.colName}</div>
+                    <div class="colegio-item-sub">
+                        <span>Escrutinio: <strong class="colegio-item-scrutiny">${d.scrutiny}%</strong></span>
+                        <span>Participación: <strong class="colegio-item-part">${d.partRate}%</strong></span>
+                    </div>
+                </div>
+                ${d.winnerBadgeHtml}
+            `;
+            item.addEventListener("click", () => {
+                viewColegioDetails(d.colName);
+            });
+            container.appendChild(item);
+        });
     }
 
     function filterColegiosList(val) {
@@ -4062,7 +4129,7 @@ require([
     }
 
     // Modal de Colegio Electorial detallado
-    function viewColegioDetails(colName) {
+    async function viewColegioDetails(colName) {
         const details = COLEGIO_DETAILS[colName];
         const colMesas = state.mesas.filter(m => m.colegio === colName);
         const totalMesas = colMesas.length;
@@ -4152,7 +4219,7 @@ require([
                 row.className = "party-row";
                 row.innerHTML = `
                     <div class="party-row-top">
-                        <img src="${p.logo}" alt="Logo ${p.name}" class="party-logo">
+                        <img src="${p.logo}" alt="Logo ${p.name}" class="party-logo" width="24" height="24" decoding="async">
                         <span class="party-name">${p.name}</span>
                         <div class="party-votes">
                             ${votes.toLocaleString()} <span class="party-percent">(${pct}%)</span>
@@ -4166,11 +4233,9 @@ require([
             });
         }
 
-        // Mostrar modal
+        // Primero el zoom (mapa visible, sin blur del modal); luego la ficha
+        await zoomMapToColegio(colName, secciones);
         document.getElementById("modal-colegio-detail").classList.remove("hidden");
-
-        // Zoom al colegio en el mapa de ArcGIS
-        zoomMapToColegio(colName, secciones);
     }
 
     function normalizeEdificioName(text) {
@@ -4302,11 +4367,22 @@ require([
 
             ensureMapOverlayOrder();
             state._suppressHighlightClear = true;
-            await state.view.goTo(matches.map(f => f.geometry), {
-                duration: 1000,
-                padding: 48
-            }).catch(() => {});
-            setTimeout(() => { state._suppressHighlightClear = false; }, 1300);
+            // Un solo target (el edificio mayor) + maxZoom: más fluido que goTo de N polígonos
+            try {
+                await state.view.goTo({
+                    target: labelFeature.geometry,
+                    padding: 48,
+                    maxZoom: 17
+                }, {
+                    duration: 700,
+                    easing: "ease-out"
+                });
+            } catch (e) { /* cancelado / interrumpido */ }
+            state._suppressHighlightClear = false;
+            if (state._mapThemeDirty) {
+                state._mapThemeDirty = false;
+                renderMapTheme();
+            }
             return true;
         } catch (err) {
             console.warn("No se pudo resaltar el edificio del colegio:", err);
@@ -4329,7 +4405,22 @@ require([
 
         if (matchingFeatures.length > 0) {
             const geoms = matchingFeatures.map(f => f.geometry);
-            state.view.goTo(geoms, { duration: 1000 }).catch(err => {});
+            state._suppressHighlightClear = true;
+            try {
+                await state.view.goTo({
+                    target: geoms,
+                    padding: 48,
+                    maxZoom: 16
+                }, {
+                    duration: 700,
+                    easing: "ease-out"
+                });
+            } catch (e) { /* ignore */ }
+            state._suppressHighlightClear = false;
+            if (state._mapThemeDirty) {
+                state._mapThemeDirty = false;
+                renderMapTheme();
+            }
         }
     }
 
@@ -4362,6 +4453,11 @@ require([
 
     function renderMapTheme() {
         if (!state.view || geomsCache.length === 0 || !state.seccionesLayer) return;
+        // Evita cortar el goTo al colegio si un sync repinta el mapa a mitad de animación
+        if (state._suppressHighlightClear) {
+            state._mapThemeDirty = true;
+            return;
+        }
         // Usar siempre GraphicsLayer para pintar polígonos de color (más fiable que UniqueValueRenderer en capas seguras)
         renderMapThemeViaGraphics();
     }

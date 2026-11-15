@@ -11,11 +11,13 @@
         content="Portal oficial para el escrutinio en tiempo real de las Elecciones Municipales Rivas Vaciamadrid 2027, con visualización georeferenciada.">
     <meta name="author" content="Oficina de Información Territorial de Rivas (OITR)">
 
-    <!-- Google Fonts & FontAwesome Icons -->
+    <link rel="icon" href="../favicon.ico" type="image/x-icon">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://js.arcgis.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Open+Sans:wght@400;600;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
@@ -23,7 +25,7 @@
     <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css">
 
     <!-- Estilos del Proyecto -->
-    <link rel="stylesheet" href="styles.css?v=2.3.3">
+    <link rel="stylesheet" href="styles.css?v=2.3.6">
 </head>
 
 <body>
@@ -67,6 +69,8 @@
                 </button>
             </div>
         </header>
+
+        <main id="app-main">
 
         <!-- ==========================================================================
            VISTA 1: DASHBOARD PÚBLICO (MAPA Y ESTADÍSTICAS EN TIEMPO REAL)
@@ -785,6 +789,7 @@
             </div>
         </section>
 
+        </main>
     </div> <!-- FIN DEL APP-CONTAINER -->
 
 
@@ -1187,10 +1192,10 @@
 
     <!-- Datos de Configuración del Proyecto (Mapeo Rivas) -->
     <script src="section_logo_catalog.js?v=1.0.0"></script>
-    <script src="section_colegio_mapping.js?v=2.1.7"></script>
+    <script src="section_colegio_mapping.js?v=1.4.0"></script>
 
     <!-- Lógica de Control y Sincronización -->
-    <script src="app.js?v=2.4.2"></script>
+    <script src="app.js?v=2.5.1"></script>
 </body>
 
 </html>

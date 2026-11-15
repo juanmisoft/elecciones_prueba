@@ -77,43 +77,43 @@ const SECTION_COLEGIO_MAPPING = {
 
 const COLEGIO_DETAILS = {
   "C.E.I.P. LAS CIGUEÑAS": {
-    image: "../Imagenes/las-ciguenas.png",
+    image: "../Imagenes/las-ciguenas.jpg",
     address: "Calle Noruega, 1, 28521 Rivas Vaciamadrid"
   },
   "C.E.I.P. LA ESCUELA": {
-    image: "../Imagenes/la-escuela.png",
+    image: "../Imagenes/la-escuela.jpg",
     address: "Avenida de Miguel Hernández, 1, 28523 Rivas Vaciamadrid"
   },
   "C.E.I.P. EL OLIVAR": {
-    image: "../Imagenes/el-olivar.png",
+    image: "../Imagenes/el-olivar.jpg",
     address: "Avenida de Covibar, 3, 28523 Rivas Vaciamadrid"
   },
   "I.E.S. LAS LAGUNAS": {
-    image: "../Imagenes/LAS_LAGUNAS.png",
+    image: "../Imagenes/LAS_LAGUNAS.jpg",
     address: "Avenida de Gabriel García Márquez, s/n, 28523 Rivas Vaciamadrid"
   },
   "C.E.I.P. VICTORIA KENT": {
-    image: "../Imagenes/victroria-kent.png",
+    image: "../Imagenes/victroria-kent.jpg",
     address: "Paseo de la Chopera, 7, 28523 Rivas Vaciamadrid"
   },
   "C.E.I.P. JARAMA": {
-    image: "../Imagenes/ceip_jarama.png",
+    image: "../Imagenes/ceip_jarama.jpg",
     address: "Calle del Olivo, s/n, 28522 Rivas Vaciamadrid"
   },
   "C.E.I.P. LOS ALMENDROS": {
-    image: "../Imagenes/los-almendros.png",
+    image: "../Imagenes/los-almendros.jpg",
     address: "Avenida de los Almendros, 198, 28522 Rivas Vaciamadrid"
   },
   "C.E.I.P. RAFAEL ALBERTI": {
-    image: "../Imagenes/rafael-alberti.png",
+    image: "../Imagenes/rafael-alberti.jpg",
     address: "Paseo de las Provincias, s/n, 28523 Rivas Vaciamadrid"
   },
   "C.E.I.P. JOSE SARAMAGO": {
-    image: "../Imagenes/jose-saramago.png",
+    image: "../Imagenes/jose-saramago.jpg",
     address: "Calle de José Saramago, 1, 28522 Rivas Vaciamadrid"
   },
   "C.E.I.P. DULCE CHACON": {
-    image: "../Imagenes/dulce-chacon.png",
+    image: "../Imagenes/dulce-chacon.jpg",
     address: "Calle Federica Montseny, 3, 28521 Rivas Vaciamadrid"
   },
   "C.E.I.P. JOSE HIERRO": {
@@ -121,11 +121,11 @@ const COLEGIO_DETAILS = {
     address: "Avenida de José Hierro, 86, 28521 Rivas Vaciamadrid"
   },
   "C.E.I.P. HANS CHRISTIAN ANDERSEN": {
-    image: "../Imagenes/hans-christian-andersen.png",
+    image: "../Imagenes/hans-christian-andersen.jpg",
     address: "Calle de Fernando Trueba, 8, 28521 Rivas Vaciamadrid"
   },
   "C.E.I.P. JOSE ITURZAETA": {
-    image: "../Imagenes/jose-iturzaeta.png",
+    image: "../Imagenes/jose-iturzaeta.jpg",
     address: "Calle Bernardo Atxaga, 13, 28521 Rivas Vaciamadrid"
   },
   "C.E.I.P.S.O LA LUNA": {

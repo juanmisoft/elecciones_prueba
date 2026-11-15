@@ -11,11 +11,13 @@
         content="Portal oficial para el escrutinio en tiempo real de las Elecciones Generales Rivas Vaciamadrid 2026, con visualización georeferenciada.">
     <meta name="author" content="Oficina de Información Territorial de Rivas (OITR)">
 
-    <!-- Google Fonts & FontAwesome Icons -->
+    <link rel="icon" href="../favicon.ico" type="image/x-icon">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://js.arcgis.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Open+Sans:wght@400;600;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
@@ -23,7 +25,7 @@
     <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css">
 
     <!-- Estilos del Proyecto -->
-    <link rel="stylesheet" href="styles.css?v=1.4.8">
+    <link rel="stylesheet" href="styles.css?v=1.5.1">
 </head>
 
 <body>
@@ -38,7 +40,7 @@
                     <span class="btn-back-hub-arrow" aria-hidden="true">&#8592;</span>
                     <span>HUB</span>
                 </a>
-                <img class="brand-proceso-logo" src="../Imagenes/logo_proceso.svg" alt="Elecciones Generales — logo oficial del proceso">
+                <img class="brand-proceso-logo" src="../Imagenes/logo_proceso.svg" width="280" height="60" decoding="async" alt="Elecciones Generales — logo oficial del proceso">
                 <div class="brand-title">
                     <span class="brand-context"><span class="live-pulse" aria-hidden="true"></span> En vivo</span>
                     <span class="brand-heading">Generales</span>
@@ -68,6 +70,8 @@
                 </button>
             </div>
         </header>
+
+        <main id="app-main">
 
         <!-- ==========================================================================
            VISTA 1: DASHBOARD PÚBLICO (MAPA Y ESTADÍSTICAS EN TIEMPO REAL)
@@ -231,7 +235,7 @@
            ========================================================================== -->
         <section id="login-view" class="view-section login-view hidden">
             <div class="login-card">
-                <img src="../Imagenes/logo_proceso.svg" alt="Elecciones Generales — logo oficial del proceso" class="login-logo login-logo-proceso">
+                <img src="../Imagenes/logo_proceso.svg" width="280" height="60" decoding="async" alt="Elecciones Generales — logo oficial del proceso" class="login-logo login-logo-proceso">
                 <div class="login-title">Portal electoral · Generales</div>
                 <div class="login-subtitle">Introduce tus credenciales para acceder a la aplicación electoral</div>
 
@@ -791,6 +795,7 @@
             </div>
         </section>
 
+        </main>
     </div> <!-- FIN DEL APP-CONTAINER -->
 
 
@@ -1215,11 +1220,11 @@
 
     <!-- Datos de Configuración del Proyecto (Mapeo Rivas) -->
     <script src="section_logo_catalog.js?v=1.3.0"></script>
-    <script src="section_colegio_mapping.js?v=1.3.0"></script>
+    <script src="section_colegio_mapping.js?v=1.4.0"></script>
     <script src="mesas_estructura_oficial.js?v=1.0.1"></script>
 
     <!-- Lógica de Control y Sincronización -->
-    <script src="app.js?v=1.6.2"></script>
+    <script src="app.js?v=1.7.1"></script>
 </body>
 
 </html>
