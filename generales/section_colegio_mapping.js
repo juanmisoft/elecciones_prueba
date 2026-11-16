@@ -140,6 +140,7 @@ const COLEGIO_DETAILS = {
 
 // Catálogo inicial Congreso 29N 2026 (plantilla; se publica a GDB como __PARTIES_GEN__)
 const DEFAULT_PARTIES_CONFIG = [
+  // Orden = FUERZAS CONGRESO.xlsx
   {
     id: "FO",
     name: "Frente Obrero",
@@ -149,14 +150,14 @@ const DEFAULT_PARTIES_CONFIG = [
   },
   {
     id: "PSOE",
-    name: "PSOE",
+    name: "Partido Socialista Obrero Español",
     color: "#ef1c27",
     logo: "../Imagenes/logos/generales/PSOE.png",
     field: "votos_psoe"
   },
   {
     id: "FEJONS",
-    name: "FE de las JONS",
+    name: "Falange Española de las J.O.N.S.",
     color: "#1e293b",
     logo: "../Imagenes/logos/generales/falange.png",
     field: "votos_fejons"
@@ -170,7 +171,7 @@ const DEFAULT_PARTIES_CONFIG = [
   },
   {
     id: "PCTE",
-    name: "PCTE",
+    name: "Partido Comunista de los Trabajadores de España",
     color: "#b91c1c",
     logo: "../Imagenes/logos/generales/PCTE.png",
     field: "votos_pcte"
@@ -212,14 +213,14 @@ const DEFAULT_PARTIES_CONFIG = [
   },
   {
     id: "PP",
-    name: "PP",
+    name: "Partido Popular",
     color: "#1d84ce",
     logo: "../Imagenes/logos/generales/PP.png",
     field: "votos_pp"
   },
   {
     id: "PACMA",
-    name: "PACMA",
+    name: "Partido Animalista Con el Medio Ambiente",
     color: "#16a085",
     logo: "../Imagenes/logos/generales/PACMA.png",
     field: "votos_pacma"

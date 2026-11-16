@@ -2335,10 +2335,68 @@ require([
         return out;
     }
 
+    // Orden oficial de papeleta = FUERZAS CONGRESO.xlsx (Hoja1).
+    // Incluye alias de siglas/nombre porque en GDB a veces llegan variantes.
+    const BALLOT_ORDER_RULES = [
+        { ids: ["FO"], names: ["frente obrero"] },
+        { ids: ["PSOE"], names: ["partido socialista obrero espanol", "psoe"] },
+        { ids: ["FEJONS", "FJONS", "FE DE LAS JONS", "FEDELASJONS", "FE DE LAS J.O.N.S."], names: ["falange espanola de las jons", "falange espanola", "fe de las jons", "falange"] },
+        { ids: ["VOX"], names: ["vox"] },
+        { ids: ["PCTE"], names: ["partido comunista de los trabajadores de espana", "pcte"] },
+        { ids: ["PH", "PARTIDO_HUMANISTA", "PARTIDO HUMANISTA"], names: ["partido humanista"] },
+        { ids: ["D21", "DEMOCRACIA21"], names: ["democracia para el siglo 21", "democracia para el siglo21"] },
+        { ids: ["IE", "IUSTITIAEUROPA", "IUSTITIA EUROPA"], names: ["iustitia europa"] },
+        { ids: ["MUNDOJUSTO", "PUMMJ", "PUMJ", "MUNDO+JUSTO", "MUNDO JUSTO"], names: ["por un mundo mas justo", "mundo justo"] },
+        { ids: ["SALF", "SAF"], names: ["se acabo la fiesta"] },
+        { ids: ["PP"], names: ["partido popular", "pp"] },
+        { ids: ["PACMA"], names: ["partido animalista con el medio ambiente", "pacma"] },
+        { ids: ["FA", "FRENTE_AMPLIO", "FRENTE AMPLIO"], names: ["frente amplio"] },
+        { ids: ["PODEMOS", "UNIDAS_PODEMOS"], names: ["podemos", "unidas podemos"] }
+    ];
+
+    function normalizePartyKey(value) {
+        return String(value || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toUpperCase()
+            .replace(/[^\w]+/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    function getPartyCanonicalOrderIndex(party) {
+        const idKey = normalizePartyKey(party && (party.id || party.siglas));
+        const nameKey = normalizePartyKey(party && party.name);
+        for (let i = 0; i < BALLOT_ORDER_RULES.length; i++) {
+            const rule = BALLOT_ORDER_RULES[i];
+            if (idKey && rule.ids.some((alias) => normalizePartyKey(alias) === idKey)) return i;
+            if (nameKey && rule.names.some((alias) => {
+                const n = normalizePartyKey(alias);
+                return nameKey === n || nameKey.includes(n) || n.includes(nameKey);
+            })) return i;
+        }
+        // Fallback: orden de la plantilla DEFAULT_PARTIES_CONFIG
+        if (idKey && typeof DEFAULT_PARTIES_CONFIG !== "undefined") {
+            const idx = DEFAULT_PARTIES_CONFIG.findIndex((p) => normalizePartyKey(p.id) === idKey);
+            if (idx >= 0) return idx;
+        }
+        return 9999;
+    }
+
+    function sortPartiesForBallot(parties) {
+        if (!Array.isArray(parties)) return [];
+        return [...parties].sort((a, b) => {
+            const ia = getPartyCanonicalOrderIndex(a);
+            const ib = getPartyCanonicalOrderIndex(b);
+            if (ia !== ib) return ia - ib;
+            return String((a && a.name) || "").localeCompare(String((b && b.name) || ""), "es", { sensitivity: "base" });
+        });
+    }
+
     function savePartiesToStorage(newParties, options) {
         const silent = !!(options && options.silent);
         if (Array.isArray(newParties)) {
-            const sourceList = dedupePartiesList(newParties);
+            const sourceList = sortPartiesForBallot(dedupePartiesList(newParties));
             PARTIES_CONFIG.length = 0;
             sourceList.forEach(p => {
                 PARTIES_CONFIG.push(p);
@@ -2371,8 +2429,8 @@ require([
         }
         container.innerHTML = "";
 
-        // Partidos ordenados alfabéticamente por nombre (es)
-        const sortedParties = [...parties].sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+        // Orden oficial de papeleta (FUERZAS CONGRESO), no alfabético
+        const sortedParties = sortPartiesForBallot(parties);
 
         sortedParties.forEach(p => {
             const card = document.createElement("div");
@@ -7108,10 +7166,8 @@ require([
 
             const officialAddress = getColegioOfficialAddress(result.colegio, result.dirMesa);
             const distritoLabel = result.distrito ? String(result.distrito) : "—";
-            const fullName = (result.fullName || [result.nombre, result.ape1, result.ape2].filter(Boolean).join(" ")).trim();
-            const nameLabel = fullName || "Nombre no disponible en censo";
 
-            setCensoSearchStatus(root, `<i class="fa-solid fa-circle-check"></i> ${nameLabel} · Mesa ${result.mesa || "—"}`, "ok");
+            setCensoSearchStatus(root, `<i class="fa-solid fa-circle-check"></i> Mesa ${result.mesa || "—"} · Sección ${result.seccion || "—"}`, "ok");
             
             container.innerHTML = `
                 <div class="stat-card" style="border-left: 5px solid var(--primary-color); background: #ffffff; padding: 20px; box-shadow: var(--shadow-md); margin-top: 10px; border-radius: 10px;">
@@ -7124,10 +7180,7 @@ require([
                         </span>
                     </div>
 
-                    <h4 style="font-size: 1.2rem; margin: 0 0 14px 0; color: var(--text-primary); font-family: var(--font-heading); font-weight: 800;">
-                        ${nameLabel}
-                    </h4>
-                    <div style="font-size: 0.78rem; color: var(--text-muted); margin: -8px 0 14px 0;">
+                    <div style="font-size: 0.78rem; color: var(--text-muted); margin: 0 0 14px 0;">
                         DNI/NIE: <strong style="color: var(--text-secondary); letter-spacing: 0.04em;">${result.dni || rawQuery}</strong>
                     </div>
 
@@ -7433,7 +7486,7 @@ require([
         const container = document.getElementById("admin-edit-votes-fields-container");
         container.innerHTML = "";
 
-        const sortedParties = [...PARTIES_CONFIG].sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+        const sortedParties = sortPartiesForBallot(PARTIES_CONFIG);
 
         sortedParties.forEach(party => {
             const card = document.createElement("div");

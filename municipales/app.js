@@ -6668,7 +6668,6 @@ require([
                 return;
             }
 
-            const fullName = `${result.nombre} ${result.ape1} ${result.ape2}`.trim();
             const officialAddress = getColegioOfficialAddress(result.colegio, result.dirMesa);
             
             container.innerHTML = `
@@ -6681,10 +6680,10 @@ require([
                             <i class="fa-solid fa-clock"></i> 09:00h - 20:00h
                         </span>
                     </div>
-                    
-                    <h4 style="font-size: 1.2rem; margin: 0 0 14px 0; color: var(--text-primary); font-family: var(--font-heading); font-weight: 800;">
-                        ${fullName}
-                    </h4>
+
+                    <div style="font-size: 0.78rem; color: var(--text-muted); margin: 0 0 14px 0;">
+                        DNI/NIE: <strong style="color: var(--text-secondary); letter-spacing: 0.04em;">${rawQuery}</strong>
+                    </div>
 
                     <!-- Bloque 1: Colegio Electoral -->
                     <div style="background: #f8fafc; padding: 12px 14px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 12px;">
