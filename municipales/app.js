@@ -39,12 +39,17 @@ require([
     const OUT_FIELDS_SECCIONES = ["OBJECTID", "SECCION"];
     const OUT_FIELDS_TERMINO = ["OBJECTID"];
     const OUT_FIELDS_COLEGIOS = ["OBJECTID"];
-    // Solo campos de la VISTA pública. LI/LF/firmas no existen como columnas → van en JSON.
-    // Pedirlos en outFields provoca HTTP 400 y el visor público queda vacío.
-    const OUT_FIELDS_MESAS = [
+    // MIEMBROS (nombres) solo interno; la VISTA pública no lo pide.
+    // LI/LF/firmas no existen como columnas → van en JSON. Pedirlos en VISTA → HTTP 400.
+    const OUT_FIELDS_MESAS_PUBLIC = [
+        "OBJECTID", "CODIGO", "SECCION", "MESA", "COLEGIO", "CENSO", "ESTADO",
+        "RESULTADOS_JSON"
+    ];
+    const OUT_FIELDS_MESAS_EDIT = [
         "OBJECTID", "CODIGO", "SECCION", "MESA", "COLEGIO", "CENSO", "ESTADO",
         "MIEMBROS", "RESULTADOS_JSON"
     ];
+    const OUT_FIELDS_MESAS = OUT_FIELDS_MESAS_EDIT;
     const OUT_FIELDS_MESAS_IDS = ["OBJECTID", "CODIGO"];
     const OUT_FIELDS_MESAS_ESTADO = ["OBJECTID", "CODIGO", "ESTADO"];
 
@@ -109,10 +114,17 @@ require([
     }
 
     // Lectura REST f=json: 1 HTTP por sync (sin metadata FeatureLayer).
-    function fetchMesasRest(tableUrl, whereClause) {
+    function isPublicMesasTableUrl(tableUrl) {
+        const u = String(tableUrl || "");
+        return u.indexOf(URL_MESAS_TABLE) === 0 || u.indexOf("_VISTA") !== -1;
+    }
+    function fetchMesasRest(tableUrl, whereClause, outFieldsOverride) {
+        const fields = Array.isArray(outFieldsOverride) && outFieldsOverride.length
+            ? outFieldsOverride
+            : (isPublicMesasTableUrl(tableUrl) ? OUT_FIELDS_MESAS_PUBLIC : OUT_FIELDS_MESAS_EDIT);
         const params = new URLSearchParams({
             where: whereClause || "1=1",
-            outFields: OUT_FIELDS_MESAS.join(","),
+            outFields: fields.join(","),
             returnGeometry: "false",
             resultRecordCount: "2000",
             f: "json"

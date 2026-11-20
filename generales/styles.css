@@ -396,6 +396,8 @@ h1, h2, h3, h4, h5, h6 {
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
         min-height: 0;
+        padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+        scroll-padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
     }
 
     #public-dashboard-view .dashboard-sidebar {
@@ -409,6 +411,7 @@ h1, h2, h3, h4, h5, h6 {
 
     #public-dashboard-view .tab-content {
         overflow: visible;
+        padding-bottom: 8px;
     }
 
     #public-dashboard-view .dashboard-map-container {
@@ -416,6 +419,7 @@ h1, h2, h3, h4, h5, h6 {
         width: 100%;
         height: min(58vh, 420px);
         min-height: 280px;
+        margin-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     }
 
     #public-dashboard-view #mapViewDiv {
@@ -431,7 +435,7 @@ h1, h2, h3, h4, h5, h6 {
     }
 
     #public-dashboard-view .map-legend {
-        bottom: 12px;
+        bottom: calc(36px + env(safe-area-inset-bottom, 0px));
         right: 12px;
         left: 12px;
         max-width: none;
@@ -1930,10 +1934,34 @@ h1, h2, h3, h4, h5, h6 {
     }
 
     .admin-mesas-filters {
-        grid-template-columns: 1fr !important;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+        width: 100%;
+    }
+
+    .admin-mesas-filter-field {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        width: 100% !important;
+    }
+
+    .admin-mesas-filter-field .portal-input,
+    .admin-mesas-filter-field select {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box;
+    }
+
+    .admin-mesas-filter-actions {
+        width: 100%;
+        align-items: stretch !important;
+    }
+
+    .admin-mesas-filter-actions .btn-header {
+        width: 100%;
+        justify-content: center;
     }
 
     .admin-portal-view .portal-card > div[style*="overflow-x"] {
@@ -1952,15 +1980,17 @@ h1, h2, h3, h4, h5, h6 {
     .admin-table tbody {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 12px;
     }
 
     .admin-table tr {
-        display: block;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 4px 10px;
         background: #fff;
         border: 1px solid #e2e8f0;
         border-radius: 12px;
-        padding: 12px 12px 8px;
+        padding: 14px 14px 10px;
         box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
     }
 
@@ -1971,45 +2001,109 @@ h1, h2, h3, h4, h5, h6 {
     .admin-table td {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
-        gap: 12px;
+        align-items: center;
+        gap: 10px;
         width: 100%;
         box-sizing: border-box;
-        padding: 6px 0;
+        padding: 7px 0;
         border-bottom: 1px solid #f1f5f9;
         white-space: normal;
-        text-align: right;
+        text-align: left;
+        grid-column: 1 / -1;
+        font-size: 0.92rem;
+        color: #0f172a;
     }
 
+    .admin-table td:first-child {
+        grid-column: 1;
+        border-bottom: none;
+        padding: 0 0 4px;
+        font-size: 1.05rem;
+    }
+
+    .admin-table td:first-child::before {
+        display: none;
+    }
+
+    .admin-table td[data-label="Estado"] {
+        grid-column: 2;
+        grid-row: 1;
+        border-bottom: none;
+        padding: 0 0 4px;
+        justify-content: flex-end;
+        width: auto;
+    }
+
+    .admin-table td[data-label="Estado"]::before {
+        display: none;
+    }
+
+    .admin-table td.admin-mesas-actions-cell,
     .admin-table td:last-child {
         border-bottom: none;
-        padding-top: 10px;
-        justify-content: flex-end;
+        padding-top: 12px;
+        margin-top: 2px;
+        justify-content: flex-start;
         flex-wrap: wrap;
+        gap: 8px;
     }
 
     .admin-table td::before {
         content: attr(data-label);
         font-weight: 700;
-        font-size: 0.72rem;
+        font-size: 0.7rem;
         text-transform: uppercase;
         letter-spacing: 0.03em;
         color: #64748b;
         text-align: left;
-        flex: 0 0 42%;
+        flex: 0 0 34%;
+        max-width: 110px;
+    }
+
+    .admin-table td:not(.admin-mesas-actions-cell):not(:first-child):not([data-label="Estado"]) {
+        text-align: right;
+    }
+
+    .admin-table td:not(.admin-mesas-actions-cell):not(:first-child):not([data-label="Estado"]) > :not(.admin-btn-action) {
+        margin-left: auto;
+        text-align: right;
+    }
+
+    .admin-table td:first-child > strong {
+        text-align: left;
+        margin-left: 0;
+    }
+
+    .admin-portal-view .admin-btn-action {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+    }
+
+    .admin-portal-view .admin-btn-action i {
+        font-size: 1rem;
     }
 
     /* Reglas exclusivas para el portal de representante de colegio en móvil */
     .colegio-portal-view {
-        padding: 14px 12px !important;
+        padding: 14px 12px 220px !important;
         width: 100% !important;
         overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        scroll-padding-bottom: 220px;
     }
 
     .colegio-portal-view .portal-container {
         width: 100% !important;
         max-width: 100% !important;
-        padding: 0 !important;
+        padding: 0 0 48px !important;
+        box-sizing: border-box;
     }
 
     /* Bienvenida y títulos centrados */
@@ -2041,10 +2135,16 @@ h1, h2, h3, h4, h5, h6 {
     }
 
     .colegio-portal-view .portal-card {
-        padding: 18px 14px !important;
-        margin-bottom: 16px !important;
+        padding: 18px 14px 28px !important;
+        margin-bottom: 20px !important;
         width: 100% !important;
         text-align: center;
+        box-sizing: border-box;
+    }
+
+    .colegio-portal-view #portal-step-select-mesa.portal-card {
+        padding-bottom: 36px !important;
+        margin-bottom: 40px !important;
     }
 
     .colegio-portal-view .step-title {
@@ -2063,6 +2163,7 @@ h1, h2, h3, h4, h5, h6 {
         flex-direction: column;
         width: 100%;
         gap: 12px;
+        padding-bottom: 16px;
     }
 
     .colegio-portal-view .mesa-btn-select {
@@ -2486,22 +2587,29 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: 0 2px 6px rgba(227, 6, 19, 0.2) !important;
 }
 
-/* Espaciado de seguridad inferior para teclado móvil */
+/* Espaciado de seguridad inferior para teclado móvil / home indicator */
 .colegio-portal-view {
-    padding-bottom: 140px !important;
+    padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
 .colegio-portal-view .portal-container {
-    padding-bottom: 140px !important;
+    padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
 @media (max-width: 768px) {
     .colegio-portal-view {
-        padding-bottom: 180px !important;
+        padding-bottom: calc(240px + env(safe-area-inset-bottom, 0px)) !important;
+        scroll-padding-bottom: calc(240px + env(safe-area-inset-bottom, 0px));
     }
-    
+
     .colegio-portal-view .portal-container {
-        padding-bottom: 180px !important;
+        padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    .colegio-portal-view #portal-step-select-mesa.portal-card,
+    .colegio-portal-view #portal-escrutinio-container.portal-card {
+        padding-bottom: 40px !important;
+        margin-bottom: 48px !important;
     }
 }
 

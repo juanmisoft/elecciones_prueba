@@ -40,13 +40,18 @@ require([
     const OUT_FIELDS_SECCIONES = ["OBJECTID", "SECCION"];
     const OUT_FIELDS_TERMINO = ["OBJECTID"];
     const OUT_FIELDS_COLEGIOS = ["OBJECTID"];
-    // Solo campos presentes en la capa VISTA pública (y en la editable).
-    // LI/LF/firmas NO existen como columnas en VISTA: van dentro de MIEMBROS / RESULTADOS_JSON.
-    // Pedir LI/LF/FIRMA_* en outFields provoca HTTP 400 y el visor público queda vacío.
-    const OUT_FIELDS_MESAS = [
+    // Campos de mesas. MIEMBROS (nombres) es solo interno: no se pide en la VISTA pública.
+    // LI/LF/firmas van dentro de MIEMBROS en editable; pedirlos como columnas en VISTA → HTTP 400.
+    const OUT_FIELDS_MESAS_PUBLIC = [
+        "OBJECTID", "CODIGO", "SECCION", "MESA", "COLEGIO", "CENSO", "ESTADO",
+        "RESULTADOS_JSON"
+    ];
+    const OUT_FIELDS_MESAS_EDIT = [
         "OBJECTID", "CODIGO", "SECCION", "MESA", "COLEGIO", "CENSO", "ESTADO",
         "MIEMBROS", "RESULTADOS_JSON"
     ];
+    // Compat: lecturas genéricas / admin usan el set editable.
+    const OUT_FIELDS_MESAS = OUT_FIELDS_MESAS_EDIT;
     const OUT_FIELDS_MESAS_IDS = ["OBJECTID", "CODIGO"];
     const OUT_FIELDS_MESAS_ESTADO = ["OBJECTID", "CODIGO", "ESTADO"];
     // Censo Hosted: "*" evita fallos de mayúsculas.
@@ -121,11 +126,18 @@ require([
 
     // Lectura REST f=json (más predecible que FeatureLayer/pbf para tablas).
     window.__MESAS_REST_LOADER = true;
-    function fetchMesasRest(tableUrl, whereClause) {
+    function isPublicMesasTableUrl(tableUrl) {
+        const u = String(tableUrl || "");
+        return u.indexOf(URL_MESAS_TABLE) === 0 || u.indexOf("_VISTA") !== -1;
+    }
+    function fetchMesasRest(tableUrl, whereClause, outFieldsOverride) {
+        const fields = Array.isArray(outFieldsOverride) && outFieldsOverride.length
+            ? outFieldsOverride
+            : (isPublicMesasTableUrl(tableUrl) ? OUT_FIELDS_MESAS_PUBLIC : OUT_FIELDS_MESAS_EDIT);
         const params = new URLSearchParams({
             where: whereClause || "1=1",
             // Campos acotados: menos payload que outFields=*
-            outFields: OUT_FIELDS_MESAS.join(","),
+            outFields: fields.join(","),
             returnGeometry: "false",
             resultRecordCount: "2000",
             f: "json"
@@ -3012,14 +3024,14 @@ require([
             `;
 
             tr.innerHTML = `
-                <td><strong>${mesa.codigo}</strong></td>
-                <td>${mesa.colegio}</td>
-                <td>${mesa.seccion}</td>
-                <td>${mesa.mesa}</td>
-                <td>${formatMesaApellidos(mesa)}</td>
-                <td>${mesa.censo}</td>
-                <td>${statusBadgeHtml}</td>
-                <td style="text-align: right; white-space: nowrap;">${actionButtons}</td>
+                <td data-label="Código"><strong>${mesa.codigo}</strong></td>
+                <td data-label="Colegio">${mesa.colegio || "—"}</td>
+                <td data-label="Sección">${mesa.seccion || "—"}</td>
+                <td data-label="Mesa">${mesa.mesa || "—"}</td>
+                <td data-label="Apellidos">${formatMesaApellidos(mesa) || "—"}</td>
+                <td data-label="Censo">${mesa.censo != null ? mesa.censo : "—"}</td>
+                <td data-label="Estado">${statusBadgeHtml}</td>
+                <td data-label="Acciones" class="admin-mesas-actions-cell">${actionButtons}</td>
             `;
 
             tbody.appendChild(tr);
