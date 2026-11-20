@@ -25,7 +25,7 @@
     <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css">
 
     <!-- Estilos del Proyecto -->
-    <link rel="stylesheet" href="styles.css?v=1.5.4">
+    <link rel="stylesheet" href="styles.css?v=1.5.5">
 </head>
 
 <body>
@@ -377,7 +377,7 @@
                         </div>
                     </div>
 
-                    <!-- SELECTOR DE LAS 3 FASES / BOTONES DE LA JORNADA -->
+                    <!-- SELECTOR DE FASES / BOTONES DE LA JORNADA -->
                     <div class="portal-phase-selector-bar">
                         <button type="button" class="portal-phase-btn active" id="btn-phase-part1" data-phase="part1">
                             <div class="phase-btn-icon"><i class="fa-solid fa-clock"></i></div>
@@ -391,6 +391,14 @@
                             <div class="phase-btn-text">
                                 <span class="phase-title">2º Avance (18:00h)</span>
                                 <span class="phase-status" id="phase-status-part2">Pendiente</span>
+                            </div>
+                        </button>
+                        <button type="button" class="portal-phase-btn" id="btn-phase-constitucion"
+                            data-phase="constitucion">
+                            <div class="phase-btn-icon"><i class="fa-solid fa-users"></i></div>
+                            <div class="phase-btn-text">
+                                <span class="phase-title">Constitución mesa</span>
+                                <span class="phase-status" id="phase-status-constitucion">Pendiente</span>
                             </div>
                         </button>
                         <button type="button" class="portal-phase-btn" id="btn-phase-escrutinio"
@@ -519,42 +527,83 @@
                     </div>
 
                     <!-- ========================================================
+                         FASE: CONSTITUCIÓN DE MESA (notificados)
+                         ======================================================== -->
+                    <div id="portal-pane-constitucion" class="portal-phase-pane hidden">
+                        <div class="portal-card">
+                            <div class="step-title">
+                                <div class="step-num"><i class="fa-solid fa-users"></i></div>
+                                <span>Constitución de la Mesa Electoral</span>
+                            </div>
+                            <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 14px; line-height: 1.5;">
+                                Marca las personas que han asistido al llamamiento para esta mesa electoral.
+                            </p>
+
+                            <div id="constitucion-previous-info" class="advance-info-banner hidden" style="margin-bottom: 14px;">
+                                <i class="fa-solid fa-circle-check" style="color: #0284c7; font-size: 1.2rem;"></i>
+                                <div>
+                                    <strong style="color: #0369a1; display: block;">Miembros ya transmitidos</strong>
+                                    <span id="constitucion-previous-details" style="font-size: 0.8rem; color: #075985;">--</span>
+                                </div>
+                            </div>
+
+                            <div id="notificados-status" class="text-secondary" style="font-size: 0.85rem; margin-bottom: 10px;">
+                                Cargando notificados de esta mesa...
+                            </div>
+                            <div id="notificados-list" style="display:flex; flex-direction:column; gap:8px; margin-bottom: 18px;"></div>
+
+                            <p class="text-secondary" style="font-size:0.85rem; margin:0 0 12px 0; line-height:1.45; font-weight:600; color:var(--text-primary);">
+                                Miembros finales, asigne su designación.
+                            </p>
+                            <div style="display:grid; gap:14px; margin-bottom: 18px;">
+                                <div class="form-group">
+                                    <label for="select-member-president" style="color: var(--text-primary); font-weight: 700; display:block; margin-bottom:6px;">Presidente/a de la Mesa</label>
+                                    <select id="select-member-president" class="portal-input"></select>
+                                    <input type="text" id="input-member-president-manual" class="portal-input hidden" placeholder="Escribe nombre y apellidos del Presidente/a" style="margin-top:8px;" autocomplete="off">
+                                </div>
+                                <div class="form-group">
+                                    <label for="select-member-vocal1" style="color: var(--text-primary); font-weight: 700; display:block; margin-bottom:6px;">Primer Vocal</label>
+                                    <select id="select-member-vocal1" class="portal-input"></select>
+                                    <input type="text" id="input-member-vocal1-manual" class="portal-input hidden" placeholder="Escribe nombre y apellidos del Primer Vocal" style="margin-top:8px;" autocomplete="off">
+                                </div>
+                                <div class="form-group">
+                                    <label for="select-member-vocal2" style="color: var(--text-primary); font-weight: 700; display:block; margin-bottom:6px;">Segundo Vocal</label>
+                                    <select id="select-member-vocal2" class="portal-input"></select>
+                                    <input type="text" id="input-member-vocal2-manual" class="portal-input hidden" placeholder="Escribe nombre y apellidos del Segundo Vocal" style="margin-top:8px;" autocomplete="off">
+                                </div>
+                            </div>
+
+                            <!-- Campos ocultos de compatibilidad (actas / cierre / admin sync) -->
+                            <input type="hidden" id="input-member-president" value="">
+                            <input type="hidden" id="input-member-vocal1" value="">
+                            <input type="hidden" id="input-member-vocal2" value="">
+
+                            <div style="display:flex; justify-content:center; margin-top: 8px;">
+                                <button type="button" id="btn-submit-miembros" class="btn-header btn-submit-transmit"
+                                    style="background: linear-gradient(135deg, #0369a1 0%, #075985 100%); color:#fff; border:none; padding:14px 28px; font-size:1rem; border-radius:8px; font-weight:700; cursor:pointer;">
+                                    <i class="fa-solid fa-paper-plane"></i> Transmitir miembros de la mesa
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ========================================================
                          FASE 3: FORMULARIO DE ESCRUTINIO FINAL (20:00h)
                          ======================================================== -->
                     <div id="portal-pane-escrutinio" class="portal-phase-pane hidden">
 
-                        <!-- PASO 1: MIEMBROS DE LA MESA -->
+                        <!-- PASO 1: RESUMEN MIEMBROS (ya transmitidos en Constitución) -->
                         <div class="portal-card">
                             <div class="step-title">
                                 <div class="step-num"><i class="fa-solid fa-users"></i></div>
                                 <span>1. Miembros de la Mesa Electoral</span>
                             </div>
                             <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 14px;">
-                                Identifica a los componentes que han constituido la mesa electoral para el acta de
-                                escrutinio.
+                                Los miembros se gestionan y transmiten en la fase <strong>Constitución mesa</strong>.
+                                Aquí se muestran los datos vigentes para el acta.
                             </p>
-                            <div style="display: flex; flex-direction: column; gap: 16px;">
-                                <div class="form-group">
-                                    <label for="input-member-president"
-                                        style="color: var(--text-primary); font-weight: 700; display: block; margin-bottom: 6px;">Presidente/a
-                                        de la Mesa</label>
-                                    <input type="text" id="input-member-president" class="portal-input"
-                                        placeholder="Nombre y apellidos del Presidente/a" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="input-member-vocal1"
-                                        style="color: var(--text-primary); font-weight: 700; display: block; margin-bottom: 6px;">Primer
-                                        Vocal</label>
-                                    <input type="text" id="input-member-vocal1" class="portal-input"
-                                        placeholder="Nombre y apellidos del Primer Vocal" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="input-member-vocal2"
-                                        style="color: var(--text-primary); font-weight: 700; display: block; margin-bottom: 6px;">Segundo
-                                        Vocal</label>
-                                    <input type="text" id="input-member-vocal2" class="portal-input"
-                                        placeholder="Nombre y apellidos del Segundo Vocal" required>
-                                </div>
+                            <div id="escrutinio-miembros-resumen" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 14px; font-size:0.9rem; color:var(--text-primary); line-height:1.6;">
+                                Pendiente de transmitir en Constitución.
                             </div>
                         </div>
 
@@ -605,6 +654,52 @@
 
                     </div>
 
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================================================
+           VISTA: UBICACIÓN DE MESA (COLABORADORES / AYUDA AL CIUDADANO)
+           ========================================================================== -->
+        <section id="ubicacion-portal-view" class="view-section ubicacion-portal-view hidden">
+            <div class="portal-container" style="max-width: 720px;">
+                <div class="portal-welcome" style="justify-content: center; text-align: center;">
+                    <div class="welcome-info" style="width: 100%; text-align: center;">
+                        <h2>Ubicación de mesa</h2>
+                        <p>Consulta rápida de colegio, sección y mesa por DNI/NIE del elector.</p>
+                    </div>
+                </div>
+
+                <div class="portal-card censo-search-widget censo-search-widget--ubicacion">
+                    <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-map-location-dot"></i> ¿Dónde vota?
+                    </div>
+                    <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: 14px; line-height: 1.5;">
+                        Introduce el DNI o NIE del ciudadano para indicar colegio electoral, sección y mesa.
+                    </p>
+                    <div style="display: flex; gap: 8px; margin-bottom: 14px;">
+                        <div class="search-box" style="flex: 1; margin-bottom: 0;">
+                            <i class="fa-solid fa-id-card"></i>
+                            <input type="text" class="dni-search-input" placeholder="Ej. 12345678A..."
+                                style="text-transform: uppercase;" autocomplete="off">
+                        </div>
+                        <button type="button" class="btn-header btn-primary btn-dni-search-action"
+                            style="padding: 0 16px; font-size: 0.85rem; border-radius: 6px; flex-shrink: 0;"
+                            onclick="window.runCensoSearch && window.runCensoSearch(this); return false;">
+                            <i class="fa-solid fa-magnifying-glass"></i> Buscar
+                        </button>
+                    </div>
+                    <div class="dni-search-status"
+                        style="text-align: center; padding: 10px 12px; font-size: 0.82rem; color: var(--text-muted); background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; margin-bottom: 10px;">
+                        Estado: esperando búsqueda.
+                    </div>
+                    <div class="dni-search-result-container">
+                        <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 20px 10px;">
+                            <i class="fa-solid fa-address-card"
+                                style="font-size: 2rem; margin-bottom: 10px; display: block; opacity: 0.35;"></i>
+                            Escribe el DNI/NIE y pulsa Buscar.
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -1224,7 +1319,7 @@
     <script src="mesas_estructura_oficial.js?v=1.0.1"></script>
 
     <!-- Lógica de Control y Sincronización -->
-    <script src="app.js?v=1.7.6"></script>
+    <script src="app.js?v=1.8.7"></script>
 </body>
 
 </html>

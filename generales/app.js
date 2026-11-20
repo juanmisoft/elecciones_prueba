@@ -347,7 +347,7 @@ require([
                 const el = btnOrWidget && btnOrWidget.nodeType ? btnOrWidget : null;
                 const widget = el
                     ? (el.classList && el.classList.contains("censo-search-widget") ? el : el.closest(".censo-search-widget"))
-                    : document.querySelector("#colegio-portal-view .censo-search-widget, #admin-portal-view .censo-search-widget, .censo-search-widget");
+                    : document.querySelector("#ubicacion-portal-view .censo-search-widget, #colegio-portal-view .censo-search-widget, #admin-portal-view .censo-search-widget, .censo-search-widget");
                 if (!widget) {
                     alert("No se encontró el buscador de censo en la página.");
                     return;
@@ -1108,6 +1108,29 @@ require([
         const btnSubmitMesa = document.getElementById("btn-submit-mesa");
         if (btnSubmitMesa) btnSubmitMesa.addEventListener("click", handleMesaEscrutinioSubmit);
 
+        const btnSubmitMiembros = document.getElementById("btn-submit-miembros");
+        if (btnSubmitMiembros) btnSubmitMiembros.addEventListener("click", handleMiembrosTransmitSubmit);
+
+        ["select-member-president", "select-member-vocal1", "select-member-vocal2"].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener("change", () => {
+                syncConstitucionRoleManualVisibility();
+                syncHiddenMemberInputsFromConstitucion();
+            });
+        });
+        ["input-member-president-manual", "input-member-vocal1-manual", "input-member-vocal2-manual"].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener("input", syncHiddenMemberInputsFromConstitucion);
+        });
+        const notifList = document.getElementById("notificados-list");
+        if (notifList) {
+            notifList.addEventListener("change", (e) => {
+                if (e.target && e.target.classList && e.target.classList.contains("notif-asistio")) {
+                    syncHiddenMemberInputsFromConstitucion();
+                }
+            });
+        }
+
         // Modales de Administración (Edición de Votos y Miembros)
         const btnCloseAdminVotes = document.getElementById("btn-close-admin-edit-votes");
         if (btnCloseAdminVotes) btnCloseAdminVotes.addEventListener("click", () => document.getElementById("modal-admin-edit-votes").classList.add("hidden"));
@@ -1389,6 +1412,8 @@ require([
                     showSchoolPortalView();
                 } else if (nav.view === "admin-portal-view" && state.currentUser && state.currentUser.role === "admin") {
                     renderAdminPortal();
+                } else if (nav.view === "ubicacion-portal-view" && state.currentUser && state.currentUser.role === "ubicacion") {
+                    // solo consulta DNI
                 }
             }
 
@@ -1552,8 +1577,8 @@ require([
             (fCol && attrs[fCol] != null ? attrs[fCol] : attrCI(attrs, "COLEGIO")) || ""
         ).trim();
 
-        if (roleRaw !== "admin" && roleRaw !== "colegio") {
-            throw new Error(`ROLE inválido para '${username}' (valor '${roleRaw || "(vacío)"}'). Usa exactamente admin o colegio.`);
+        if (roleRaw !== "admin" && roleRaw !== "colegio" && roleRaw !== "ubicacion") {
+            throw new Error(`ROLE inválido para '${username}' (valor '${roleRaw || "(vacío)"}'). Usa admin, colegio o ubicacion.`);
         }
         if (roleRaw === "colegio" && !colegioRaw) {
             throw new Error(`El usuario '${username}' es colegio pero COLEGIO está vacío en la tabla.`);
@@ -1561,7 +1586,8 @@ require([
 
         return {
             role: roleRaw,
-            colegioName: roleRaw === "admin" ? null : colegioRaw
+            // ubicacion: consulta DNI para todos los colegios; no requiere COLEGIO
+            colegioName: (roleRaw === "admin" || roleRaw === "ubicacion") ? null : colegioRaw
         };
     }
 
@@ -1602,7 +1628,8 @@ require([
 
         showLoggedInUserInterface();
 
-        if (isArcGIS) {
+        // Ubicación: solo consulta de censo (no sync de mesas/resultados)
+        if (isArcGIS && profile.role !== "ubicacion") {
             syncDataWithArcGISServer();
             startPeriodicSync();
         }
@@ -1627,13 +1654,15 @@ require([
         if (state.currentUser.role === "admin") {
             userIcon.className = "fa-solid fa-user-shield";
             userIcon.style.color = "var(--primary-color)";
-            // Cargar portal admin
             renderAdminPortal();
             switchView("admin-portal-view");
+        } else if (state.currentUser.role === "ubicacion") {
+            userIcon.className = "fa-solid fa-map-location-dot";
+            userIcon.style.color = "#0f766e";
+            switchView("ubicacion-portal-view");
         } else {
             userIcon.className = "fa-solid fa-school";
             userIcon.style.color = "#3b82f6";
-            // Cargar portal de colegio
             showSchoolPortalView();
             switchView("colegio-portal-view");
         }
@@ -2056,6 +2085,11 @@ require([
         // Si se cambia a escrutinio, recalcular sumatorio
         if (phaseKey === "escrutinio") {
             recalculateVotesSum();
+            refreshEscrutinioMiembrosResumen();
+        }
+        if (phaseKey === "constitucion") {
+            syncConstitucionRoleManualVisibility();
+            refreshEscrutinioMiembrosResumen();
         }
     }
 
@@ -2213,21 +2247,46 @@ require([
             if (btnPhaseEscrutinio) btnPhaseEscrutinio.classList.remove("completed");
         }
 
-        // 2. CARGAR MIEMBROS DE LA MESA
-        let presi = "", v1 = "", v2 = "";
+        // 2. CARGAR MIEMBROS DE LA MESA + notificados
+        let presi = "", v1 = "", v2 = "", miembrosObj = null;
         if (mesa.miembros) {
             try {
-                const mObj = typeof mesa.miembros === "string" ? JSON.parse(mesa.miembros) : mesa.miembros;
-                presi = mObj.presi || "";
-                v1 = mObj.vocal1 || "";
-                v2 = mObj.vocal2 || "";
+                miembrosObj = typeof mesa.miembros === "string" ? JSON.parse(mesa.miembros) : mesa.miembros;
+                presi = (miembrosObj && miembrosObj.presi) || "";
+                v1 = (miembrosObj && miembrosObj.vocal1) || "";
+                v2 = (miembrosObj && miembrosObj.vocal2) || "";
             } catch (e) {
                 presi = mesa.miembros;
             }
         }
-        document.getElementById("input-member-president").value = presi;
-        document.getElementById("input-member-vocal1").value = v1;
-        document.getElementById("input-member-vocal2").value = v2;
+        const inpPresi = document.getElementById("input-member-president");
+        const inpV1 = document.getElementById("input-member-vocal1");
+        const inpV2 = document.getElementById("input-member-vocal2");
+        if (inpPresi) inpPresi.value = presi;
+        if (inpV1) inpV1.value = v1;
+        if (inpV2) inpV2.value = v2;
+
+        const hasMiembros = !!(presi && v1 && v2);
+        const statusConst = document.getElementById("phase-status-constitucion");
+        const btnPhaseConst = document.getElementById("btn-phase-constitucion");
+        if (statusConst) statusConst.textContent = hasMiembros ? "Transmitida" : "Pendiente";
+        if (btnPhaseConst) {
+            if (hasMiembros) btnPhaseConst.classList.add("completed");
+            else btnPhaseConst.classList.remove("completed");
+        }
+        const prevInfo = document.getElementById("constitucion-previous-info");
+        const prevDetails = document.getElementById("constitucion-previous-details");
+        if (prevInfo && prevDetails) {
+            if (hasMiembros) {
+                prevInfo.classList.remove("hidden");
+                prevDetails.textContent = `Presi: ${presi} · Vocal 1: ${v1} · Vocal 2: ${v2}`;
+            } else {
+                prevInfo.classList.add("hidden");
+                prevDetails.textContent = "--";
+            }
+        }
+        refreshEscrutinioMiembrosResumen();
+        loadNotificadosForSelectedMesa(miembrosObj);
 
         // Banner de referencia en Escrutinio
         const banner = document.getElementById("portal-previous-advances-banner");
@@ -6340,6 +6399,27 @@ require([
             if (!liVal && mObj.li) liVal = mObj.li;
             if (!lfVal && mObj.lf) lfVal = mObj.lf;
         }
+        // Restaurar asistencia/manual desde RESULTADOS_JSON.constitucion (MIEMBROS solo tiene 255)
+        if (resObj && resObj.constitucion && typeof resObj.constitucion === "object") {
+            const c = resObj.constitucion;
+            if (!mObj) mObj = {};
+            if (!mObj.presi && c.presi) mObj.presi = c.presi;
+            if (!mObj.vocal1 && c.vocal1) mObj.vocal1 = c.vocal1;
+            if (!mObj.vocal2 && c.vocal2) mObj.vocal2 = c.vocal2;
+            if (Array.isArray(c.asistentes)) {
+                mObj.asistentes = c.asistentes.map((a) => ({
+                    objectid: a.objectid != null ? a.objectid : a.o,
+                    cargofinal: a.cargofinal || a.c || "",
+                    nombre: a.nombre || a.n || ""
+                }));
+            }
+            if (Array.isArray(c.manual)) mObj.manual = c.manual;
+            if (c.transmitido != null) mObj.transmitido = c.transmitido;
+            if (c.transmitido_at) mObj.transmitido_at = c.transmitido_at;
+            if (!liVal && c.li) liVal = c.li;
+            if (!lfVal && c.lf) lfVal = c.lf;
+            try { miembrosRaw = JSON.stringify(mObj); } catch (e) { /* keep raw */ }
+        }
         if ((!liVal || !lfVal) && existingMesa) {
             if (!liVal && existingMesa.li) liVal = existingMesa.li;
             if (!lfVal && existingMesa.lf) lfVal = existingMesa.lf;
@@ -6416,6 +6496,53 @@ require([
         return mesaObj;
     }
 
+    // MIEMBROS en GDB = string 255. Solo presi/vocales caben ahí.
+    // Asistentes / manual / li-lf / pin extendido van en RESULTADOS_JSON.constitucion
+    const MIEMBROS_GDB_MAX = 255;
+
+    function parseStoredMiembros(raw) {
+        if (!raw) return {};
+        if (typeof raw === "object" && raw !== null) return raw;
+        const s = String(raw).trim();
+        if (!s) return {};
+        if (s.startsWith("{")) {
+            try { return JSON.parse(s) || {}; } catch (e) { return { presi: s }; }
+        }
+        return { presi: s };
+    }
+
+    function packMiembrosForGdb(targetMesa) {
+        const parsed = parseStoredMiembros(targetMesa && targetMesa.miembros);
+        const presi = String(parsed.presi || "").trim();
+        const vocal1 = String(parsed.vocal1 || "").trim();
+        const vocal2 = String(parsed.vocal2 || "").trim();
+        const lean = { presi, vocal1, vocal2 };
+        let miembrosStr = JSON.stringify(lean);
+        if (miembrosStr.length > MIEMBROS_GDB_MAX) {
+            // Recorte de emergencia (nombres muy largos): prioriza que quepa en 255
+            const maxEach = 70;
+            lean.presi = presi.slice(0, maxEach);
+            lean.vocal1 = vocal1.slice(0, maxEach);
+            lean.vocal2 = vocal2.slice(0, maxEach);
+            miembrosStr = JSON.stringify(lean);
+        }
+        const constitucion = {
+            asistentes: Array.isArray(parsed.asistentes) ? parsed.asistentes : [],
+            manual: Array.isArray(parsed.manual) ? parsed.manual : [],
+            transmitido: !!parsed.transmitido,
+            transmitido_at: parsed.transmitido_at || "",
+            li: targetMesa.li || parsed.li || "",
+            lf: targetMesa.lf || parsed.lf || ""
+        };
+        // Compactar asistentes: solo objectid + cargo (nombres ya están en roles)
+        constitucion.asistentes = constitucion.asistentes.map((a) => ({
+            o: a.objectid != null ? a.objectid : a.o,
+            c: a.cargofinal || a.c || "",
+            n: a.nombre || a.n || ""
+        })).filter((a) => a.o != null || a.n);
+        return { miembrosStr, constitucion, lean };
+    }
+
     // Helper para empaquetar los atributos que se envían a ArcGIS Server
     function buildFeatureAttributesFromMesa(targetMesa) {
         const partidosVotesMap = {};
@@ -6426,6 +6553,7 @@ require([
         partidosVotesMap["NULOS"] = targetMesa.votos_nulos || 0;
 
         const pinVal = normalizePin(targetMesa.pin);
+        const packed = packMiembrosForGdb(targetMesa);
         const resultadosObj = {
             part1: {
                 votos: targetMesa.part1_votos || 0,
@@ -6435,39 +6563,20 @@ require([
                 votos: targetMesa.part2_votos || 0,
                 hora: targetMesa.part2_time || ""
             },
-            votos_partidos: partidosVotesMap
+            votos_partidos: partidosVotesMap,
+            constitucion: packed.constitucion
         };
         if (pinVal) resultadosObj.pin = pinVal;
-        const resultadosJsonStr = JSON.stringify(resultadosObj);
-
-        let miembrosObj = { 
-            presi: "", 
-            vocal1: "", 
-            vocal2: "", 
-            censo: targetMesa.censo,
-            li: targetMesa.li || "",
-            lf: targetMesa.lf || ""
-        };
-        if (typeof targetMesa.miembros === "object" && targetMesa.miembros !== null) {
-            miembrosObj = {
-                ...targetMesa.miembros,
-                censo: targetMesa.censo,
-                li: targetMesa.li || targetMesa.miembros.li || "",
-                lf: targetMesa.lf || targetMesa.miembros.lf || ""
-            };
-        } else if (typeof targetMesa.miembros === "string" && targetMesa.miembros.trim().startsWith("{")) {
-            try {
-                const parsed = JSON.parse(targetMesa.miembros);
-                miembrosObj = {
-                    ...parsed,
-                    censo: targetMesa.censo,
-                    li: targetMesa.li || parsed.li || "",
-                    lf: targetMesa.lf || parsed.lf || ""
-                };
-            } catch (e) {}
+        let resultadosJsonStr = JSON.stringify(resultadosObj);
+        if (resultadosJsonStr.length > 1990) {
+            // Si se pasa de 2000, soltar nombres de asistentes y dejar ids
+            resultadosObj.constitucion.asistentes = (resultadosObj.constitucion.asistentes || []).map((a) => ({
+                o: a.o,
+                c: a.c
+            }));
+            resultadosJsonStr = JSON.stringify(resultadosObj);
         }
-        if (pinVal) miembrosObj.pin = pinVal;
-        const miembrosStr = JSON.stringify(miembrosObj);
+        const miembrosStr = packed.miembrosStr;
 
         const attrs = {
             CODIGO: targetMesa.codigo,
@@ -6646,6 +6755,9 @@ require([
         if (state.currentUser.role === "colegio") {
             // Dentro del formulario de mesa: sin refresco. En el listado: cada pocos segundos.
             return isScrutinyFormActive() ? 0 : COLEGIO_SYNC_MS;
+        }
+        if (state.currentUser.role === "ubicacion") {
+            return 0; // sin sync periódico
         }
         return PUBLIC_SYNC_MS;
     }
@@ -6894,10 +7006,409 @@ require([
         alert(`La Mesa ${codigo} ha sido reabierta correctamente.`);
     }
 
-    // Hosted Table (Portal item ad27250c9ef547b88503c4a72a5ea8cb) — requiere token Portal
+    // Hosted Table censo reducido (Portal item d58f4ab8abb74104800adc039ee47a29) — requiere token Portal
     const CENSO_TABLE_URL =
-        "https://sit.rivasciudad.es/server/rest/services/Hosted/CENSO_GENERALES_2026_NUEVO/FeatureServer/0";
+        "https://sit.rivasciudad.es/server/rest/services/Hosted/CENSO_ArcGIS_Enterprise/FeatureServer/0";
+    // Notificados por mesa (Portal item 6ff3c0ca20454275ab3ebf62eb516249)
+    const NOTIFICADOS_TABLE_URL =
+        "https://sit.rivasciudad.es/server/rest/services/Hosted/Notificaciones_Modificado/FeatureServer/0";
     const CENSO_SEARCH_TIMEOUT_MS = 12000;
+    const NOTIFICADOS_CARGO_LABELS = {
+        P: "Presidente/a (notificado)",
+        PS1: "1º suplente Presidencia",
+        PS2: "2º suplente Presidencia",
+        V1: "1º Vocal (notificado)",
+        V1S1: "1º suplente 1º Vocal",
+        V1S2: "2º suplente 1º Vocal",
+        V2: "2º Vocal (notificado)",
+        V2S1: "1º suplente 2º Vocal",
+        V2S2: "2º suplente 2º Vocal"
+    };
+    let stateNotificadosMesa = []; // lista cargada para la mesa seleccionada
+
+    function normalizeCollegeKey(value) {
+        return String(value || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/—/g, "N")
+            .toUpperCase()
+            .replace(/[^A-Z0-9]+/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    function formatNotificadoFullName(person) {
+        if (!person) return "";
+        return [person.nombre, person.apellido1, person.apellido2].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+    }
+
+    function parseMiembrosObject(raw) {
+        if (!raw) return null;
+        if (typeof raw === "object") return raw;
+        try {
+            if (String(raw).trim().startsWith("{")) return JSON.parse(raw);
+        } catch (e) { /* ignore */ }
+        return null;
+    }
+
+    function refreshEscrutinioMiembrosResumen() {
+        const box = document.getElementById("escrutinio-miembros-resumen");
+        if (!box) return;
+        const presi = (document.getElementById("input-member-president") || {}).value || "";
+        const v1 = (document.getElementById("input-member-vocal1") || {}).value || "";
+        const v2 = (document.getElementById("input-member-vocal2") || {}).value || "";
+        if (presi && v1 && v2) {
+            box.innerHTML = `
+                <div><strong>Presidente/a:</strong> ${presi}</div>
+                <div><strong>Vocal 1:</strong> ${v1}</div>
+                <div><strong>Vocal 2:</strong> ${v2}</div>`;
+        } else {
+            box.textContent = "Pendiente de transmitir en Constitución.";
+        }
+    }
+
+    function syncConstitucionRoleManualVisibility() {
+        [
+            ["select-member-president", "input-member-president-manual"],
+            ["select-member-vocal1", "input-member-vocal1-manual"],
+            ["select-member-vocal2", "input-member-vocal2-manual"]
+        ].forEach(([selId, manId]) => {
+            const sel = document.getElementById(selId);
+            const man = document.getElementById(manId);
+            if (!sel || !man) return;
+            const isManual = sel.value === "__manual__";
+            man.classList.toggle("hidden", !isManual);
+            if (!isManual) man.value = "";
+        });
+    }
+
+    function resolveRoleNameFromSelect(selectId, manualId) {
+        const sel = document.getElementById(selectId);
+        const man = document.getElementById(manualId);
+        if (!sel) return "";
+        if (sel.value === "__manual__") return ((man && man.value) || "").trim();
+        if (!sel.value) return "";
+        const person = stateNotificadosMesa.find((p) => String(p.objectid) === String(sel.value));
+        return formatNotificadoFullName(person) || (sel.options[sel.selectedIndex] && sel.options[sel.selectedIndex].text) || "";
+    }
+
+    function syncHiddenMemberInputsFromConstitucion() {
+        const presi = resolveRoleNameFromSelect("select-member-president", "input-member-president-manual");
+        const v1 = resolveRoleNameFromSelect("select-member-vocal1", "input-member-vocal1-manual");
+        const v2 = resolveRoleNameFromSelect("select-member-vocal2", "input-member-vocal2-manual");
+        const inpP = document.getElementById("input-member-president");
+        const inp1 = document.getElementById("input-member-vocal1");
+        const inp2 = document.getElementById("input-member-vocal2");
+        if (inpP) inpP.value = presi;
+        if (inp1) inp1.value = v1;
+        if (inp2) inp2.value = v2;
+        refreshEscrutinioMiembrosResumen();
+    }
+
+    function fillConstitucionRoleSelects(prefillObj) {
+        const selects = [
+            { id: "select-member-president", manualId: "input-member-president-manual", key: "presi" },
+            { id: "select-member-vocal1", manualId: "input-member-vocal1-manual", key: "vocal1" },
+            { id: "select-member-vocal2", manualId: "input-member-vocal2-manual", key: "vocal2" }
+        ];
+        const asistentesSet = new Set(
+            ((prefillObj && prefillObj.asistentes) || [])
+                .map((a) => String(a.objectid || ""))
+                .filter(Boolean)
+        );
+
+        selects.forEach(({ id, manualId, key }) => {
+            const sel = document.getElementById(id);
+            const man = document.getElementById(manualId);
+            if (!sel) return;
+            const wanted = (prefillObj && prefillObj[key]) || "";
+            sel.innerHTML = `<option value="">— Seleccionar —</option>`;
+            stateNotificadosMesa.forEach((p) => {
+                const opt = document.createElement("option");
+                opt.value = String(p.objectid);
+                const cargo = NOTIFICADOS_CARGO_LABELS[p.cargofinal] || p.cargofinal || "";
+                opt.textContent = `${formatNotificadoFullName(p)}${cargo ? " · " + cargo : ""}`;
+                sel.appendChild(opt);
+            });
+            const optManual = document.createElement("option");
+            optManual.value = "__manual__";
+            optManual.textContent = "Otro (introducir manualmente)";
+            sel.appendChild(optManual);
+
+            let matched = false;
+            if (wanted) {
+                const hit = stateNotificadosMesa.find((p) => formatNotificadoFullName(p).toUpperCase() === String(wanted).toUpperCase());
+                if (hit) {
+                    sel.value = String(hit.objectid);
+                    matched = true;
+                } else {
+                    sel.value = "__manual__";
+                    if (man) man.value = wanted;
+                    matched = true;
+                }
+            }
+            if (!matched) sel.value = "";
+        });
+
+        // Prefill asistencia checkboxes
+        document.querySelectorAll(".notif-asistio").forEach((cb) => {
+            const oid = cb.getAttribute("data-oid");
+            cb.checked = asistentesSet.has(String(oid)) || (!prefillObj && false);
+        });
+
+        // Si no hay prefill de asistentes pero hay roles, marcar a los elegidos
+        if ((!prefillObj || !Array.isArray(prefillObj.asistentes) || !prefillObj.asistentes.length) && prefillObj) {
+            ["select-member-president", "select-member-vocal1", "select-member-vocal2"].forEach((sid) => {
+                const sel = document.getElementById(sid);
+                if (sel && sel.value && sel.value !== "__manual__") {
+                    const cb = document.querySelector(`.notif-asistio[data-oid="${sel.value}"]`);
+                    if (cb) cb.checked = true;
+                }
+            });
+        }
+
+        syncConstitucionRoleManualVisibility();
+        syncHiddenMemberInputsFromConstitucion();
+    }
+
+    function renderNotificadosList(people) {
+        const list = document.getElementById("notificados-list");
+        const status = document.getElementById("notificados-status");
+        if (!list) return;
+        list.innerHTML = "";
+        if (!people.length) {
+            if (status) status.textContent = "No hay notificados para esta mesa en la tabla Hosted.";
+            return;
+        }
+        if (status) status.textContent = `${people.length} personas notificadas para esta mesa.`;
+        people.forEach((p) => {
+            const row = document.createElement("label");
+            row.style.cssText = "display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border:1px solid #e2e8f0; border-radius:8px; background:#fff; cursor:pointer;";
+            const cargo = NOTIFICADOS_CARGO_LABELS[p.cargofinal] || p.cargofinal || "—";
+            row.innerHTML = `
+                <input type="checkbox" class="notif-asistio" data-oid="${p.objectid}" style="margin-top:3px;">
+                <span style="flex:1;">
+                    <strong style="display:block; color:var(--text-primary);">${formatNotificadoFullName(p)}</strong>
+                    <span style="font-size:0.78rem; color:var(--text-muted);">${cargo}</span>
+                </span>`;
+            list.appendChild(row);
+        });
+    }
+
+    function queryNotificadosForMesa(mesa) {
+        if (!mesa) return Promise.resolve([]);
+        const token = findArcGisTokenForCensus();
+        if (!token) {
+            return Promise.reject(new Error("No hay token ArcGIS para consultar notificados. Vuelve a iniciar sesión."));
+        }
+        const seccNum = parseInt(String(mesa.seccion || "").replace(/\D/g, ""), 10);
+        const mesaLetra = String(mesa.mesa || "").trim().toUpperCase();
+        if (!seccNum || !mesaLetra) {
+            return Promise.reject(new Error("La mesa no tiene sección/letra válidas para buscar notificados."));
+        }
+        const where = `secc = ${seccNum} AND UPPER(mesa) = '${mesaLetra.replace(/'/g, "''")}'`;
+        const params = new URLSearchParams({
+            where,
+            outFields: "objectid,dist,secc,mesa,nlocal,cargofinal,nombre,apellido1,apellido2",
+            returnGeometry: "false",
+            resultRecordCount: "50",
+            orderByFields: "cargofinal ASC",
+            f: "json",
+            token
+        });
+        return fetch(`${NOTIFICADOS_TABLE_URL}/query?${params.toString()}`)
+            .then((res) => {
+                if (!res.ok) throw new Error(`HTTP ${res.status} al consultar notificados`);
+                return res.json();
+            })
+            .then((data) => {
+                if (data && data.error) {
+                    throw new Error(data.error.message || "Error ArcGIS notificados");
+                }
+                const feats = (data && data.features) || [];
+                let people = feats.map((f) => {
+                    const a = f.attributes || {};
+                    return {
+                        objectid: getAttributeValue(a, "objectid") || getAttributeValue(a, "OBJECTID"),
+                        dist: getAttributeValue(a, "dist"),
+                        secc: getAttributeValue(a, "secc"),
+                        mesa: getAttributeValue(a, "mesa"),
+                        nlocal: getAttributeValue(a, "nlocal"),
+                        cargofinal: String(getAttributeValue(a, "cargofinal") || "").toUpperCase(),
+                        nombre: getAttributeValue(a, "nombre") || "",
+                        apellido1: getAttributeValue(a, "apellido1") || "",
+                        apellido2: getAttributeValue(a, "apellido2") || ""
+                    };
+                });
+                // Si el colegio del usuario no cuadra, filtrar por nombre normalizado
+                const colKey = normalizeCollegeKey(mesa.colegio || (state.currentUser && state.currentUser.colegioName));
+                if (colKey) {
+                    const filtered = people.filter((p) => {
+                        const nk = normalizeCollegeKey(p.nlocal);
+                        return nk === colKey || nk.includes(colKey) || colKey.includes(nk);
+                    });
+                    if (filtered.length) people = filtered;
+                }
+                // Orden estable por cargo notificado
+                const order = ["P", "PS1", "PS2", "V1", "V1S1", "V1S2", "V2", "V2S1", "V2S2"];
+                people.sort((a, b) => {
+                    const ia = order.indexOf(a.cargofinal);
+                    const ib = order.indexOf(b.cargofinal);
+                    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+                });
+                return people;
+            });
+    }
+
+    function loadNotificadosForSelectedMesa(prefillObj) {
+        const status = document.getElementById("notificados-status");
+        const list = document.getElementById("notificados-list");
+        if (!state.selectedMesa) return;
+        if (status) status.textContent = "Cargando notificados de esta mesa...";
+        if (list) list.innerHTML = "";
+        stateNotificadosMesa = [];
+        queryNotificadosForMesa(state.selectedMesa)
+            .then((people) => {
+                stateNotificadosMesa = people;
+                renderNotificadosList(people);
+                fillConstitucionRoleSelects(prefillObj || parseMiembrosObject(state.selectedMesa.miembros));
+            })
+            .catch((err) => {
+                console.error("[NOTIFICADOS]", err);
+                if (status) status.textContent = `Error al cargar notificados: ${err.message || err}`;
+                fillConstitucionRoleSelects(prefillObj || parseMiembrosObject(state.selectedMesa && state.selectedMesa.miembros));
+            });
+    }
+
+    function collectConstitucionPayload() {
+        syncHiddenMemberInputsFromConstitucion();
+        const presi = (document.getElementById("input-member-president") || {}).value.trim();
+        const vocal1 = (document.getElementById("input-member-vocal1") || {}).value.trim();
+        const vocal2 = (document.getElementById("input-member-vocal2") || {}).value.trim();
+        const asistentes = [];
+        document.querySelectorAll(".notif-asistio:checked").forEach((cb) => {
+            const person = stateNotificadosMesa.find((p) => String(p.objectid) === String(cb.getAttribute("data-oid")));
+            if (person) {
+                asistentes.push({
+                    objectid: person.objectid,
+                    nombre: formatNotificadoFullName(person),
+                    cargofinal: person.cargofinal
+                });
+            }
+        });
+        const manual = [];
+        [
+            ["select-member-president", "input-member-president-manual", "presi"],
+            ["select-member-vocal1", "input-member-vocal1-manual", "vocal1"],
+            ["select-member-vocal2", "input-member-vocal2-manual", "vocal2"]
+        ].forEach(([selId, manId, rol]) => {
+            const sel = document.getElementById(selId);
+            const man = document.getElementById(manId);
+            if (sel && sel.value === "__manual__" && man && man.value.trim()) {
+                manual.push({ rol, nombre: man.value.trim() });
+            }
+        });
+        return {
+            presi,
+            vocal1,
+            vocal2,
+            asistentes,
+            manual,
+            transmitido: true,
+            transmitido_at: new Date().toISOString()
+        };
+    }
+
+    function getSelectedRoleNotificadoOid(selectId) {
+        const sel = document.getElementById(selectId);
+        if (!sel || !sel.value || sel.value === "__manual__") return null;
+        return String(sel.value);
+    }
+
+    function isNotificadoAsistenciaChecked(oid) {
+        if (oid == null || oid === "") return false;
+        const cb = document.querySelector(`.notif-asistio[data-oid="${oid}"]`);
+        return !!(cb && cb.checked);
+    }
+
+    async function handleMiembrosTransmitSubmit() {
+        if (!state.selectedMesa) return;
+        const payload = collectConstitucionPayload();
+        if (!payload.presi || !payload.vocal1 || !payload.vocal2) {
+            alert("Asigna Presidente/a, Vocal 1 y Vocal 2 antes de transmitir.");
+            return;
+        }
+        const names = [payload.presi, payload.vocal1, payload.vocal2].map((n) => n.toUpperCase());
+        if (new Set(names).size < 3) {
+            alert("Presidente/a, Vocal 1 y Vocal 2 deben ser tres personas distintas.");
+            return;
+        }
+
+        // Regla: un notificado con rol de mesa debe tener marcado "asistió" al llamamiento
+        const roleChecks = [
+            { label: "Presidente/a", selectId: "select-member-president", name: payload.presi },
+            { label: "Vocal 1", selectId: "select-member-vocal1", name: payload.vocal1 },
+            { label: "Vocal 2", selectId: "select-member-vocal2", name: payload.vocal2 }
+        ];
+        const sinAsistencia = [];
+        roleChecks.forEach(({ label, selectId, name }) => {
+            const oid = getSelectedRoleNotificadoOid(selectId);
+            if (oid && !isNotificadoAsistenciaChecked(oid)) {
+                sinAsistencia.push(`${label}: ${name}`);
+            }
+        });
+        if (sinAsistencia.length) {
+            alert(
+                "No se puede transmitir: hay roles asignados a personas sin marcar asistencia al llamamiento.\n\n" +
+                sinAsistencia.join("\n") +
+                "\n\nMarca el check de asistencia o elige a otra persona que sí se haya presentado."
+            );
+            return;
+        }
+
+        const targetMesa = state.mesas.find((m) => m.codigo === state.selectedMesa.codigo);
+        if (!targetMesa) return;
+
+        const prevMiembros = targetMesa.miembros;
+        // Conservar censo/li/lf/pin si ya estaban empaquetados en MIEMBROS
+        const prevObj = parseMiembrosObject(prevMiembros) || {};
+        const miembrosObj = Object.assign({}, prevObj, payload);
+        if (prevObj.censo != null) miembrosObj.censo = prevObj.censo;
+        if (prevObj.li != null) miembrosObj.li = prevObj.li;
+        if (prevObj.lf != null) miembrosObj.lf = prevObj.lf;
+        if (prevObj.pin != null) miembrosObj.pin = prevObj.pin;
+
+        targetMesa.miembros = JSON.stringify(miembrosObj);
+        // No cambia ESTADO de la mesa (sigue Abierta / En proceso / etc.)
+        state.selectedMesa.miembros = targetMesa.miembros;
+
+        const btn = document.getElementById("btn-submit-miembros");
+        setTransmitButtonBusy(btn, true, "Transmitiendo miembros...");
+        try {
+            await persistMesaToServerOrThrow(targetMesa);
+            saveLocalDatabase();
+            const statusConst = document.getElementById("phase-status-constitucion");
+            const btnPhaseConst = document.getElementById("btn-phase-constitucion");
+            if (statusConst) statusConst.textContent = "Transmitida";
+            if (btnPhaseConst) btnPhaseConst.classList.add("completed");
+            const prevInfo = document.getElementById("constitucion-previous-info");
+            const prevDetails = document.getElementById("constitucion-previous-details");
+            if (prevInfo && prevDetails) {
+                prevInfo.classList.remove("hidden");
+                prevDetails.textContent = `Presi: ${payload.presi} · Vocal 1: ${payload.vocal1} · Vocal 2: ${payload.vocal2}`;
+            }
+            refreshEscrutinioMiembrosResumen();
+            switchPortalPhase("escrutinio");
+            alert("Miembros transmitidos correctamente. Continúa con el escrutinio.");
+        } catch (err) {
+            console.error("Fallo al transmitir miembros:", err);
+            targetMesa.miembros = prevMiembros;
+            state.selectedMesa.miembros = prevMiembros;
+            alert(`No se pudieron guardar los miembros en el servidor.\n\n${err.message || err}`);
+        } finally {
+            setTransmitButtonBusy(btn, false);
+        }
+    }
 
     function calculateDniLetter(numStr) {
         const letters = "TRWAGMYFPDXBNJZSQVHLCKE";
@@ -7137,7 +7648,10 @@ require([
     }
 
     function handleDniSearch(widget) {
-        const root = widget || document.querySelector(".censo-search-widget:not(.hidden)") || document.querySelector(".censo-search-widget");
+        const root = widget
+            || document.querySelector("#ubicacion-portal-view:not(.hidden) .censo-search-widget")
+            || document.querySelector(".censo-search-widget:not(.hidden)")
+            || document.querySelector(".censo-search-widget");
         if (!root) {
             console.warn("[CENSO] No se encontró el widget .censo-search-widget");
             alert("No se encontró el bloque de búsqueda de censo en la página.");

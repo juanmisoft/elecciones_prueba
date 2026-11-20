@@ -2592,6 +2592,39 @@ h1, h2, h3, h4, h5, h6 {
     padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
+.ubicacion-portal-view {
+    padding-bottom: calc(180px + env(safe-area-inset-bottom, 0px)) !important;
+    scroll-padding-bottom: calc(180px + env(safe-area-inset-bottom, 0px));
+}
+
+.ubicacion-portal-view .portal-container {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+.ubicacion-portal-view .censo-search-widget--ubicacion {
+    margin-bottom: 48px !important;
+}
+
+.ubicacion-portal-view .dni-search-result-container {
+    padding-bottom: 24px;
+}
+
+@media (max-width: 768px) {
+    .ubicacion-portal-view {
+        padding-bottom: calc(260px + env(safe-area-inset-bottom, 0px)) !important;
+        scroll-padding-bottom: calc(260px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .ubicacion-portal-view .portal-container {
+        padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    .ubicacion-portal-view .censo-search-widget--ubicacion {
+        margin-bottom: 72px !important;
+        padding-bottom: 28px !important;
+    }
+}
+
 .colegio-portal-view .portal-container {
     padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px)) !important;
 }
