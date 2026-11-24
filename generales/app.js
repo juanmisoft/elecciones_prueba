@@ -16,6 +16,11 @@ require([
     // ==========================================================================
     // CONFIGURACIÓN DE URLS DE ARCGIS ENTERPRISE (SECURED FEATURE SERVER)
     // ==========================================================================
+    // Visor público: código y UI se mantienen, pero la entrada por defecto es el login.
+    // Poner a true cuando se reactive el dashboard ciudadano.
+    const PUBLIC_VIEWER_ENABLED = false;
+    const DEFAULT_ENTRY_VIEW = PUBLIC_VIEWER_ENABLED ? "public-dashboard-view" : "login-view";
+
     // URLs para la vista pública (servicio de solo lectura)
     const PUBLIC_SERVICE_URL = "https://sit.rivasciudad.es/server/rest/services/Elecciones_Rivas_Gen_Prueba_VISTA/FeatureServer";
     const URL_COLEGIOS = `${PUBLIC_SERVICE_URL}/0`;
@@ -330,6 +335,15 @@ require([
 
         // 6.5 Configurar alternadores de visibilidad de contraseña (Ojo)
         setupPasswordToggles();
+
+        // Sin visor público: ocultar "Acceso Portal" (la entrada ya es el login)
+        if (!PUBLIC_VIEWER_ENABLED) {
+            const btnPortalAction = document.getElementById("btn-portal-action");
+            if (btnPortalAction && !state.currentUser) {
+                btnPortalAction.classList.add("hidden");
+            }
+            switchView(DEFAULT_ENTRY_VIEW, { skipHistory: true, replaceHistory: true });
+        }
 
         // 7. Cargar resultados de ArcGIS Server si están disponibles públicamente (o sincronizar si está logueado)
         loadResultsFromServer();
@@ -917,10 +931,18 @@ require([
             }
         });
 
-        // Cancelar Login
-        document.getElementById("btn-login-cancel").addEventListener("click", () => {
-            switchView("public-dashboard-view");
-        });
+        // Cancelar Login → solo si el visor público está activo
+        const btnLoginCancel = document.getElementById("btn-login-cancel");
+        if (btnLoginCancel) {
+            if (!PUBLIC_VIEWER_ENABLED) {
+                btnLoginCancel.classList.add("hidden");
+                btnLoginCancel.setAttribute("aria-hidden", "true");
+            } else {
+                btnLoginCancel.addEventListener("click", () => {
+                    switchView("public-dashboard-view");
+                });
+            }
+        }
 
         // Iniciar Sesión Directa con Formulario (Usuario + Contraseña)
         const formLoginDirect = document.getElementById("form-login-direct");
@@ -1332,14 +1354,14 @@ require([
         if (nav && nav.mesa) {
             return `${base}#/${nav.view}/mesa/${encodeURIComponent(nav.mesa)}`;
         }
-        return `${base}#/${(nav && nav.view) || "public-dashboard-view"}`;
+        return `${base}#/${(nav && nav.view) || DEFAULT_ENTRY_VIEW}`;
     }
 
     function parseAppNavFromLocation() {
         const hash = String(window.location.hash || "").replace(/^#\/?/, "");
         const parts = hash.split("/").filter(Boolean);
         if (!parts.length) {
-            return { view: state.currentViewId || "public-dashboard-view", mesa: null };
+            return { view: state.currentViewId || DEFAULT_ENTRY_VIEW, mesa: null };
         }
         const view = parts[0];
         let mesa = null;
@@ -1352,7 +1374,7 @@ require([
     function pushAppHistory(nav, options) {
         options = options || {};
         if (state._navFromHistory) return;
-        const view = (nav && nav.view) || state.currentViewId || "public-dashboard-view";
+        const view = (nav && nav.view) || state.currentViewId || DEFAULT_ENTRY_VIEW;
         const mesa = (nav && nav.mesa) || null;
         const key = `${view}|${mesa || ""}`;
         if (!options.replace && state._lastNavKey === key) return;
@@ -1432,8 +1454,15 @@ require([
         }
     }
 
+    function resolveEntryView(viewId) {
+        if (!PUBLIC_VIEWER_ENABLED && viewId === "public-dashboard-view") {
+            return DEFAULT_ENTRY_VIEW;
+        }
+        return viewId || DEFAULT_ENTRY_VIEW;
+    }
+
     function initAppHistoryNavigation() {
-        state.currentViewId = state.currentViewId || "public-dashboard-view";
+        state.currentViewId = resolveEntryView(state.currentViewId || DEFAULT_ENTRY_VIEW);
         pushAppHistory({ view: state.currentViewId, mesa: null }, { replace: true });
         window.addEventListener("popstate", (event) => {
             handleAppPopState(event).catch((err) => {
@@ -1445,6 +1474,7 @@ require([
     // Cambia de sección visible (Público, Login, Colegio, Admin)
     function switchView(viewId, options) {
         options = options || {};
+        viewId = resolveEntryView(viewId);
         document.querySelectorAll(".view-section").forEach(sec => {
             sec.classList.add("hidden");
         });
@@ -1453,7 +1483,7 @@ require([
         state.currentViewId = viewId;
 
         // Acciones específicas al entrar a una vista
-        if (viewId === "public-dashboard-view") {
+        if (viewId === "public-dashboard-view" && PUBLIC_VIEWER_ENABLED) {
             updateGlobalMetrics();
             renderMapTheme();
             // Refrescar tamaño del mapa
@@ -1645,7 +1675,8 @@ require([
 
         loggedUsername.textContent = state.currentUser.username;
         userArea.classList.remove("hidden");
-        
+
+        btnPortalAction.classList.remove("hidden");
         btnPortalAction.classList.remove("btn-primary");
         btnPortalAction.classList.add("btn-danger");
         btnPortalAction.querySelector("span").textContent = "Cerrar Sesión";

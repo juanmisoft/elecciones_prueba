@@ -112,7 +112,7 @@
       nextEvent: {
         title: "Próximas elecciones generales",
         dateLabel: "29 de noviembre de 2026",
-        ctaLabel: "Abrir visor en vivo",
+        ctaLabel: "Abrir portal de acceso",
         ctaHref: "../generales/index.html",
         note: "Participación y escrutinio del Congreso en tiempo real (visor y portal de administración)."
       },

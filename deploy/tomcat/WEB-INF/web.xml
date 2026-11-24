@@ -7,12 +7,13 @@
 
   <display-name>Elecciones Rivas Vaciamadrid</display-name>
   <description>
-    Portal estático de históricos y escrutinio en vivo (HUB + Generales + Municipales).
-    Los datos viven en ArcGIS; este WAR solo sirve la UI.
+    Portal de acceso (login Generales). El HUB y el visor público se mantienen empaquetados
+    pero la entrada por defecto redirige a generales/index.html. Los datos viven en ArcGIS.
   </description>
 
   <welcome-file-list>
     <welcome-file>index.html</welcome-file>
+    <welcome-file>generales/index.html</welcome-file>
     <welcome-file>hub/index.html</welcome-file>
   </welcome-file-list>
 

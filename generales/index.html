@@ -76,7 +76,7 @@
         <!-- ==========================================================================
            VISTA 1: DASHBOARD PÚBLICO (MAPA Y ESTADÍSTICAS EN TIEMPO REAL)
            ========================================================================== -->
-        <section id="public-dashboard-view" class="view-section">
+        <section id="public-dashboard-view" class="view-section hidden">
 
             <!-- Barra Lateral con Estadísticas y Colegios -->
             <aside class="dashboard-sidebar">
@@ -233,7 +233,7 @@
         <!-- ==========================================================================
            VISTA 2: FORMULARIO DE LOGIN (PORTAL ARCGIS ENTERPRISE)
            ========================================================================== -->
-        <section id="login-view" class="view-section login-view hidden">
+        <section id="login-view" class="view-section login-view">
             <div class="login-card">
                 <img src="../Imagenes/logo_proceso.svg" width="280" height="60" decoding="async" alt="Elecciones Generales — logo oficial del proceso" class="login-logo login-logo-proceso">
                 <div class="login-title">Portal electoral · Generales</div>
@@ -276,8 +276,9 @@
                         <i class="fa-solid fa-shield-halved"></i> Conectar vía Diálogo Oficial ArcGIS
                     </button>
 
-                    <button type="button" id="btn-login-cancel" class="btn-header btn-secondary"
-                        style="width:100%; justify-content: center; background: transparent; border: none; color: rgba(255,255,255,0.6); margin-top: 2px;">
+                    <button type="button" id="btn-login-cancel" class="btn-header btn-secondary hidden"
+                        style="width:100%; justify-content: center; background: transparent; border: none; color: rgba(255,255,255,0.6); margin-top: 2px;"
+                        aria-hidden="true">
                         Volver al Visor Público
                     </button>
                 </form>
@@ -297,7 +298,7 @@
                         <p id="portal-colegio-address">Avenida de Covibar, 1, Rivas Vaciamadrid</p>
                     </div>
                     <button id="btn-portal-logout" class="btn-header btn-secondary">
-                        <i class="fa-solid fa-map"></i> Volver al visor público
+                        <i class="fa-solid fa-right-from-bracket"></i> Cerrar sesión
                     </button>
                 </div>
 
@@ -732,7 +733,7 @@
                             <i class="fa-solid fa-plus"></i> Añadir Mesa
                         </button>
                         <button id="btn-admin-logout" class="btn-header btn-secondary">
-                            <i class="fa-solid fa-map"></i> Volver al visor público
+                            <i class="fa-solid fa-right-from-bracket"></i> Cerrar sesión
                         </button>
                     </div>
                 </div>
@@ -1319,7 +1320,7 @@
     <script src="mesas_estructura_oficial.js?v=1.0.1"></script>
 
     <!-- Lógica de Control y Sincronización -->
-    <script src="app.js?v=1.8.7"></script>
+    <script src="app.js?v=1.8.8"></script>
 </body>
 
 </html>
