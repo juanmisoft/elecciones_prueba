@@ -88,8 +88,6 @@ PUBLIC_URL_HINT="${CONTEXT_PATH:-}/"
 cat > "${STAGE}/DEPLOY.txt" <<EOF
 Elecciones Rivas Vaciamadrid — paquete Tomcat
 =============================================
-Entrada: index.html → generales/index.html (login del portal).
-El visor público permanece en el WAR pero no es la entrada por defecto.
 Contenido: index.html, hub/, generales/, municipales/, Imagenes/, WEB-INF/
 
 NO incluye (a propósito):
@@ -102,7 +100,7 @@ Despliegue:
 2. Arrancar Tomcat 10+ (Jakarta) o adaptar web.xml a javax si usáis Tomcat 9
 3. Abrir http://servidor:8080${PUBLIC_URL_HINT}
 
-Requisitos de red en el navegador:
+Requisitos de red en el navegador del ciudadano:
 - https://js.arcgis.com (API)
 - https://sit.rivasciudad.es (servicios / Portal)
 - CDN Font Awesome y Google Fonts

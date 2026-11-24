@@ -1,31 +1,20 @@
-Empaquetado Apache Tomcat (portal de acceso)
-=============================================
+Empaquetado Apache Tomcat (portal público)
+==========================================
 
-Entrada actual
+Generar el WAR
 --------------
-  index.html → generales/index.html (login del portal).
-  El visor público sigue empaquetado, pero no es la entrada.
-  Para reactivarlo más adelante:
-    1) generales/app.js → PUBLIC_VIEWER_ENABLED = true
-    2) Mostrar de nuevo el botón "Volver al Visor Público" (deja de ocultarse solo)
-    3) index.html raíz → redirigir otra vez a hub/index.html si conviene
-
-Generar el WAR (Windows)
-------------------------
-  powershell -ExecutionPolicy Bypass -File .\deploy\package-tomcat.ps1
-
-  # Raíz del servidor (http://host:8080/)
-  powershell -ExecutionPolicy Bypass -File .\deploy\package-tomcat.ps1 -WarName ROOT.war
-
-  # Otro context path
-  powershell -ExecutionPolicy Bypass -File .\deploy\package-tomcat.ps1 -WarName elecciones.war -Context elecciones
-
-Generar el WAR (bash / Git Bash / WSL)
---------------------------------------
   chmod +x deploy/package-tomcat.sh
   ./deploy/package-tomcat.sh
 
 Salida: dist/elecciones.war
+
+Variantes
+---------
+  # Raíz del servidor (http://host:8080/)
+  WAR_NAME=ROOT.war CONTEXT= ./deploy/package-tomcat.sh
+
+  # Otro context path
+  WAR_NAME=elecciones-publico.war CONTEXT=elecciones-publico ./deploy/package-tomcat.sh
 
 Despliegue
 ----------
